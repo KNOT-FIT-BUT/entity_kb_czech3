@@ -61,22 +61,28 @@ class EntCore(metaclass=ABCMeta):
         self.images = ""
 
     @staticmethod
-    def del_redundant_text(text):
+    def del_redundant_text(text, multiple_separator = "|"):
         """
         Odstraňuje přebytečné části textu, ale pouze ty, které jsou společné pro všechny získávané údaje.
 
         Parametry:
         text - text, který má být upraven (str)
+        multiple_separator - znak oddělující více řádků
+#        clear_name_links - odstraňuje odkazy z názvů
 
         Návratová hodnota:
         Upravený text. (str)
         """
 
+#        if clear_name_links:
+#            clean_text = re.sub(r"(|\s*.*?název\s*=\s*(?!=)\s*.*?)\[\[[^\]]+\]\]", r"\1", text).strip() # odkaz v názvu zřejmě vede na jinou entitu (u jmen často odkazem napsán jazyk názvu)
+#        else:
         clean_text = re.sub(r"\[\[[^\]|]+\|([^\]|]+)\]\]", r"\1", text)  # [[Sth (sth)|Sth]] -> Sth
         clean_text = re.sub(r"\[\[([^]]+)\]\]", r"\1", clean_text)  # [[Sth]] -> Sth
         clean_text = re.sub(r"'+(.+?)'+", r"\1", clean_text)  # '''Sth''' -> Sth
         clean_text = re.sub(r"\s*</?small>\s*", " ", clean_text)  # <small>sth</small> -> sth
-        clean_text = re.sub(r"\s*<br(?: ?/)?>\s*", ", ", clean_text)  # sth<br />sth -> sth, sth
+#        clean_text = re.sub(r"\s*<br(?: ?/)?>\s*", ", ", clean_text)  # sth<br />sth -> sth, sth
+        clean_text = re.sub(r"\s*<br(?: ?/)?>\s*", multiple_separator, clean_text)  # sth<br />sth -> sth, sth (sth-> sth | sth)
         clean_text = re.sub(r"\s*{{small\|([^}]+)}}\s*", r" \1", clean_text)  # {{small|sth}} -> sth
         clean_text = re.sub(r"\s*{{nowrap\|([^}]+)}}\s*", r" \1", clean_text, flags=re.I)  # {{nowrap|sth}} -> sth
         clean_text = re.sub(r"\s*{{(?:(?:doplňte|doplnit|chybí) zdroj|zdroj\?|fakt[^}]*)}}\s*", "", clean_text, flags=re.I)
@@ -86,6 +92,84 @@ class EntCore(metaclass=ABCMeta):
         clean_text = clean_text.replace("&nbsp;", " ").replace("\xa0", " ")
 
         return clean_text
+
+
+    def get_aliases(self, alias):
+        """
+        Převádí alternativní pojmenování do jednotného formátu.
+
+        Parametry:
+        alias - alternativní pojmenování entity (str)
+        """
+        if alias == self.title or alias.strip() == "{{PAGENAME}}":
+            return
+
+        alias = re.sub(r"\s+", " ", alias).strip()
+        alias = re.sub(r"\s*<hr\s*/>\s*", "", alias)
+        alias = alias.strip(",")
+        alias = re.sub(r"(?:''|[„“\"])", "", alias)
+        alias = re.sub(r"(?:,{2,}|;)\s*", ", ", alias)
+        alias = re.sub(r"\s+/\s+", ", ", alias)
+        alias = re.sub(r"\s*<hiero>.*</hiero>\s*", "", alias, flags=re.I)
+        alias = re.sub(r"\s*{{Poznámka pod čarou.*(?:}})?\s*$", "", alias, flags=re.I)
+        alias = re.sub(r"\s*\{{Unicode\|([^}]+)}}\s*", r" \1", alias, flags=re.I)
+        alias = re.sub(r"\s*\({{(?:Cj|Cizojazyčně)\|(?:\d=)?\w+\|(?:\d=)?([^}]+)}}\)\s*", r", \1", alias, flags=re.I)
+        alias = re.sub(r"\s*{{(?:Cj|Cizojazyčně)\|(?:\d=)?\w+\|(?:\d=)?([^}]+)}}\s*", r" \1", alias, flags=re.I)
+        alias = re.sub(r"\s*\({{V ?jazyce2\|\w+\|([^}]+)}}\)\s*", r", \1", alias, flags=re.I)
+        alias = re.sub(r"\s*\(?{{V ?jazyce\|\w+}}\)?:?\s*", "", alias, flags=re.I)
+        alias = re.sub(r"\s*\(?{{(?:Jaz|Jazyk)\|[\w-]+\|([^}]+)}}\)?:?\s*", r"\1", alias, flags=re.I)
+        alias = re.sub(r"\s*{{(?:Malé|Velké)\|(.*?)}}\s*", r"\1", alias, flags=re.I)
+        if re.search(r"\s*{{Možná hledáte", alias, flags=re.I):
+            alias = re.sub(r"\s*{{Možná hledáte|([^=|])*?}}\s*", r"\1", alias, flags=re.I)
+            alias = re.sub(r"\s*{{Možná hledáte|.*?jiné\s*=\s*([^|])*?.*?}}\s*", r"\1", alias, flags=re.I)
+        # TODO: přidat šablonu přesměrování
+        alias = re.sub(r"\s*{{[a-z]{2}}};?\s*", "", alias)
+        alias = re.sub(r"\s*\[[^]]+\]\s*", "", alias)
+        alias = re.sub(r",(?!\s)", ", ", alias)
+        alias = alias.replace(",|", "|")
+        alias = re.sub(r"[\w\s\-–—−,.()]+:\s*\|?", "", alias)
+        alias = re.sub(r"\s*\([^)]+\)\s*", "", alias)
+        alias = alias.strip(",")
+        alias = re.sub(r"\|{2,}", "|", alias)
+        alias = re.sub(r"^(\s*\|\s*)+$", "", alias)
+        alias = self.custom_transform_alias(alias)
+        alias = re.sub(r"^viz(\.|\s)", "", alias) # vyhození navigačního slova "viz" - například "viz něco" -> "něco"
+        alias = re.sub(r"{{[^}]+?}}", "", alias) # vyhození ostatních šablon (nové šablony by dělaly nepořádek)
+        alias = re.sub(r"[()\[\]{}]", "", alias)
+        alias = re.sub(r"<.*?>", "", alias)
+        alias = "|".join(x.strip() for x in alias.split("|") if x.strip() != self.title)  # odstranění duplikátů
+        alias = alias.strip().strip("|").strip()
+
+        if alias and alias != self.title and re.search(r"[^\W_]", alias):
+            self.aliases += alias if not self.aliases else "|" + alias
+
+
+    def custom_transform_alias(self, alias):
+        """
+        Umožňuje provádět vlastní transformace aliasů entity do jednotného formátu.
+
+        Parametry:
+        alias - alternativní pojmenování entity (str)
+        """
+        return alias
+
+
+    def transform_geo_alias(self, alias):
+        """
+        Přidává další transformační pravidla specifická pro aliasy různých geografických entit.
+
+        Parametry:
+        alias - alternativní pojmenování geografické entity (str)
+        """
+
+        alias = re.sub(r"\s*{{flagicon.*?}}\s*", "", alias, flags=re.I)
+        alias = re.sub(r"\s*(,,|/,)\s*", ", ", alias)
+        alias = re.sub(r"\s*[,/;]\s*", "|", alias)
+        alias = re.sub(r"malé\|", "", alias, flags=re.I)
+#        alias = alias.replace(", ", "|") # Původně bylo jen pro country.. Nedostávají se tam i okresy, kraje apod? (U jmen nelze kvůli titulům za jménem)
+
+        return alias
+
 
     def get_image(self, image):
         """

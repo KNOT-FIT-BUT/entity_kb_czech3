@@ -177,7 +177,7 @@ class EntPerson(EntCore):
         else:
             for ln in data:
                 # aliasy
-                rexp_format = r"(?:jiná[\s_]+jména|(?:rodné|celé|úplné|posmrtné|chrámové)[\s_]+jméno|pseudonym|přezdívka)\s*=(?!=)\s+(.*)"
+                rexp_format = r"(?:jiná[\s_]+jména|(?:rodné|celé|úplné|posmrtné|chrámové|trůnní)[\s_]+jméno|pseudonym|přezdívka)\s*=(?!=)\s+(.*)"
                 rexp = re.search(rexp_format, ln, re.I)
                 if rexp and rexp.group(1):
                     self.get_aliases(self.del_redundant_text(rexp.group(1)))
@@ -237,7 +237,7 @@ class EntPerson(EntCore):
                     abbrs = "".join((r"(?<!\s(?:tzv|at[pd]|roz))", r"(?<!\s(?:apod|(?:ku|na|po)př|příp))", r"(?<!\s[amt]j)", r"(?<!\d)"))
                     rexp = re.search(r".*?'''.+?'''.*?\s(?:byl[aiy]?|je|jsou|patř(?:í|il)|stal).*?" + abbrs + "\.(?![^[]*?\]\])", ln)
                     if rexp:
-                        self.get_first_sentence(self.del_redundant_text(rexp.group(0)))
+                        self.get_first_sentence(self.del_redundant_text(rexp.group(0), ", "))
 
                         # extrakce alternativních pojmenování z první věty
                         fs_aliases = re.findall(r"'{3}(.+?)'{3}", rexp.group(0))
@@ -246,44 +246,6 @@ class EntPerson(EntCore):
                                 self.get_aliases(self.del_redundant_text(fs_alias).strip("'"))
                         continue
 
-    def get_aliases(self, alias):
-        """
-        Převádí alternativní jména osoby do jednotného formátu.
-
-        Parametry:
-        alias - alternativní jméno osoby (str)
-        """
-        if alias == self.title or alias.strip() == "{{PAGENAME}}":
-            return
-
-        alias = alias.strip(",")
-        alias = re.sub(r"(?:''|[„“\"])", "", alias)
-        alias = re.sub(r"(?:,{2,}|;)\s*", ", ", alias)
-        alias = re.sub(r"\s+/\s+", ", ", alias)
-        alias = re.sub(r"\s*<hiero>.*</hiero>\s*", "", alias)
-        alias = re.sub(r"\s*{{Poznámka pod čarou.*(?:}})?\s*$", "", alias, flags=re.I)
-        alias = re.sub(r"\s*\({{Cizojazyčně\|(?:\d=)?\w+\|(?:\d=)?(.+?)}}\)\s*", r", \1", alias, flags=re.I)
-        alias = re.sub(r"\s*{{Cizojazyčně\|(?:\d=)?\w+\|(?:\d=)?(.+?)}}\s*", r" \1", alias, flags=re.I)
-        alias = re.sub(r"\s*\({{V ?jazyce2\|\w+\|([^}]+)}}\)\s*", r", \1", alias, flags=re.I)
-        alias = re.sub(r"\s*\(?{{V ?jazyce\|\w+}}\)?:?\s*", "", alias, flags=re.I)
-        alias = re.sub(r"\s*{{Audio\|.*?\|(.*?)}}\s*", r"\1", alias, flags=re.I)
-        alias = re.sub(r"\s*{{[a-z]{2}}};?\s*", "", alias)
-        alias = re.sub(r"\s*\[[^]]+\]\s*", "", alias)
-        alias = re.sub(r"(?:\s*,)?\s*\(roz\. ([^)]+)\)\s*", r", \1", alias)
-        alias = re.sub(r",(?!\s)", ", ", alias)
-        alias = re.sub(r", (?!J[rn]|Sr|ml|Ph\.?D|MBA|M\.A\.|CSc\.)", "|", alias, flags=re.I)
-        alias = alias.replace(",|", "|")
-        alias = re.sub(r"[\w\s\-–—−,.()]+:\s*\|?", "", alias)
-        alias = re.sub(r"\s*\([^)]+\)\s*", "", alias)
-        alias = re.sub(r"\s+", " ", alias).strip().strip(",")
-        alias = re.sub(r"\|{2,}", "|", alias)
-        alias = re.sub(r"^(\s*\|\s*)+$", "", alias)
-        alias = re.sub(r"[()\[\]{}]", "", alias)
-        alias = "|".join(x.strip() for x in alias.split("|") if x != self.title)  # odstranění duplikátů
-        alias = alias.strip().strip("|")
-
-        if alias and alias != self.title and re.search(r"[^\W_]", alias):
-            self.aliases += alias if not self.aliases else "|" + alias
 
     def get_birth_date(self, date):
         """
@@ -298,6 +260,21 @@ class EntPerson(EntCore):
         modif_date = self._convert_date(date, True)
 
         self.birth_date = modif_date
+
+
+    def custom_transform_alias(self, alias):
+        """
+        Umožňuje provádět vlastní transformace aliasů entity do jednotného formátu.
+
+        Parametry:
+        alias - alternativní pojmenování entity (str)
+        """
+
+        # u titulů bez teček je třeba kontrolova mezeru, čárku nebo konec (například MA jinak vezme následující příjmení začínající "Ma..." a bude toto jméno považovat za součást předchozího)
+        alias = re.sub(r", (?!(J[rn]\.?|Sr\.?|ml(?:\.|adší)?|[PT]h\.?D\.?|MBA|M\.?A\.?|M\.?S\.?|M\.?Sc\.?|CSc\.|D(?:\.|r\.?)Sc\.|DiS\.)(\.|,| |$))", "|", alias, flags=re.I)
+#        alias = re.sub(r"^(?:prof|doc)\.)?\s*((BcA?\.|Ing\.(\s*arch\.)?|M[SDUV]Dr\.|Mg[Ar]\.|(?:JU|Ph|RN|Pharm|Th|Paed)Dr\.|PhMr\.|ThMgr\.|R[CST]Dr\.|Dr.)(\s+et)?\s*)*", "", alias, flags=re.I) # pro zničení titulů před jménem
+        return alias
+
 
     def get_death_date(self, date):
         """

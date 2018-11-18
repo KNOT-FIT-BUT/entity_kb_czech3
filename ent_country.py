@@ -129,7 +129,7 @@ class EntCountry(EntCore):
                 rexp = re.search(r".*?'''.+?'''.*?\s(?:byl[aiy]?|je|jsou|nacház(?:í|ejí)|patř(?:í|il)|stal|rozprostír|lež(?:í|el)).*?" + abbrs + "\.(?![^[]*?\]\])", ln)
                 if rexp:
                     if not self.description:
-                        self.get_first_sentence(self.del_redundant_text(rexp.group(0)))
+                        self.get_first_sentence(self.del_redundant_text(rexp.group(0), ", "))
 
                         # extrakce alternativních pojmenování z první věty
                         fs_aliases = re.findall(r"'{3}(.+?)'{3}", rexp.group(0))
@@ -138,47 +138,17 @@ class EntCountry(EntCore):
                                 self.get_aliases(self.del_redundant_text(fs_alias).strip("'"))
                     continue
 
-    def get_aliases(self, alias):
+
+    def custom_transform_alias(self, alias):
         """
-        Převádí alternativní pojmenování státu do jednotného formátu.
+        Vlastní transformace aliasu.
 
         Parametry:
-        alias - alternativní pojmenování státu (str)
+        alias - alternativní pojmenování entity (str)
         """
-        if alias == self.title or alias.strip() == "{{PAGENAME}}":
-            return
 
-        alias = re.sub(r"\s*<hr\s*/>\s*", "", alias)
-        alias = alias.strip(",")
-        alias = re.sub(r"(?:''|[„“\"])", "", alias)
-        alias = re.sub(r"(?:,{2,}|;)\s*", ", ", alias)
-        alias = re.sub(r"\s+/\s+", ", ", alias)
-        alias = re.sub(r"\s*<hiero>.*</hiero>\s*", "", alias)
-        alias = re.sub(r"\s*{{Poznámka pod čarou.*(?:}})?\s*$", "", alias, flags=re.I)
-        alias = re.sub(r"\s*\({{Cizojazyčně\|(?:\d=)?\w+\|(?:\d=)?([^}]+)}}\)\s*", r", \1", alias, flags=re.I)
-        alias = re.sub(r"\s*{{Cizojazyčně\|(?:\d=)?\w+\|(?:\d=)?([^}]+)}}\s*", r" \1", alias, flags=re.I)
-        alias = re.sub(r"\s*\({{V ?jazyce2\|\w+\|([^}]+)}}\)\s*", r", \1", alias, flags=re.I)
-        alias = re.sub(r"\s*\(?{{V ?jazyce\|\w+}}\)?:?\s*", "", alias, flags=re.I)
-        alias = re.sub(r"\s*\(?{{Jazyk\|[\w-]+\|([^}]+)}}\)?:?\s*", r"\1", alias, flags=re.I)
-        alias = re.sub(r"\s*{{[a-z]{2}}};?\s*", "", alias)
-        alias = re.sub(r"\s*\[[^]]+\]\s*", "", alias)
-        alias = re.sub(r",(?!\s)", ", ", alias)
-        alias = alias.replace(",|", "|")
-        alias = re.sub(r"[\w\s\-–—−,.()]+:\s*\|?", "", alias)
-        alias = re.sub(r"\s*\([^)]+\)\s*", "", alias)
-        alias = re.sub(r"\s+", " ", alias).strip().strip(",")
-        alias = re.sub(r"\|{2,}", "|", alias)
-        alias = re.sub(r"^(\s*\|\s*)+$", "", alias)
-        alias = re.sub(r"[()\[\]{}]", "", alias)
-        alias = re.sub(r"\s*(,,|/,)\s*", ", ", alias)
-        alias = re.sub(r"\s+", " ", alias).strip()
-        alias = alias.replace(", ", "|")
-        alias = re.sub(r"malé\|", "", alias, flags=re.I)
-        alias = "|".join(x.strip() for x in alias.split("|") if x != self.title)  # odstranění duplikátů
-        alias = alias.strip().strip("|")
+        return self.transform_geo_alias(alias)
 
-        if alias and alias != self.title and re.search(r"[^\W_]", alias):
-            self.aliases += alias if not self.aliases else "|" + alias
 
     def get_area(self, area):
         """
