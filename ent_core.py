@@ -194,7 +194,7 @@ class EntCore(metaclass=ABCMeta):
         Serialized aliases to be written while creating KB
         """
         if (self.n_marked_czech == 0 and len(self.aliases.keys()) > 0):
-            self.aliases[self.aliases.keys[0]] = self.LANG_CZECH
+            self.aliases[list(self.aliases.keys())[0]] = self.LANG_CZECH
 
         self.aliases.pop(self.title, None)
 #        possible_czech = all(lang in [self.LANG_CZECH, None] for alias, lang in self.aliases.items())
