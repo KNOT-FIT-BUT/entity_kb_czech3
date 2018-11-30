@@ -12,6 +12,7 @@ Soubor obsahuje třídu 'EntCore', jež je rodičovskou třídou pro podtřídy 
 import re
 from abc import ABCMeta, abstractmethod
 from hashlib import md5, sha224
+from libs.UniqueDict import *
 
 
 class EntCore(metaclass=ABCMeta):
@@ -36,6 +37,8 @@ class EntCore(metaclass=ABCMeta):
     """
 
     counter = 0
+    LANG_CZECH = "cs"
+    LANG_UNKNOWN = "???"
 
     @abstractmethod
     def __init__(self, title, prefix, link):
@@ -56,9 +59,10 @@ class EntCore(metaclass=ABCMeta):
         self.prefix = prefix
         self.eid = sha224(str(EntCore.counter).encode("utf-8")).hexdigest()[:10]  # vygenerování hashe
         self.link = link
-        self.aliases = ""
+        self.aliases = UniqueDict()
         self.description = ""
         self.images = ""
+        self.n_marked_czech = 0
 
     @staticmethod
     def del_redundant_text(text, multiple_separator = "|"):
@@ -94,15 +98,20 @@ class EntCore(metaclass=ABCMeta):
         return clean_text
 
 
-    def get_aliases(self, alias):
+    def get_aliases(self, alias, marked_czech = False):
         """
         Převádí alternativní pojmenování do jednotného formátu.
 
         Parametry:
         alias - alternativní pojmenování entity (str)
+        marked_czech - entita explicitně definovaná jako česká
         """
-        if alias == self.title or alias.strip() == "{{PAGENAME}}":
+        # Eliminating of an alias identical with a title is now contraproductive, 'cause we need ensure that first alias is in czech language (it is eliminated in serializing step).
+        if alias.strip() == "{{PAGENAME}}":
             return
+
+        re_lang_aliases = re.compile("{{(?:Cj|Cizojazyčně|Vjazyce2)\|(?:\d=)?(\w+)\|(?:\d=)?([^}]+)}}")
+        lang_aliases = re_lang_aliases.findall(alias)
 
         alias = re.sub(r"\s+", " ", alias).strip()
         alias = re.sub(r"\s*<hr\s*/>\s*", "", alias)
@@ -113,9 +122,9 @@ class EntCore(metaclass=ABCMeta):
         alias = re.sub(r"\s*<hiero>.*</hiero>\s*", "", alias, flags=re.I)
         alias = re.sub(r"\s*{{Poznámka pod čarou.*(?:}})?\s*$", "", alias, flags=re.I)
         alias = re.sub(r"\s*\{{Unicode\|([^}]+)}}\s*", r" \1", alias, flags=re.I)
-        alias = re.sub(r"\s*\({{(?:Cj|Cizojazyčně)\|(?:\d=)?\w+\|(?:\d=)?([^}]+)}}\)\s*", r", \1", alias, flags=re.I)
-        alias = re.sub(r"\s*{{(?:Cj|Cizojazyčně)\|(?:\d=)?\w+\|(?:\d=)?([^}]+)}}\s*", r" \1", alias, flags=re.I)
-        alias = re.sub(r"\s*\({{V ?jazyce2\|\w+\|([^}]+)}}\)\s*", r", \1", alias, flags=re.I)
+        alias = re.sub(r"\s*\({{(?:Cj|Cizojazyčně)\|(?:\d=)?\w+\|(?:\d=)?[^}]+}}\)\s*", "", alias, flags=re.I) # aliases are covered by "lang_aliases"
+        alias = re.sub(r"\s*{{(?:Cj|Cizojazyčně)\|(?:\d=)?\w+\|(?:\d=)?[^}]+}}\s*", "", alias, flags=re.I) # aliases are covered by "lang_aliases"
+        alias = re.sub(r"\s*\({{V ?jazyce2\|\w+\|[^}]+}}\)\s*", "", alias, flags=re.I) # aliases are covered by "lang_aliases"
         alias = re.sub(r"\s*\(?{{V ?jazyce\|\w+}}\)?:?\s*", "", alias, flags=re.I)
         alias = re.sub(r"\s*\(?{{(?:Jaz|Jazyk)\|[\w-]+\|([^}]+)}}\)?:?\s*", r"\1", alias, flags=re.I)
         alias = re.sub(r"\s*{{(?:Malé|Velké)\|(.*?)}}\s*", r"\1", alias, flags=re.I)
@@ -137,11 +146,20 @@ class EntCore(metaclass=ABCMeta):
         alias = re.sub(r"{{[^}]+?}}", "", alias) # vyhození ostatních šablon (nové šablony by dělaly nepořádek)
         alias = re.sub(r"[()\[\]{}]", "", alias)
         alias = re.sub(r"<.*?>", "", alias)
-        alias = "|".join(x.strip() for x in alias.split("|") if x.strip() != self.title)  # odstranění duplikátů
-        alias = alias.strip().strip("|").strip()
+        for a in alias.split("|"):
+            a = a.strip()
+            if re.search(r"[^\W_]", a):
+                if marked_czech:
+                    self.aliases[a] = self.LANG_CZECH
+                    self.n_marked_czech += 1
+                else:
+                    self.aliases[a] = None
 
-        if alias and alias != self.title and re.search(r"[^\W_]", alias):
-            self.aliases += alias if not self.aliases else "|" + alias
+        for lng, a in lang_aliases:
+            a = a.strip()
+            # TODO: maybe, it is needed custom_transform_alias()?
+            if re.search(r"[^\W_]", a):
+                self.aliases[a] = lng
 
 
     def custom_transform_alias(self, alias):
@@ -169,6 +187,24 @@ class EntCore(metaclass=ABCMeta):
 #        alias = alias.replace(", ", "|") # Původně bylo jen pro country.. Nedostávají se tam i okresy, kraje apod? (U jmen nelze kvůli titulům za jménem)
 
         return alias
+
+
+    def serialize_aliases(self):
+        """
+        Serialized aliases to be written while creating KB
+        """
+        if (self.n_marked_czech == 0 and len(self.aliases.keys()) > 0):
+            self.aliases[self.aliases.keys[0]] = self.LANG_CZECH
+
+        self.aliases.pop(self.title, None)
+#        possible_czech = all(lang in [self.LANG_CZECH, None] for alias, lang in self.aliases.items())
+
+        preserialized = set()
+        for alias, lang in self.aliases.items():
+#            preserialized.add(alias + "#lang=" + (self.LANG_CZECH if (possible_czech and lang in [None, self.LANG_CZECH]) else (lang if lang != None else self.LANG_UNKNOWN)))
+            preserialized.add(alias + "#lang=" + (lang if lang != None else self.LANG_UNKNOWN))
+
+        return "|".join(preserialized)
 
 
     def get_image(self, image):

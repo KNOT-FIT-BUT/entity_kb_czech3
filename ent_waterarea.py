@@ -218,7 +218,7 @@ class EntWaterArea(EntCore):
             fl.write(self.eid + "\t")
             fl.write(self.prefix + "\t")
             fl.write(self.title + "\t")
-            fl.write(self.aliases + "\t")
+            fl.write(self.serialize_aliases() + "\t")
             fl.write(self.description + "\t")
             fl.write(self.images + "\t")
             fl.write(self.link + "\t")

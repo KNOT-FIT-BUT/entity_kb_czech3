@@ -283,7 +283,7 @@ class EntGeo(EntCore):
         latitude = re.sub(r"^[^\d-]*(?=\d)", "", latitude)
         latitude = re.sub(r"^(\d+(?:,\d+)?)[^\d,]+.*$", r"\1", latitude)
         latitude = "" if not re.search(r"\d", latitude) else latitude
-        
+
         self.latitude = latitude
 
     def get_longitude(self, longitude):
@@ -357,7 +357,7 @@ class EntGeo(EntCore):
             fl.write(self.eid + "\t")
             fl.write(self.prefix + "\t")
             fl.write(self.title + "\t")
-            fl.write(self.aliases + "\t")
+            fl.write(self.serialize_aliases() + "\t")
             fl.write(self.description + "\t")
             fl.write(self.images + "\t")
             fl.write(self.link + ("\t" if self.subtype != "peninsula" else "\n"))

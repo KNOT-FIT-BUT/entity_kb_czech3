@@ -433,7 +433,7 @@ class EntPerson(EntCore):
             fl.write(self.eid + "\t")
             fl.write(self.prefix + "\t")
             fl.write(self.title + "\t")
-            fl.write(self.aliases + "\t")
+            fl.write(self.setialize_aliases() + "\t")
             fl.write(self.description + "\t")
             fl.write(self.images + "\t")
             fl.write(self.link + "\t")
@@ -615,13 +615,13 @@ class EntPerson(EntCore):
     def _subx(pattern, repl, string, count=0, flags=0):
         """
         Vykonává totožný úkon jako funkce sub z modulu re, ale jen v případě, že nenarazí na datum ve standardizovaném formátu.
-        
+
         Parametry:
         pattern - vzor (str)
         repl - náhrada (str)
         string - řetězec, na kterém má být úkon proveden (str)
         count - počet výskytů, na kterých má být úkon proveden (int)
-        flags - speciální značky, které ovlivňují chování funkce (int) 
+        flags - speciální značky, které ovlivňují chování funkce (int)
         """
         if re.match(r"[\d?]+-[\d?]+-[\d?]+", string):
             return string

@@ -94,8 +94,14 @@ class EntCountry(EntCore):
             pass
         else:
             for ln in data:
-                # aliasy
-                rexp = re.search(r"název(?:[\s_]česky)?\s*=(?!=)\s*(.*)", ln, re.I)
+                # aliases - czech name is preferable
+                rexp = re.search(r"název[\s_]česky\s*=(?!=)\s*(.*)", ln, re.I)
+                if rexp and rexp.group(1):
+                    self.get_aliases(self.del_redundant_text(rexp.group(1)), True)
+                    continue
+
+                # aliases - common name may contain name in local language
+                rexp = re.search(r"název\s*=(?!=)\s*(.*)", ln, re.I)
                 if rexp and rexp.group(1):
                     self.get_aliases(self.del_redundant_text(rexp.group(1)))
                     continue
@@ -223,7 +229,7 @@ class EntCountry(EntCore):
             fl.write(self.eid + "\t")
             fl.write(self.prefix + "\t")
             fl.write(self.title + "\t")
-            fl.write(self.aliases + "\t")
+            fl.write(self.serialize_aliases() + "\t")
             fl.write(self.description + "\t")
             fl.write(self.images + "\t")
             fl.write(self.link + "\t")

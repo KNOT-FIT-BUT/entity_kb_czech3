@@ -157,6 +157,12 @@ class EntSettlement(EntCore):
         else:
             for ln in data:
                 # aliasy
+                rexp_format = r"\|\s*jméno\s*=(?!=)\s*(.*)"
+                rexp = re.search(rexp_format, ln, re.I)
+                if rexp and rexp.group(1):
+                    self.get_aliases(self.del_redundant_text(rexp.group(1)), True)
+                    continue
+
                 rexp_format = r"(?:název|(?:originální[\s_]+)?jméno)\s*=(?!=)\s*(.*)"
                 rexp = re.search(rexp_format, ln, re.I)
                 if rexp and rexp.group(1):
@@ -312,7 +318,7 @@ class EntSettlement(EntCore):
             fl.write(self.eid + "\t")
             fl.write(self.prefix + "\t")
             fl.write(self.title + "\t")
-            fl.write(self.aliases + "\t")
+            fl.write(self.serialize_aliases() + "\t")
             fl.write(self.description + "\t")
             fl.write(self.images + "\t")
             fl.write(self.link + "\t")
