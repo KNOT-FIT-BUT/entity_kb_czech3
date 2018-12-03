@@ -215,6 +215,7 @@ class EntCore(metaclass=ABCMeta):
         image - název obrázku (str)
         """
 
+        image = re.sub(r"{{.*$", "", image) # remove templates with descriptions from image path
         image = re.sub(r"\s*\|.*$", "", image).replace("}", "").strip().replace(" ", "_")
         image_hash = md5(image.encode("utf-8")).hexdigest()[:2]
         image = "wikimedia/commons/" + image_hash[0] + "/" + image_hash + "/" + image
