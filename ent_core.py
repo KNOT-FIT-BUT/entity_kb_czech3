@@ -112,7 +112,7 @@ class EntCore(metaclass=ABCMeta):
         if alias.strip() == "{{PAGENAME}}":
             return
 
-        re_lang_aliases = re.compile("{{(?:Cj|Cizojazyčně|Vjazyce2)\|(?:\d=)?(\w+)\|(?:\d=)?([^}]+)}}")
+        re_lang_aliases = re.compile("{{(?:Cj|Cizojazyčně|Vjazyce2)\|(?:\d=)?(\w+)\|(?:\d=)?([^}]+)}}", flags=re.I)
         lang_aliases = re_lang_aliases.findall(alias)
 
         alias = re.sub(r"\s+", " ", alias).strip()
