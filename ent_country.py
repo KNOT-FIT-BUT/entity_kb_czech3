@@ -196,6 +196,7 @@ class EntCountry(EntCore):
         Parametry:
         fs - první věta stránky (str)
         """
+        #TODO: refactorize
         fs = re.sub(r"{{(?:vjazyce2|cizojazyčně|audio|cj|jazyk)\|.*?\|(.+?)}}", r"", fs, flags=re.I)
         fs = re.sub(r"{{IPA\d?\|(.+?)}}", r"\1", fs, flags=re.I)
         fs = re.sub(r"{{výslovnost\|(.+?)\|.*?}}", r"", fs, flags=re.I)
@@ -208,6 +209,7 @@ class EntCountry(EntCore):
         fs = re.sub(r"\(.*?\)", "", fs)
         fs = re.sub(r"\s+", " ", fs).strip()
         fs = re.sub(r" ([,.])", r"\1", fs)
+        fs = re.sub(r"}}", "", fs) # Eliminate the end of a template
         fs = fs.replace("''", "").replace(")", "").replace("|group=pozn.}}", "")
 
         self.description = fs

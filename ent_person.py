@@ -303,6 +303,7 @@ class EntPerson(EntCore):
         Parametry:
         fs - první věta stránky (str)
         """
+        #TODO: refactorize
         fs = re.sub(r"{{(?:vjazyce2|cizojazyčně|audio|cj)\|.*?\|(.+?)}}", r"\1", fs, flags=re.I)
         fs = re.sub(r"{{IPA\d?\|(.+?)}}", r"\1", fs, flags=re.I)
         fs = re.sub(r"{{výslovnost\|(.+?)\|.*?}}", r"\1", fs, flags=re.I)
@@ -313,6 +314,7 @@ class EntPerson(EntCore):
         fs = re.sub(r"{{.*?}}", "", fs)
         fs = re.sub(r"<.*?>", "", fs)
         fs = re.sub(r"\s+", " ", fs).strip()
+        fs = re.sub(r"}}", "", fs) # Eliminate the end of a template
 
         self.description = fs
 
