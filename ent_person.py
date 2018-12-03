@@ -311,6 +311,7 @@ class EntPerson(EntCore):
         fs = self._subx(r".*?{{\s*JULGREGDATUM\s*\|\s*(\d+)\s*\|\s*(\d+)\s*\|\s*(\d+)[^}]*}}.*", lambda x: self._regex_date(x, 4), fs, flags=re.I)
         fs = re.sub(r"{{čínsky(.+?)}}", lambda x: re.sub("(?:znaky|pchin-jin|tradiční|zjednodušené|pinyin)\s*=\s*(.*?)(?:\||}})", r"\1 ", x.group(1), flags=re.I), fs, flags=re.I)
         fs = re.sub(r"{{malé\|(.*?)}}", r"\1", fs, flags=re.I)
+        fs = re.sub(r"{{PAGENAME}}", self.title, fs, flags=re.I)
         fs = re.sub(r"{{.*?}}", "", fs)
         fs = re.sub(r"<.*?>", "", fs)
         fs = re.sub(r"\s+", " ", fs).strip()
