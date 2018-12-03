@@ -204,6 +204,7 @@ class WikiExtract(object):
                                     et_cont = re.sub(r"{{cite[^}]+?}}", "", et_cont, flags=re.I)
                                     et_cont = re.sub(r"{{#tag:ref[^}]+?}}", "", et_cont, flags=re.I)
                                     et_cont = re.sub(r"<!--.+?-->", "", et_cont, flags=re.DOTALL)
+                                    et_cont = re.sub(r"{\|.*?\|}", "", et_cont, flags=re.S)
 
                                     # stránka pojednává o osobě
                                     if EntPerson.is_person(et_cont) >= 2:
