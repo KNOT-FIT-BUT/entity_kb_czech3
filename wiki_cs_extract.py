@@ -160,6 +160,8 @@ class WikiExtract(object):
         console_args_parser = argparse.ArgumentParser()
         console_args_parser.add_argument("src_file", nargs="?", default="/mnt/minerva1/nlp/corpora_datasets/monolingual/czech/wikipedia/cswiki-latest-pages-articles.xml", type=str, help="zdrojový soubor")
         # console_args_parser.add_argument("-d", "--dir", nargs="?", default="/mnt/minerva1/nlp/projects/entity_kb_czech/data/cs/", type=str, help="složka, ve které se nachází soubory s entitami")
+        requiredNamed = console_args_parser.add_argument_group('required named arguments')
+        requiredNamed.add_argument("-r", "--redirects", action="store", default="/mnt/minerva1/nlp/corpora_datasets/monolingual/czech/wikipedia/redirects_from_cswiki-latest-pages-articles.xml", type=str, help="soubor přesměrování", required=True)
         self.console_args = console_args_parser.parse_args()
 
     def parse_xml_dump(self):
@@ -171,6 +173,15 @@ class WikiExtract(object):
         """
         # # načtení entit
         # self._load_entities()
+
+        redirects = dict()
+        dump_buffer = open(self.console_args.redirects, 'r').read()
+        re_redirects = re.compile("<page>.*?<title>(.*?)</title>.*?<redirect title=\"(.*?)\".*?</page>", re.S)
+        map_redirects = re.findall(re_redirects, dump_buffer)
+        for redirect_from, redirect_to in map_redirects:
+            if not redirect_to in redirects:
+                redirects[redirect_to] = set()
+            redirects[redirect_to].add(redirect_from)
 
         # parsování XML souboru
         context = CElTree.iterparse(self.console_args.src_file, events=("start", "end"))
@@ -209,7 +220,7 @@ class WikiExtract(object):
                                     # stránka pojednává o osobě
                                     if EntPerson.is_person(et_cont) >= 2:
                                         et_mod_title, et_url = self._get_title_and_url(et_full_title)
-                                        et_person = EntPerson(et_mod_title, "person", et_url)
+                                        et_person = EntPerson(et_mod_title, "person", et_url, redirects)
                                         et_person.get_data(et_cont)
                                         et_person.write_to_file()
                                         continue
@@ -217,7 +228,7 @@ class WikiExtract(object):
                                     # stránka pojednává o státu
                                     if EntCountry.is_country(et_cont):
                                         et_mod_title, et_url = self._get_title_and_url(et_full_title)
-                                        et_country = EntCountry(et_mod_title, "country", et_url)
+                                        et_country = EntCountry(et_mod_title, "country", et_url, redirects)
                                         et_country.get_data(et_cont)
                                         et_country.write_to_file()
                                         continue
@@ -226,7 +237,7 @@ class WikiExtract(object):
                                     id_level, id_type = EntSettlement.is_settlement(et_full_title, et_cont)
                                     if id_level:
                                         et_mod_title, et_url = self._get_title_and_url(et_full_title)
-                                        et_settlement = EntSettlement(et_mod_title, "settlement", et_url)
+                                        et_settlement = EntSettlement(et_mod_title, "settlement", et_url, redirects)
                                         et_settlement.get_data(et_cont)
                                         et_settlement.write_to_file()
                                         continue
@@ -235,7 +246,7 @@ class WikiExtract(object):
                                     id_level, id_type = EntWatercourse.is_watercourse(et_full_title, et_cont)
                                     if id_level:
                                         et_mod_title, et_url = self._get_title_and_url(et_full_title)
-                                        et_watercourse = EntWatercourse(et_mod_title, "watercourse", et_url)
+                                        et_watercourse = EntWatercourse(et_mod_title, "watercourse", et_url, redirects)
                                         et_watercourse.get_data(et_cont)
                                         et_watercourse.write_to_file()
                                         continue
@@ -244,7 +255,7 @@ class WikiExtract(object):
                                     id_level, id_type = EntWaterArea.is_water_area(et_full_title, et_cont)
                                     if id_level:
                                         et_mod_title, et_url = self._get_title_and_url(et_full_title)
-                                        et_water_area = EntWaterArea(et_mod_title, "waterarea", et_url)
+                                        et_water_area = EntWaterArea(et_mod_title, "waterarea", et_url, redirects)
                                         et_water_area.get_data(et_cont)
                                         et_water_area.write_to_file()
                                         continue
@@ -253,7 +264,7 @@ class WikiExtract(object):
                                     id_level, id_type = EntGeo.is_geo(et_full_title, et_cont)
                                     if id_level:
                                         et_mod_title, et_url = self._get_title_and_url(et_full_title)
-                                        et_geo = EntGeo(et_mod_title, "geo", et_url)
+                                        et_geo = EntGeo(et_mod_title, "geo", et_url, redirects)
                                         et_geo.set_entity_subtype(id_type)
                                         et_geo.get_data(et_cont)
                                         et_geo.write_to_file()

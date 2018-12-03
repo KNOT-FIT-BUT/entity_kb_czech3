@@ -42,7 +42,7 @@ class EntPerson(EntCore):
     with open("person_infoboxes", "r", encoding="utf-8") as fl:
         ib_types = {x.lower().strip() for x in fl.readlines()}
 
-    def __init__(self, title, prefix, link):
+    def __init__(self, title, prefix, link, redirects):
         """
         Inicializuje třídu 'EntPerson'.
 
@@ -50,9 +50,10 @@ class EntPerson(EntCore):
         title - název stránky (str)
         prefix - prefix entity (str)
         link - odkaz na Wikipedii (str)
+        redirects - přesměrování Wiki stránek (dict)
         """
         # vyvolání inicializátoru nadřazené třídy
-        super(EntPerson, self).__init__(title, prefix, link)
+        super(EntPerson, self).__init__(title, prefix, link, redirects)
 
         # inicializace údajů specifických pro entitu
         self.birth_date = ""
@@ -182,6 +183,11 @@ class EntPerson(EntCore):
                 if rexp and rexp.group(1):
                     self.get_aliases(self.del_redundant_text(rexp.group(1)))
                     continue
+
+                if (self.gender == "F"):
+                    female_variant = self.title[:-3] if self.title[-3:] == "ová" else self.title + "ová"
+                    if self.title in self.redirects and female_variant in self.redirects[self.title]:
+                        self.aliases[female_variant] = self.LANG_CZECH if self.title[-3:] == "ová" else None
 
                 # obrázek - infobox
                 rexp = re.search(r"obrázek\s*=(?!=)\s*(.*)", ln, re.I)

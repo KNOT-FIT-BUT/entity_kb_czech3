@@ -30,7 +30,7 @@ class EntWaterArea(EntCore):
     continent - světadíl, na kterém se vodní plocha nachází (str)
     """
 
-    def __init__(self, title, prefix, link):
+    def __init__(self, title, prefix, link, redirects):
         """
         Inicializuje třídu 'EntWaterArea'.
 
@@ -38,8 +38,9 @@ class EntWaterArea(EntCore):
         title - název stránky (str)
         prefix - prefix entity (str)
         link - odkaz na Wikipedii (str)
+        redirects - přesměrování Wiki stránek (dict)
         """
-        super(EntWaterArea, self).__init__(title, prefix, link)
+        super(EntWaterArea, self).__init__(title, prefix, link, redirects)
 
         self.area = ""
         self.continent = ""

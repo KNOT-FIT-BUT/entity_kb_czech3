@@ -41,7 +41,7 @@ class EntCore(metaclass=ABCMeta):
     LANG_UNKNOWN = "???"
 
     @abstractmethod
-    def __init__(self, title, prefix, link):
+    def __init__(self, title, prefix, link, redirects):
         """
         Inicializuje třídu 'EntCore'.
 
@@ -49,6 +49,7 @@ class EntCore(metaclass=ABCMeta):
         title - název stránky (str)
         prefix - prefix entity (str)
         link - odkaz na Wikipedii (str)
+        redirects - přesměrování Wiki stránek (dict)
         """
 
         # zvětšení počítadla instancí
@@ -63,6 +64,7 @@ class EntCore(metaclass=ABCMeta):
         self.description = ""
         self.images = ""
         self.n_marked_czech = 0
+        self.redirects = redirects
 
     @staticmethod
     def del_redundant_text(text, multiple_separator = "|"):

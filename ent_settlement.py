@@ -38,7 +38,7 @@ class EntSettlement(EntCore):
     population - počet obyvatel sídla (str)
     """
 
-    def __init__(self, title, prefix, link):
+    def __init__(self, title, prefix, link, redirects):
         """
         Inicializuje třídu 'EntSettlement'.
 
@@ -46,8 +46,9 @@ class EntSettlement(EntCore):
         title - název stránky (str)
         prefix - prefix entity (str)
         link - odkaz na Wikipedii (str)
+        redirects - přesměrování Wiki stránek (dict)
         """
-        super(EntSettlement, self).__init__(title, prefix, link)
+        super(EntSettlement, self).__init__(title, prefix, link, redirects)
 
         self.area = ""
         self.country = ""
