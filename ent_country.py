@@ -138,11 +138,24 @@ class EntCountry(EntCore):
                     if not self.description:
                         self.get_first_sentence(self.del_redundant_text(rexp.group(0), ", "))
 
+                        # TODO: refactorize + give this to other entity types
                         # extrakce alternativních pojmenování z první věty
                         fs_aliases = re.findall(r"'{3}(.+?)'{3}", rexp.group(0))
                         if fs_aliases:
                             for fs_alias in fs_aliases:
                                 self.get_aliases(self.del_redundant_text(fs_alias).strip("'"))
+                        # extrakce z 1. věty: Česká republika (Czech Republic) je ...
+                        fs_aliases = re.findall(re.escape(self.title) + r"\s+\((.+?)\)", rexp.group(0))
+                        if fs_aliases:
+                            for fs_alias in fs_aliases:
+                                self.get_aliases(self.del_redundant_text(fs_alias))
+                        fs_aliases = re.search(r"(?:\s+někdy)?\s+(?:označovan[áéý]|označován[ao]?|nazývan[áéý]|nazýván[ao]?)(?:\s+(?:(?:(?:i|také)\s+)?jako)|i|také)?\s+(''.+?''|{{.+?}})(.+)", rexp.group(0))
+                        if fs_aliases:
+                            self.get_aliases(self.del_redundant_text(fs_aliases.group(1)).strip("'"))
+                            fs_next_aliases = re.finditer(r"(?:,|\s+nebo)(?:\s+(?:(?:(?:i|také)\s+)?jako)|i|také)?\s+(''.+?''|{{.+?}})", fs_aliases.group(2))
+                            for fs_next_alias in fs_next_aliases:
+                                self.get_aliases(self.del_redundant_text(fs_next_alias.group(1).strip("'")))
+
                     continue
 
 
