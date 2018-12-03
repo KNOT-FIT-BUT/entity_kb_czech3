@@ -197,7 +197,7 @@ class EntCountry(EntCore):
         fs - první věta stránky (str)
         """
         #TODO: refactorize
-        fs = re.sub(r"{{(?:vjazyce2|cizojazyčně|audio|cj|jazyk)\|.*?\|(.+?)}}", r"", fs, flags=re.I)
+        fs = re.sub(r"{{(?:vjazyce2|cizojazyčně|audio|cj|jazyk)\|.*?\|(.+?)}}", r"\1", fs, flags=re.I)
         fs = re.sub(r"{{IPA\d?\|(.+?)}}", r"\1", fs, flags=re.I)
         fs = re.sub(r"{{výslovnost\|(.+?)\|.*?}}", r"", fs, flags=re.I)
         fs = re.sub(r"{{čínsky(.+?)}}", lambda x: re.sub("(?:znaky|pchin-jin|tradiční|zjednodušené|pinyin)"
