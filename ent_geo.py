@@ -261,7 +261,7 @@ class EntGeo(EntCore):
         fs = re.sub(r"\(.*?\)", "", fs)
         fs = re.sub(r"\[.*?\]", "", fs)
         fs = re.sub(r"<.*?>", "", fs)
-        fs = re.sub(r"{{(?:cj|cizojazyčně|vjazyce\d?)\|\w+\|(.*?)}}", r"\1", fs)
+        fs = re.sub(r"{{(?:cj|cizojazyčně|vjazyce\d?)\|\w+\|(.*?)}}", r"\1", fs, flags=re.I)
         fs = re.sub(r"{{PAGENAME}}", self.title, fs, flags=re.I)
         fs = re.sub(r"{{.*?}}", "", fs).replace("{", "").replace("}", "")
         fs = re.sub(r"/.*?/", "", fs)
