@@ -239,7 +239,7 @@ class EntPerson(EntCore):
                     continue
 
                 # první věta
-                if not self.description and not re.search(r"^\s*\|", ln):
+                if not self.description and not re.search(r"^\s*({{Infobox|\|)", ln, flags=re.I):
                     abbrs = "".join((r"(?<!\s(?:tzv|at[pd]|roz))", r"(?<!\s(?:apod|(?:ku|na|po)př|příp))", r"(?<!\s[amt]j)", r"(?<!\d)"))
                     rexp = re.search(r".*?'''.+?'''.*?\s(?:byl[aiy]?|je|jsou|patř(?:í|il)|stal).*?" + abbrs + "\.(?![^[]*?\]\])", ln)
                     if rexp:
