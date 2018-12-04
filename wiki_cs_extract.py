@@ -38,7 +38,7 @@ class WikiExtract(object):
     parse_args() - parsuje argumenty zadané při spuštění skriptu
     parse_xml_dump() - parsuje XML dump Wikipedie, prochází jednotlivé stránky a vyhledává entity
 
-    _get_title_and_url(title) - vygeneruje název entity bez kulatých závorek a URL stránky
+    _get_url(title) - vygeneruje URL stránky
     _is_entity(title) - z názvu stránky určuje, zda stránka pojednává o entitě, či nikoliv
     _load_entities() - načte entity ze složky, jež byla zadána jako argument při spuštění skriptu; prozatím nevyužito
     """
@@ -56,20 +56,20 @@ class WikiExtract(object):
         Vytváří hlavičkový soubor HEAD-KB, který upřesňuje množinu záznamů znalostní báze.
         """
         entities = [
-            "<person>ID\tTYPE\tNAME\t{m}ALIASES\tDESCRIPTION\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tGENDER\t{e}DATE OF BIRTH\tPLACE OF BIRTH\t{e}DATE OF DEATH\tPLACE OF DEATH\t{m}JOBS\t{m}NATIONALITY\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
-            "<person:fictional>ID\tTYPE\tNAME\t{m}ALIASES\tDESCRIPTION\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tGENDER\t{e}DATE OF BIRTH\tPLACE OF BIRTH\t{e}DATE OF DEATH\tPLACE OF DEATH\t{m}JOBS\t{m}NATIONALITY\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
-            "<country>ID\tTYPE\tNAME\t{m}ALIASES\tDESCRIPTION\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tAREA\tPOPULATION\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
-            "<country:former>ID\tTYPE\tNAME\t{m}ALIASES\tDESCRIPTION\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tAREA\tPOPULATION\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
-            "<settlement>ID\tTYPE\tNAME\t{m}ALIASES\tDESCRIPTION\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tCOUNTRY\tAREA\tPOPULATION\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
-            "<watercourse>ID\tTYPE\tNAME\t{m}ALIASES\tDESCRIPTION\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\t{m}CONTINENT\tLENGTH\tAREA\tSTREAMFLOW\tSOURCE_LOC\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
-            "<waterarea>ID\tTYPE\tNAME\t{m}ALIASES\tDESCRIPTION\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\t{m}CONTINENT\tAREA\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
-            "<geo:relief>ID\tTYPE\tNAME\t{m}ALIASES\tDESCRIPTION\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\t{m}CONTINENT\tLATITUDE\tLONGITUDE\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
-            "<geo:waterfall>ID\tTYPE\tNAME\t{m}ALIASES\tDESCRIPTION\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\t{m}CONTINENT\tLATITUDE\tLONGITUDE\tTOTAL HEIGHT\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
-            "<geo:island>ID\tTYPE\tNAME\t{m}ALIASES\tDESCRIPTION\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\t{m}CONTINENT\tLATITUDE\tLONGITUDE\tAREA\tPOPULATION\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
-            "<geo:peninsula>ID\tTYPE\tNAME\t{m}ALIASES\tDESCRIPTION\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
-            "<geo:continent>ID\tTYPE\tNAME\t{m}ALIASES\tDESCRIPTION\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tLATITUDE\tLONGITUDE\tAREA\tPOPULATION\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
-            "<organisation>ID\tTYPE\tNAME\t{m}ALIASES\tFOUNDED\tCANCELLED\tORGANIZATION TYPE\tLOCATION\tDESCRIPTION\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
-            "<event>ID\tTYPE\tNAME\t{m}ALIASES\tSTART\tEND\tLOCATION\tDESCRIPTION\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n"
+            "<person>ID\tTYPE\tNAME\t{m}ALIASES\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tGENDER\t{e}DATE OF BIRTH\tPLACE OF BIRTH\t{e}DATE OF DEATH\tPLACE OF DEATH\t{m}JOBS\t{m}NATIONALITY\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+            "<person:fictional>ID\tTYPE\tNAME\t{m}ALIASES\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tGENDER\t{e}DATE OF BIRTH\tPLACE OF BIRTH\t{e}DATE OF DEATH\tPLACE OF DEATH\t{m}JOBS\t{m}NATIONALITY\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+            "<country>ID\tTYPE\tNAME\t{m}ALIASES\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tAREA\tPOPULATION\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+            "<country:former>ID\tTYPE\tNAME\t{m}ALIASES\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tAREA\tPOPULATION\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+            "<settlement>ID\tTYPE\tNAME\t{m}ALIASES\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tCOUNTRY\tAREA\tPOPULATION\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+            "<watercourse>ID\tTYPE\tNAME\t{m}ALIASES\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\t{m}CONTINENT\tLENGTH\tAREA\tSTREAMFLOW\tSOURCE_LOC\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+            "<waterarea>ID\tTYPE\tNAME\t{m}ALIASES\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\t{m}CONTINENT\tAREA\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+            "<geo:relief>ID\tTYPE\tNAME\t{m}ALIASES\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\t{m}CONTINENT\tLATITUDE\tLONGITUDE\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+            "<geo:waterfall>ID\tTYPE\tNAME\t{m}ALIASES\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\t{m}CONTINENT\tLATITUDE\tLONGITUDE\tTOTAL HEIGHT\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+            "<geo:island>ID\tTYPE\tNAME\t{m}ALIASES\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\t{m}CONTINENT\tLATITUDE\tLONGITUDE\tAREA\tPOPULATION\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+            "<geo:peninsula>ID\tTYPE\tNAME\t{m}ALIASES\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+            "<geo:continent>ID\tTYPE\tNAME\t{m}ALIASES\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tLATITUDE\tLONGITUDE\tAREA\tPOPULATION\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+            #<organisation>ID\tTYPE\tNAME\t{m}ALIASES\tFOUNDED\tCANCELLED\tORGANIZATION TYPE\tLOCATION\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+            #"<event>ID\tTYPE\tNAME\t{m}ALIASES\tSTART\tEND\tLOCATION\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n"
         ]
 
         with open("HEAD-KB", "w", encoding="utf-8") as fl:
@@ -90,20 +90,19 @@ class WikiExtract(object):
             pass
 
     @staticmethod
-    def _get_title_and_url(title):
+    def _get_url(title):
         """
-        Vygeneruje název entity bez kulatých závorek a URL stránky.
+        Vygeneruje  URL stránky.
 
         Parametry:
         title - původní název stránky (str)
 
         Návratové hodnoty:
-        Dvojice (str, str) obsahující modifikovaný název entity a URL stránky. (Tuple[str])
+        str obsahující URL stránky.
         """
-        mod_title = re.sub(r"\s+\(.+?\)\s*$", "", title)
         wiki_url = "https://cs.wikipedia.org/wiki/" + title.replace(" ", "_")
 
-        return mod_title, wiki_url
+        return wiki_url
 
     @staticmethod
     def _is_entity(title):
@@ -219,16 +218,16 @@ class WikiExtract(object):
 
                                     # stránka pojednává o osobě
                                     if EntPerson.is_person(et_cont) >= 2:
-                                        et_mod_title, et_url = self._get_title_and_url(et_full_title)
-                                        et_person = EntPerson(et_mod_title, "person", et_url, redirects)
+                                        et_url = self._get_url(et_full_title)
+                                        et_person = EntPerson(et_full_title, "person", et_url, redirects)
                                         et_person.get_data(et_cont)
                                         et_person.write_to_file()
                                         continue
 
                                     # stránka pojednává o státu
                                     if EntCountry.is_country(et_cont):
-                                        et_mod_title, et_url = self._get_title_and_url(et_full_title)
-                                        et_country = EntCountry(et_mod_title, "country", et_url, redirects)
+                                        et_url = self._get_url(et_full_title)
+                                        et_country = EntCountry(et_full_title, "country", et_url, redirects)
                                         et_country.get_data(et_cont)
                                         et_country.write_to_file()
                                         continue
@@ -236,8 +235,8 @@ class WikiExtract(object):
                                     # stránka pojednává o sídle
                                     id_level, id_type = EntSettlement.is_settlement(et_full_title, et_cont)
                                     if id_level:
-                                        et_mod_title, et_url = self._get_title_and_url(et_full_title)
-                                        et_settlement = EntSettlement(et_mod_title, "settlement", et_url, redirects)
+                                        et_url = self._get_url(et_full_title)
+                                        et_settlement = EntSettlement(et_full_title, "settlement", et_url, redirects)
                                         et_settlement.get_data(et_cont)
                                         et_settlement.write_to_file()
                                         continue
@@ -245,8 +244,8 @@ class WikiExtract(object):
                                     # stránka pojednává o vodním toku
                                     id_level, id_type = EntWatercourse.is_watercourse(et_full_title, et_cont)
                                     if id_level:
-                                        et_mod_title, et_url = self._get_title_and_url(et_full_title)
-                                        et_watercourse = EntWatercourse(et_mod_title, "watercourse", et_url, redirects)
+                                        et_url = self._get_url(et_full_title)
+                                        et_watercourse = EntWatercourse(et_full_title, "watercourse", et_url, redirects)
                                         et_watercourse.get_data(et_cont)
                                         et_watercourse.write_to_file()
                                         continue
@@ -254,8 +253,8 @@ class WikiExtract(object):
                                     # stránka pojednává o vodní ploše
                                     id_level, id_type = EntWaterArea.is_water_area(et_full_title, et_cont)
                                     if id_level:
-                                        et_mod_title, et_url = self._get_title_and_url(et_full_title)
-                                        et_water_area = EntWaterArea(et_mod_title, "waterarea", et_url, redirects)
+                                        et_url = self._get_url(et_full_title)
+                                        et_water_area = EntWaterArea(et_full_title, "waterarea", et_url, redirects)
                                         et_water_area.get_data(et_cont)
                                         et_water_area.write_to_file()
                                         continue
@@ -263,8 +262,8 @@ class WikiExtract(object):
                                     # stránka pojednává o geografické entitě
                                     id_level, id_type = EntGeo.is_geo(et_full_title, et_cont)
                                     if id_level:
-                                        et_mod_title, et_url = self._get_title_and_url(et_full_title)
-                                        et_geo = EntGeo(et_mod_title, "geo", et_url, redirects)
+                                        et_url = self._get_url(et_full_title)
+                                        et_geo = EntGeo(et_full_title, "geo", et_url, redirects)
                                         et_geo.set_entity_subtype(id_type)
                                         et_geo.get_data(et_cont)
                                         et_geo.write_to_file()

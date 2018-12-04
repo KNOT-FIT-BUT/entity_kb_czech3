@@ -56,7 +56,8 @@ class EntCore(metaclass=ABCMeta):
         EntCore.counter += 1
 
         # inicializace základních údajů entity
-        self.title = title
+        self.original_title = title
+        self.title = re.sub(r"\s+\(.+?\)\s*$", "", title)
         self.prefix = prefix
         self.eid = sha224(str(EntCore.counter).encode("utf-8")).hexdigest()[:10]  # vygenerování hashe
         self.link = link

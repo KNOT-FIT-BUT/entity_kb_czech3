@@ -444,6 +444,7 @@ class EntPerson(EntCore):
             fl.write(self.title + "\t")
             fl.write(self.serialize_aliases() + "\t")
             fl.write(self.description + "\t")
+            fl.write(self.original_title + "\t")
             fl.write(self.images + "\t")
             fl.write(self.link + "\t")
             fl.write(self.gender + "\t")
