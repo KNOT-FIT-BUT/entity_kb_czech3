@@ -222,7 +222,7 @@ class EntWatercourse(EntCore):
         fs = re.sub(r"{{.*?}}", "", fs).replace("{", "").replace("}", "")
         fs = re.sub(r"/.*?/", "", fs)
         fs = re.sub(r"\s+", " ", fs).strip()
-        fs = re.sub(r"}}", "", fs) # Eliminate the end of a template
+        fs = re.sub(r"^\s*}}", "", fs) # Eliminate the end of a template
         fs = re.sub(r"[()<>\[\]{}/]", "", fs).replace(" ,", ",").replace(" .", ".")
 
         self.description = fs

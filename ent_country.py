@@ -210,7 +210,7 @@ class EntCountry(EntCore):
         fs = re.sub(r"\(.*?\)", "", fs)
         fs = re.sub(r"\s+", " ", fs).strip()
         fs = re.sub(r" ([,.])", r"\1", fs)
-        fs = re.sub(r"}}", "", fs) # Eliminate the end of a template
+        fs = re.sub(r"^\s*}}", "", fs) # Eliminate the end of a template
         fs = fs.replace("''", "").replace(")", "").replace("|group=pozn.}}", "")
 
         self.description = fs
