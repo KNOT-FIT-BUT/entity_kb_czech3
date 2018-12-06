@@ -209,7 +209,8 @@ class WikiExtract(object):
 
                                     # odstraňuje citace, reference a HTML poznámky
                                     et_cont = re.sub(r"</?nowiki>", "", grandchild.text, flags=re.I)  # kvůli ref
-                                    et_cont = re.sub(r"<ref[^>]*>(?:[^<]*</ref>)?", "", et_cont, flags=re.I)
+                                    et_cont = re.sub(r"\s*<ref(?: [^>]*)?/>\s*", "", et_cont, flags=re.I)
+                                    et_cont = re.sub(r"\s*<ref(?: [^>]*)?>.*?</ref>\s*", " ", et_cont, flags=re.I | re.S)
                                     et_cont = re.sub(r"{{citace[^}]+?}}", "", et_cont, flags=re.I)
                                     et_cont = re.sub(r"{{cite[^}]+?}}", "", et_cont, flags=re.I)
                                     et_cont = re.sub(r"{{#tag:ref[^}]+?}}", "", et_cont, flags=re.I)
