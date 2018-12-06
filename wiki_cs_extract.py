@@ -207,10 +207,13 @@ class WikiExtract(object):
                                     if re.search(r"#(?:redirect|přesměruj)|{{\s*Rozcestník", grandchild.text, flags=re.I):
                                         continue
 
+
                                     # odstraňuje citace, reference a HTML poznámky
                                     et_cont = re.sub(r"</?nowiki>", "", grandchild.text, flags=re.I)  # kvůli ref
-                                    et_cont = re.sub(r"\s*<ref(?: [^>]*)?/>\s*", "", et_cont, flags=re.I)
-                                    et_cont = re.sub(r"\s*<ref(?: [^>]*)?>.*?</ref>\s*", " ", et_cont, flags=re.I | re.S)
+                                    et_cont = re.sub(r"\s*<ref(?:erences)?(?: [^>]*)?/>\s*", "", et_cont, flags=re.I)
+                                    # Non-greedy re.sub is very slow (i.e. many references in "Master of Rock") => many-times faster solution
+                                    for pattern in re.findall(r"\s*<ref(erences)?(?: [^>]*)?>.*?</ref\1>\s*", et_cont, flags=re.I | re.S):
+                                        et_cont.replace(pattern, " ")
                                     et_cont = re.sub(r"{{citace[^}]+?}}", "", et_cont, flags=re.I)
                                     et_cont = re.sub(r"{{cite[^}]+?}}", "", et_cont, flags=re.I)
                                     et_cont = re.sub(r"{{#tag:ref[^}]+?}}", "", et_cont, flags=re.I)
