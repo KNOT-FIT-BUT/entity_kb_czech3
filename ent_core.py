@@ -65,6 +65,7 @@ class EntCore(metaclass=ABCMeta):
         self.description = ""
         self.images = ""
         self.n_marked_czech = 0
+        self.first_alias = None
         self.redirects = redirects
 
     @staticmethod
@@ -155,13 +156,18 @@ class EntCore(metaclass=ABCMeta):
                 if marked_czech:
                     self.aliases[a] = self.LANG_CZECH
                     self.n_marked_czech += 1
+
                 else:
+                    if self.first_alias == None:
+                        self.first_alias = a
                     self.aliases[a] = None
 
         for lng, a in lang_aliases:
             a = a.strip()
             # TODO: maybe, it is needed custom_transform_alias()?
             if re.search(r"[^\W_]", a):
+                if not len(self.aliases):
+                    self.first_alias = a
                 self.aliases[a] = lng
 
 
@@ -196,8 +202,10 @@ class EntCore(metaclass=ABCMeta):
         """
         Serialized aliases to be written while creating KB
         """
-        if (self.n_marked_czech == 0 and len(self.aliases.keys()) > 0):
-            self.aliases[list(self.aliases.keys())[0]] = self.LANG_CZECH
+        if (self.n_marked_czech == 0 and self.first_alias and len(self.aliases.keys()) > 0):
+#            if self.first_alias in self.aliases:
+#               self.aliases.pop(self.first_alias, None)
+            self.aliases[self.first_alias] = self.LANG_CZECH
 
         self.aliases.pop(self.title, None)
 #        possible_czech = all(lang in [self.LANG_CZECH, None] for alias, lang in self.aliases.items())
