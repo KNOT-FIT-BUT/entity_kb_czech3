@@ -170,6 +170,14 @@ class EntPerson(EntCore):
                 self.gender = "M"
             elif re.search(r"\[\[\s*Kategorie:\s*Ženy(?:\|[^]]*)?\]\]", content, re.I):
                 self.gender = "F"
+            else:
+                infobox_gender = re.search(r"\|\s*pohlaví\s*=\s*([^\s]+)", content, re.I)
+                if infobox_gender and infobox_gender.group(1):
+                    infobox_gender = infobox_gender.group(1).lower()
+                    if infobox_gender == "muž":
+                        self.gender = "M"
+                    elif infobox_gender == "žena":
+                        self.gender = "F"
 
         try:
             data = content.splitlines()
