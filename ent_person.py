@@ -12,6 +12,7 @@ Soubor obsahuje třídu 'EntPerson', která uchovává údaje o lidech.
 import re
 import regex
 from ent_core import EntCore
+from libs.natToKB import *
 
 
 class EntPerson(EntCore):
@@ -168,6 +169,18 @@ class EntPerson(EntCore):
                re.search(r"\[\[\s*Kategorie:[\w\s]+bohové(?:\|[^]]*)?\]\]", content, re.I) or \
                re.search(r"\[\[\s*Kategorie:\s*Postavy[^]]*\]\]", content, re.I):
                 self.prefix = "person:fictional"
+
+        if self.prefix != "person:group":
+            natToKB = NatToKB()
+            nationalities = natToKB.get_nationalities()
+
+            name_without_location = re.sub(r"\s+(?:ze?|of|von)\s+.*", "", self.title, flags=re.I)
+            a_and_neighbours = re.search(r"((?:[^ ])+)\s+a(?:nd)?\s+((?:[^ ])+)", name_without_location)
+            if a_and_neighbours:
+                if a_and_neighbours.group(1) not in nationalities or a_and_neighbours.group(2) not in nationalities:
+                    self.prefix = "person:group"
+                # else Kateřina Řecká a Dánská" is regular person
+
 
         # pohlaví
         if not self.gender:
@@ -489,7 +502,7 @@ class EntPerson(EntCore):
             fl.write(self.eid + "\t")
             fl.write(self.prefix + "\t")
             fl.write(self.title + "\t")
-            fl.write(self.serialize_aliases() + "\t")
+            fl.write((self.serialize_aliases() if self.prefix != "person:group" else "") + "\t")
             fl.write(self.description + "\t")
             fl.write(self.original_title + "\t")
             fl.write(self.images + "\t")
