@@ -39,6 +39,9 @@ class EntPerson(EntCore):
     ib_types - typy infoboxů, které se týkají osob (set)
     """
 
+    NT_PSEUDO = 'pseudo'
+    NT_NICK = 'nick'
+
     # získání typů infoboxů týkajících se osob
     with open("person_infoboxes", "r", encoding="utf-8") as fl:
         ib_types = {x.lower().strip() for x in fl.readlines()}
@@ -188,12 +191,20 @@ class EntPerson(EntCore):
         else:
             for ln in data:
                 # aliasy
-                rexp_format = r"(?:jiná[\s_]+jména|(?:rodné|celé|úplné|posmrtné|chrámové|trůnní)[\s_]+jméno|pseudonym|přezdívka)\s*=(?!=)\s+(?!nezveřejněn[aáéoý]?|neznám[aáéoý]?)(.*)"
+                rexp_format = r"(jiná[\s_]+jména|(?:rodné|celé|úplné|posmrtné|chrámové|trůnní)[\s_]+jméno|pseudonym|přezdívka)\s*=(?!=)\s+(?!nezveřejněn[aáéoý]?|neznám[aáéoý]?)(.*)"
                 rexp = re.search(rexp_format, ln, re.I)
-                if rexp and rexp.group(1):
-                    tmp_alias = re.sub(r"^\s*německyː\s*", "", rexp.group(1), flags = re.I) # https://cs.wikipedia.org/wiki/Marie_Gabriela_Bavorská =>   | celé jméno = německyː ''Marie Gabrielle Mathilde Isabelle Therese Antoinette Sabine Herzogin in Bayern''
+                if rexp and rexp.group(2):
+                    nametype = None
+                    if rexp.group(1):
+                        tmp_name_type = rexp.group(1).lower()
+                        if tmp_name_type == "pseudonym":
+                            nametype = self.NT_PSEUDO
+                        elif tmp_name_type == "přezdívka":
+                            nametype = self.NT_NICK
+
+                    tmp_alias = re.sub(r"^\s*německyː\s*", "", rexp.group(2), flags = re.I) # https://cs.wikipedia.org/wiki/Marie_Gabriela_Bavorská =>   | celé jméno = německyː ''Marie Gabrielle Mathilde Isabelle Therese Antoinette Sabine Herzogin in Bayern''
                     tmp_alias = re.sub(r"^\s*(?:viz\s+)?\[\[[^\]]+\]\]", "", tmp_alias, flags = re.I) # https://cs.wikipedia.org/wiki/T%C3%BArin =>   | přezdívka = viz [[Túrin#Jména, přezdívky a tituly|Jména, přezdívky a tituly]]
-                    self.get_aliases(self.del_redundant_text(tmp_alias))
+                    self.get_aliases(self.del_redundant_text(tmp_alias), nametype = nametype)
                     continue
 
                 if (self.gender == "F"):

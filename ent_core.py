@@ -12,7 +12,7 @@ Soubor obsahuje třídu 'EntCore', jež je rodičovskou třídou pro podtřídy 
 import re
 from abc import ABCMeta, abstractmethod
 from hashlib import md5, sha224
-from libs.UniqueDict import *
+from libs.DictOfUniqueDict import *
 
 
 class EntCore(metaclass=ABCMeta):
@@ -37,6 +37,8 @@ class EntCore(metaclass=ABCMeta):
     """
 
     counter = 0
+    KEY_LANG = 'lang'
+    KEY_NAMETYPE = 'ntype'
     LANG_CZECH = "cs"
     LANG_UNKNOWN = "???"
 
@@ -61,7 +63,7 @@ class EntCore(metaclass=ABCMeta):
         self.prefix = prefix
         self.eid = sha224(str(EntCore.counter).encode("utf-8")).hexdigest()[:10]  # vygenerování hashe
         self.link = link
-        self.aliases = UniqueDict()
+        self.aliases = DictOfUniqueDict()
         self.description = ""
         self.images = ""
         self.n_marked_czech = 0
@@ -102,7 +104,7 @@ class EntCore(metaclass=ABCMeta):
         return clean_text
 
 
-    def get_aliases(self, alias, marked_czech = False):
+    def get_aliases(self, alias, marked_czech = False, nametype = None):
         """
         Převádí alternativní pojmenování do jednotného formátu.
 
@@ -154,13 +156,14 @@ class EntCore(metaclass=ABCMeta):
             a = a.strip()
             if re.search(r"[^\W_]", a):
                 if marked_czech:
-                    self.aliases[a] = self.LANG_CZECH
+                    self.aliases[a][self.KEY_LANG] = self.LANG_CZECH
                     self.n_marked_czech += 1
 
                 else:
                     if self.first_alias == None:
                         self.first_alias = a
-                    self.aliases[a] = None
+                    self.aliases[a][self.KEY_LANG] = None
+                self.aliases[a][self.KEY_NAMETYPE] = nametype
 
         for lng, a in lang_aliases:
             a = a.strip()
@@ -168,7 +171,8 @@ class EntCore(metaclass=ABCMeta):
             if re.search(r"[^\W_]", a):
                 if not len(self.aliases):
                     self.first_alias = a
-                self.aliases[a] = lng
+                self.aliases[a][self.KEY_LANG] = lng
+                self.aliases[a][self.KEY_NAMETYPE] = nametype
 
 
     def custom_transform_alias(self, alias):
@@ -203,17 +207,20 @@ class EntCore(metaclass=ABCMeta):
         Serialized aliases to be written while creating KB
         """
         if (self.n_marked_czech == 0 and self.first_alias and len(self.aliases.keys()) > 0):
-#            if self.first_alias in self.aliases:
-#               self.aliases.pop(self.first_alias, None)
-            self.aliases[self.first_alias] = self.LANG_CZECH
+            self.aliases[self.first_alias][self.KEY_LANG] = self.LANG_CZECH
 
         self.aliases.pop(self.title, None)
-#        possible_czech = all(lang in [self.LANG_CZECH, None] for alias, lang in self.aliases.items())
 
         preserialized = set()
-        for alias, lang in self.aliases.items():
-#            preserialized.add(alias + "#lang=" + (self.LANG_CZECH if (possible_czech and lang in [None, self.LANG_CZECH]) else (lang if lang != None else self.LANG_UNKNOWN)))
-            preserialized.add(alias + "#lang=" + (lang if lang != None else self.LANG_UNKNOWN))
+        for alias, properties in self.aliases.items():
+            tmp_flags = ""
+            for key, value in properties.items():
+#                preserialized.add(alias + "#lang=" + (self.LANG_CZECH if (possible_czech and lang in [None, self.LANG_CZECH]) else (lang if lang != None else self.LANG_UNKNOWN)))
+                if key == self.KEY_LANG and value == None:
+                    value = self.LANG_UNKNOWN
+                if key != self.KEY_NAMETYPE or value != None:
+                    tmp_flags += '#' + key + '=' + value
+            preserialized.add(alias + tmp_flags)
 
         return "|".join(preserialized)
 
