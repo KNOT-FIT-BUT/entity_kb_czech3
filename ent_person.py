@@ -208,14 +208,24 @@ class EntPerson(EntCore):
                 rexp = re.search(rexp_format, ln, re.I)
                 if rexp and rexp.group(2):
                     nametype = None
+                    tmp_alias = rexp.group(2)
+
                     if rexp.group(1):
                         tmp_name_type = rexp.group(1).lower()
                         if tmp_name_type == "pseudonym":
                             nametype = self.NT_PSEUDO
                         elif tmp_name_type == "přezdívka":
                             nametype = self.NT_NICK
+                        elif tmp_name_type == "rodné jméno":
+                            alias_spaces = len(re.findall(r"[^\s]+\s+[^\s]+", tmp_alias))
+                            if not alias_spaces:
+                                tmp_alias_new, was_replaced = re.subn(r"(?<=\s)(?:ze?|of|von)\s+.*", tmp_alias, self.title, flags=re.I)
+                                if was_replaced:
+                                    tmp_alias = tmp_alias_new
+                                else:
+                                    tmp_alias = re.sub(r"[^\s]+$", tmp_alias, self.title)
 
-                    tmp_alias = re.sub(r"^\s*německyː\s*", "", rexp.group(2), flags = re.I) # https://cs.wikipedia.org/wiki/Marie_Gabriela_Bavorská =>   | celé jméno = německyː ''Marie Gabrielle Mathilde Isabelle Therese Antoinette Sabine Herzogin in Bayern''
+                    tmp_alias = re.sub(r"^\s*německyː\s*", "", tmp_alias, flags = re.I) # https://cs.wikipedia.org/wiki/Marie_Gabriela_Bavorská =>   | celé jméno = německyː ''Marie Gabrielle Mathilde Isabelle Therese Antoinette Sabine Herzogin in Bayern''
                     tmp_alias = re.sub(r"^\s*(?:viz\s+)?\[\[[^\]]+\]\]", "", tmp_alias, flags = re.I) # https://cs.wikipedia.org/wiki/T%C3%BArin =>   | přezdívka = viz [[Túrin#Jména, přezdívky a tituly|Jména, přezdívky a tituly]]
                     self.get_aliases(self.del_redundant_text(tmp_alias), nametype = nametype)
                     continue
