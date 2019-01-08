@@ -10,6 +10,7 @@ Soubor obsahuje třídu 'EntPerson', která uchovává údaje o lidech.
 """
 
 import re
+import regex
 from ent_core import EntCore
 
 
@@ -120,8 +121,8 @@ class EntPerson(EntCore):
         if re.search(r"\[\[\s*Kategorie:\s*Narození\s+\w", content, re.I):
             id_level += 1
 
-        # Úmrtí 1990, Úmrtí 3. května, Úmrtí v Olomouci, Úmrtí ve Slovinsku, Úmrtí na Slovensku
-        elif re.search(r"\[\[\s*Kategorie:\s*Úmrtí\s+\w", content, re.I):
+        # Úmrtí 1990, Úmrtí 3. května, Úmrtí v Olomouci, Úmrtí ve Slovinsku, Úmrtí na Slovensku => Úmrtí číslo nebo Úmrtí v/ve/na <velké písmeno - pozor i Unicode velká!>
+        elif regex.search(r"\[\[\s*Kategorie:\s*Úmrtí\s+(?:[0-9]|(?:ve?|na)\s+\p{Lu})", content, regex.I):
             id_level += 1
 
         # kategorie pro muže přímo určená ke strojovému zpracování
