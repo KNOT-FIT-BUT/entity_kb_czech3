@@ -97,7 +97,7 @@ class EntSettlement(EntCore):
         # kontrola probíhá dál
         ib_prefix = r"{{\s*Infobox\s+"
 
-        if re.search(ib_prefix + r"-\s+sídlo", content, re.I):
+        if re.search(ib_prefix + r"-\s+sídlo", content, re.I) or re.search(r"{\|.*?\|\s*sídlo.*?\|}", content, re.I | re.S):
             return 1, "Sídlo (světa)"
         if re.search(ib_prefix + r"-\s+česká\s+obec", content, re.I):
             return 1, "Česká obec"

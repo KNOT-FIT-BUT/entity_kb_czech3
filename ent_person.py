@@ -80,8 +80,9 @@ class EntPerson(EntCore):
 
         # kontrola šablon
         if id_level < 2:
+            tmp_infobox_substitute = re.search(r"{{substovaný\s+infobox}}", content, re.I) # https://cs.wikipedia.org/wiki/Olymp_(Manhattan) => firstly substitute infobox with location, than infobox with person => avoid to mark as person instead of location
             rexp = re.search(r"{{\s*Infobox[\-–—−\s]+(\w[\w\s]+)", content, re.I)
-            if rexp and rexp.group(1):
+            if (not tmp_infobox_substitute or tmp_infobox_substitute.start() > rexp.start()) and rexp and rexp.group(1):
                 ib_type = str(rexp.group(1)).lower().strip()
                 if ib_type in cls.ib_types:
                     if "osoba" in ib_type:
