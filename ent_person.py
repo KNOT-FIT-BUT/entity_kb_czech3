@@ -192,6 +192,7 @@ class EntPerson(EntCore):
                 rexp = re.search(rexp_format, ln, re.I)
                 if rexp and rexp.group(1):
                     tmp_alias = re.sub(r"^\s*německyː\s*", "", rexp.group(1), flags = re.I) # https://cs.wikipedia.org/wiki/Marie_Gabriela_Bavorská =>   | celé jméno = německyː ''Marie Gabrielle Mathilde Isabelle Therese Antoinette Sabine Herzogin in Bayern''
+                    tmp_alias = re.sub(r"^\s*(?:viz\s+)?\[\[[^\]]+\]\]", "", tmp_alias, flags = re.I) # https://cs.wikipedia.org/wiki/T%C3%BArin =>   | přezdívka = viz [[Túrin#Jména, přezdívky a tituly|Jména, přezdívky a tituly]]
                     self.get_aliases(self.del_redundant_text(tmp_alias))
                     continue
 
