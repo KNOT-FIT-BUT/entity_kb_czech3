@@ -257,11 +257,35 @@ class EntPerson(EntCore):
                     if rexp:
                         self.get_first_sentence(self.del_redundant_text(rexp.group(0), ", "))
 
+                        tmp_first_sentence = rexp.group(0)
+                        fs_first_aliases = []
                         # extrakce alternativních pojmenování z první věty
-                        fs_aliases = re.findall(r"'{3}(.+?)'{3}", rexp.group(0))
-                        if fs_aliases:
-                            for fs_alias in fs_aliases:
-                                self.get_aliases(self.del_redundant_text(fs_alias).strip("'"))
+                        #  '''Jiří''' (též '''Jura''') '''Mandel''' -> vygenerovat "Jiří Mandel" a "Jura Mandel" (negenerovat "Jiří", "Jura", "Mandel")
+                        tmp_fs_first_aliases = regex.search(r"^((?:'{3}(?:[\"\p{L} ]|'(?!''))+'{3}\s+)+)\((?:(?:někdy|nebo)?\s*(?:také|též|rozená))?\s*(?:('{3}[^\)]+'{3}))?(?:'(?!'')|[^\)])*\)\s*((?:'{3}\p{L}+'{3}\s+)*)(.*)", tmp_first_sentence, flags = re.I)
+                        if tmp_fs_first_aliases:
+                            fs_fa_before_bracket = tmp_fs_first_aliases.group(1).strip()
+                            fs_fa_after_bracket = tmp_fs_first_aliases.group(3).strip()
+                            fs_first_aliases.append(fs_fa_before_bracket + " " + fs_fa_after_bracket)
+                            if tmp_fs_first_aliases.group(2):
+                                name_variants = re.findall(r"'{3}(.+?)'{3}", tmp_fs_first_aliases.group(2).strip())
+                                if name_variants:
+                                    for name_variant in name_variants:
+                                        fs_first_aliases.append(re.sub("[^ ]+$", name_variant, fs_fa_before_bracket) + " " + fs_fa_after_bracket)
+                            tmp_first_sentence = tmp_fs_first_aliases.group(4)
+                        else:
+                            #  '''Jiří''' '''Jindra''' -> vygenerovat "Jiří Jindra" (negenerovat "Jiří" a "Jindra")
+                            tmp_fs_first_aliases = regex.search(r"^((?:'{3}\p{L}+'{3}\s+)+)(.*)", tmp_first_sentence)
+                            if tmp_fs_first_aliases:
+                                fs_first_aliases.append(tmp_fs_first_aliases.group(1).strip())
+                                tmp_first_sentence = tmp_fs_first_aliases.group(2).strip()
+
+                        fs_aliases = re.findall(r"'{3}(.+?)'{3}", tmp_first_sentence)
+                        if not fs_aliases:
+                            fs_aliases = []
+                        fs_aliases += fs_first_aliases
+
+                        for fs_alias in fs_aliases:
+                            self.get_aliases(self.del_redundant_text(fs_alias).strip("'"))
                         continue
 
 
