@@ -186,7 +186,7 @@ class EntPerson(EntCore):
         else:
             for ln in data:
                 # aliasy
-                rexp_format = r"(?:jiná[\s_]+jména|(?:rodné|celé|úplné|posmrtné|chrámové|trůnní)[\s_]+jméno|pseudonym|přezdívka)\s*=(?!=)\s+(.*)"
+                rexp_format = r"(?:jiná[\s_]+jména|(?:rodné|celé|úplné|posmrtné|chrámové|trůnní)[\s_]+jméno|pseudonym|přezdívka)\s*=(?!=)\s+(?!nezveřejněn[aáéoý]?|neznám[aáéoý]?)(.*)"
                 rexp = re.search(rexp_format, ln, re.I)
                 if rexp and rexp.group(1):
                     self.get_aliases(self.del_redundant_text(rexp.group(1)))
