@@ -89,7 +89,7 @@ class EntCore(metaclass=ABCMeta):
 #        else:
         clean_text = re.sub(r"\[\[[^\]|]+\|([^\]|]+)\]\]", r"\1", text)  # [[Sth (sth)|Sth]] -> Sth
         clean_text = re.sub(r"\[\[([^]]+)\]\]", r"\1", clean_text)  # [[Sth]] -> Sth
-        clean_text = re.sub(r"'+(.+?)'+", r"\1", clean_text)  # '''Sth''' -> Sth
+        clean_text = re.sub(r"'{2,}(.+?)'{2,}", r"\1", clean_text)  # '''Sth''' -> Sth
         clean_text = re.sub(r"\s*</?small>\s*", " ", clean_text)  # <small>sth</small> -> sth
 #        clean_text = re.sub(r"\s*<br(?: ?/)?>\s*", ", ", clean_text)  # sth<br />sth -> sth, sth
         clean_text = re.sub(r"\s*<br(?: ?/)?>\s*", multiple_separator, clean_text)  # sth<br />sth -> sth, sth (sth-> sth | sth)
