@@ -118,11 +118,10 @@ class EntCore(metaclass=ABCMeta):
 
         re_lang_aliases = re.compile("{{(?:Cj|Cizojazyčně|Vjazyce2)\|(?:\d=)?(\w+)\|(?:\d=)?([^}]+)}}", flags=re.I)
         lang_aliases = re_lang_aliases.findall(alias)
-
         alias = re.sub(r"\s+", " ", alias).strip()
         alias = re.sub(r"\s*<hr\s*/>\s*", "", alias)
         alias = alias.strip(",")
-        alias = re.sub(r"(?:''|[„“\"])", "", alias)
+        alias = re.sub(r"(?:'')", "", alias)
         alias = re.sub(r"(?:,{2,}|;)\s*", ", ", alias)
         alias = re.sub(r"\s+/\s+", ", ", alias)
         alias = re.sub(r"\s*<hiero>.*</hiero>\s*", "", alias, flags=re.I)
@@ -152,18 +151,18 @@ class EntCore(metaclass=ABCMeta):
         alias = re.sub(r"{{[^}]+?}}", "", alias) # vyhození ostatních šablon (nové šablony by dělaly nepořádek)
         alias = re.sub(r"[()\[\]{}]", "", alias)
         alias = re.sub(r"<.*?>", "", alias)
+
         for a in alias.split("|"):
             a = a.strip()
             if re.search(r"[^\W_]", a):
                 if marked_czech:
-                    self.aliases[a][self.KEY_LANG] = self.LANG_CZECH
+                    self.scrape_nicks_inside_and_store(a, nametype, self.LANG_CZECH)
                     self.n_marked_czech += 1
 
                 else:
                     if self.first_alias == None:
                         self.first_alias = a
-                    self.aliases[a][self.KEY_LANG] = None
-                self.aliases[a][self.KEY_NAMETYPE] = nametype
+                    self.scrape_nicks_inside_and_store(a, nametype)
 
         for lng, a in lang_aliases:
             a = a.strip()
@@ -171,9 +170,30 @@ class EntCore(metaclass=ABCMeta):
             if re.search(r"[^\W_]", a):
                 if not len(self.aliases):
                     self.first_alias = a
-                self.aliases[a][self.KEY_LANG] = lng
-                self.aliases[a][self.KEY_NAMETYPE] = nametype
+                self.scrape_nicks_inside_and_store(a, nametype, lng)
 
+
+    def scrape_nicks_inside_and_store(self, alias, nametype, lang = None):
+        self.store_alias(alias, nametype, lang)
+
+        nicks = []
+        while True:
+            nick=re.search(r"(?P<quote>[\"„“])(.+?)(?P=quote)\s+", alias)
+            if nick:
+                nicks.append(nick.group(2))
+                alias = re.sub(re.escape(nick.group(0)), "", alias)
+            else:
+                break
+
+        if len(nicks):
+            for a in nicks:
+                self.store_alias(a, nametype, lang)
+
+            self.store_alias(alias, nametype, lang)
+
+    def store_alias(self, a, nametype, lang = None):
+        self.aliases[a][self.KEY_LANG] = lang
+        self.aliases[a][self.KEY_NAMETYPE] = nametype
 
     def custom_transform_alias(self, alias):
         """
