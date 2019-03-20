@@ -3,7 +3,6 @@
 # default values
 SAVE_PARAMS=$*
 LOG=false
-ONLY_DICT=false
 
 # saved values
 LAUNCHED=$0
@@ -13,9 +12,9 @@ LAUNCHED=$0
 
 usage()
 {
-    echo "Usage: start.sh [-h] [--log] [--only_dict]"
+    echo "Usage: start.sh [-h] [--log]"
     echo ""
-    echo -e "\t-h --help      show this help message and exit"
+    echo -e "\t-h, --help      show this help message and exit"
     echo -e "\t--log          log to start.sh.stdout, start.sh.stderr and start.sh.stdmix"
     echo ""
 }
@@ -53,9 +52,9 @@ if $LOG; then
 	exec > start.sh.fifo.stdout 2> start.sh.fifo.stderr
 fi
 
-wget -nv http://knot.fit.vutbr.cz/NAKI_CPK/CPKSemanticEnrichment/inputs_czner_master/wiki_stats -O wiki_stats
-
-if ! $ONLY_DICT; then
+wget -nv http://knot.fit.vutbr.cz/NAKI_CPK/KB_CZ_inputs/wiki_stats -O wiki_stats
+if test $? -eq 0
+then
 	#=====================================================================
 	# download KB?
 
@@ -64,5 +63,8 @@ if ! $ONLY_DICT; then
 
 	echo "creating KB"
 	./prepare_data.sh || exit
+else
+	>&2 echo "ERROR: wiki_stats could not be downloaded."
+	exit 2
 fi
 
