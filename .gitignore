@@ -1,0 +1,19 @@
+# inputs
+wiki_stats
+
+# generated python files
+**/__pycache__
+**/*.pyc
+
+# generated custom files
+entities_processing.log
+**/start.sh.stdout
+**/start.sh.stderr
+**/start.sh.stdmix
+
+# outputs
+**/HEAD-KB
+**/VERSION
+**/KBstatsMetrics.all
+**/kb_cs
+
