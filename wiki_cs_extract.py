@@ -175,13 +175,12 @@ class WikiExtract(object):
         # self._load_entities()
 
         redirects = dict()
-        dump_buffer = open(self.console_args.redirects, 'r').read()
-        re_redirects = re.compile("<page>.*?<title>(.*?)</title>.*?<redirect title=\"(.*?)\".*?</page>", re.S)
-        map_redirects = re.findall(re_redirects, dump_buffer)
-        for redirect_from, redirect_to in map_redirects:
-            if not redirect_to in redirects:
-                redirects[redirect_to] = set()
-            redirects[redirect_to].add(redirect_from)
+        with open(self.console_args.redirects, 'r') as f:
+            for line in f:
+                redirect_from, redirect_to = line.strip().split("\t")
+                if not redirect_to in redirects:
+                    redirects[redirect_to] = set()
+                redirects[redirect_to].add(redirect_from)
 
         # parsování XML souboru
         context = CElTree.iterparse(self.console_args.src_file, events=("start", "end"))
