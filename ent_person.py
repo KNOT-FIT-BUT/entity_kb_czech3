@@ -232,7 +232,7 @@ class EntPerson(EntCore):
 
                 if (self.gender == "F"):
                     female_variant = self.title[:-3] if self.title[-3:] == "ová" else self.title + "ová"
-                    if self.title in self.redirects and female_variant in self.redirects[self.title]:
+                    if self.redirects and female_variant in self.redirects:
                         self.aliases[female_variant][self.KEY_LANG] = self.LANG_CZECH if self.title[-3:] == "ová" else self.LANG_UNKNOWN
 
                 # obrázek - infobox
@@ -512,6 +512,7 @@ class EntPerson(EntCore):
             fl.write(self.prefix + "\t")
             fl.write(self.title + "\t")
             fl.write((self.serialize_aliases() if self.prefix != "person:group" else "") + "\t")
+            fl.write('|'.join(self.redirects) + "\t")
             fl.write(self.description + "\t")
             fl.write(self.original_title + "\t")
             fl.write(self.images + "\t")

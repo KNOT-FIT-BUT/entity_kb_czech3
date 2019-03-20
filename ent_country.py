@@ -247,6 +247,7 @@ class EntCountry(EntCore):
             fl.write(self.prefix + "\t")
             fl.write(self.title + "\t")
             fl.write(self.serialize_aliases() + "\t")
+            fl.write('|'.join(self.redirects) + "\t")
             fl.write(self.description + "\t")
             fl.write(self.original_title + "\t")
             fl.write(self.images + "\t")
