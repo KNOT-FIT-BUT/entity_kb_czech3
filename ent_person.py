@@ -314,8 +314,7 @@ class EntPerson(EntCore):
                                 tmp_first_sentence = tmp_fs_first_aliases.group(2).strip()
 
                         fs_aliases = re.findall(r"'{3}(.+?)'{3}", tmp_first_sentence)
-                        if not fs_aliases:
-                            fs_aliases = []
+                        fs_aliases += [' '.join(str for tup in re.findall(r"([Ss]v(?:\.|at[áéíý]))\s+'{3}(.+?)'{3}", tmp_first_sentence) for str in tup)]
                         fs_aliases += fs_first_aliases
 
                         for fs_alias in fs_aliases:
