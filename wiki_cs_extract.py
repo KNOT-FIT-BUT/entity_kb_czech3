@@ -207,13 +207,15 @@ class WikiExtract(object):
                                 if is_entity and grandchild.text:
                                     # přeskakuje stránky s přesměrováním a rozcestníkové stránky
                                     if re.search(r"#(?:redirect|přesměruj)|{{\s*Rozcestník", grandchild.text, flags=re.I):
+                                        print("[{}] skipping {}".format(str(datetime.datetime.now().time()), et_full_title), file = sys.stderr, flush = True)
                                         continue
 
+                                    print("[{}] processing {}".format(str(datetime.datetime.now().time()), et_full_title), file = sys.stderr, flush = True)
 
                                     # odstraňuje citace, reference a HTML poznámky
                                     et_cont = re.sub(r"</?nowiki>", "", grandchild.text, flags=re.I)  # kvůli ref
                                     et_cont = re.sub(r"\s*<ref(?:erences)?(?: [^>]*)?/>\s*", "", et_cont, flags=re.I)
-                                    et_cont = re.sub(r"(\s*<(?P<tag>ref|references)(?: [^>]*)?>[^<]*(?:<(?!=/(?P=tag)>)[^<]*)*</(?P=tag)>\s*)", " ", et_cont, flags=re.I | re.S)
+                                    et_cont = re.sub(r"(\s*<(?P<tag>ref|references)(?: [^>]*)?>[^<]*(?:<(?!/(?P=tag)>)[^<]*)*</(?P=tag)>\s*)", " ", et_cont, flags=re.I | re.S)
 
                                     et_cont = re.sub(r"{{citace[^}]+?}}", "", et_cont, flags=re.I)
                                     et_cont = re.sub(r"{{cite[^}]+?}}", "", et_cont, flags=re.I)
@@ -222,8 +224,6 @@ class WikiExtract(object):
                                     et_cont = re.sub(r"{\|(?!\s+class=(?:\"|')infobox(?:\"|')).*?\|}", "", et_cont, flags=re.S)
 
                                     ent_redirects = redirects[et_full_title] if et_full_title in redirects else []
-
-                                    print("[{}] {}".format(str(datetime.datetime.now().time()), et_full_title), file = sys.stderr)
 
                                     # stránka pojednává o osobě
                                     if EntPerson.is_person(et_cont) >= 2:
