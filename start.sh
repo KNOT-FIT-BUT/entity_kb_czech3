@@ -4,7 +4,7 @@
 # default values
 SAVE_PARAMS=$*
 LOG=false
-DUMP_PATH=/mnt/data/nlp/corpora/monolingual/czech/wikipedia/cswiki-latest-pages-articles.xml
+DUMP_PATH=/mnt/minerva1/nlp/corpora/monolingual/czech/wikipedia/cswiki-latest-pages-articles.xml
 
 # saved values
 LAUNCHED=$0
@@ -47,19 +47,20 @@ while [ "$1" != "" ]; do
             ;;
         -p)
             CUSTOM_DUMP_PATH=true
-            DUMP_PATH=$value
+            DUMP_PATH=$2
             shift
             ;;
         -r)
             CUSTOM_REDIR_PATH=true
-            REDIR_PATH=$VALUE
+            REDIR_PATH=$2
             shift
             ;;
         -u)
             DEPLOY=true
             if ${VALUE:0:1} != "-"
             then
-                DEPLOY_USER=$VALUE
+                DEPLOY_USER=$2
+                shift
             else
                 DEPLOY_USER=$USER
             fi
