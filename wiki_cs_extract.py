@@ -213,11 +213,11 @@ class WikiExtract(object):
                                     print("[{}] processing {}".format(str(datetime.datetime.now().time()), et_full_title), file = sys.stderr, flush = True)
 
                                     # odstraňuje citace, reference a HTML poznámky
-                                    et_cont = re.sub(r"</?nowiki>", "", grandchild.text, flags=re.I)  # kvůli ref
-                                    et_cont = re.sub(r"\s*<ref(?:erences)?(?: [^>]*)?/>\s*", "", et_cont, flags=re.I)
-                                    et_cont = re.sub(r"(\s*<(?P<tag>ref|references)(?: [^>]*)?>[^<]*(?:<(?!/(?P=tag)>)[^<]*)*</(?P=tag)>\s*)", " ", et_cont, flags=re.I | re.S)
+                                    for child in grandchild.getchildren():
+                                        if child.tag in ['nowiki', 'ref', 'references']:
+                                            grandchild.remove(child)
 
-                                    et_cont = re.sub(r"{{citace[^}]+?}}", "", et_cont, flags=re.I)
+                                    et_cont = re.sub(r"{{citace[^}]+?}}", "", grandchild.text, flags=re.I)
                                     et_cont = re.sub(r"{{cite[^}]+?}}", "", et_cont, flags=re.I)
                                     et_cont = re.sub(r"{{#tag:ref[^}]+?}}", "", et_cont, flags=re.I)
                                     et_cont = re.sub(r"<!--.+?-->", "", et_cont, flags=re.DOTALL)
