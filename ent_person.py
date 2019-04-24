@@ -231,7 +231,7 @@ class EntPerson(EntCore):
                     continue
 
                 if (self.gender == "F"):
-                    female_variant = self.title[:-3] if self.title[-3:] == "ová" else self.title + "ová"
+                    female_variant = self.title[:-3] if self.title[-3:] == "ová" else (self.title + "ová")
                     if self.redirects and female_variant in self.redirects:
                         self.aliases[female_variant][self.KEY_LANG] = self.LANG_CZECH if self.title[-3:] == "ová" else self.LANG_UNKNOWN
 
