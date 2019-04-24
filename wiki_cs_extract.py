@@ -213,11 +213,34 @@ class WikiExtract(object):
                                     print("[{}] processing {}".format(str(datetime.datetime.now().time()), et_full_title), file = sys.stderr, flush = True)
 
                                     # odstraňuje citace, reference a HTML poznámky
-                                    for child in grandchild.getchildren():
-                                        if child.tag in ['nowiki', 'ref', 'references']:
-                                            grandchild.remove(child)
+                                    delimiter = '<'
+                                    text_parts = grandchild.text.split(delimiter)
+                                    re_tag = r"^[^ />]+(?=[ />])"
+                                    delete_mode = False
+                                    tag_close = None
+                                    for i_part, text_part in enumerate(text_parts[1:], 1): # skipping first one which is not begin of tag
+                                        if delete_mode and tag_close:
+                                            if text_part.startswith(tag_close):
+                                                text_parts[i_part] = text_part[len(tag_close):]
+                                            else:
+                                                text_parts[i_part] = ""
+                                        else:
+                                            matched_tag = re.search(re_tag, text_part)
+                                            if matched_tag:
+                                                matched_tag = matched_tag.group(0)
+                                                if matched_tag in ['nowiki', 'ref', 'refereces']:
+                                                    tag_close = '/' + matched_tag + '>'
+                                                    text_len = len(text_part)
+                                                    text_part = re.sub(r"^.*/>", "", text_part, 1)
+                                                    if text_len == len(text_part):
+                                                         delete_mode = True
+                                                    text_parts[i_part] = "" if delete_mode else text_part
+                                                else:
+                                                    tag_close = None
+                                                    text_parts[i_part] = delimiter + text_part
+                                    et_cont = "".join(text_parts)
 
-                                    et_cont = re.sub(r"{{citace[^}]+?}}", "", grandchild.text, flags=re.I)
+                                    et_cont = re.sub(r"{{citace[^}]+?}}", "", et_cont, flags=re.I)
                                     et_cont = re.sub(r"{{cite[^}]+?}}", "", et_cont, flags=re.I)
                                     et_cont = re.sub(r"{{#tag:ref[^}]+?}}", "", et_cont, flags=re.I)
                                     et_cont = re.sub(r"<!--.+?-->", "", et_cont, flags=re.DOTALL)
