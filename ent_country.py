@@ -140,7 +140,7 @@ class EntCountry(EntCore):
 
                         # TODO: refactorize + give this to other entity types
                         # extrakce alternativních pojmenování z první věty
-                        fs_aliases = re.findall(r"'{3}(.+?)'{3}", rexp.group(0))
+                        fs_aliases = re.findall(r"((?:{{(?:Cj|Cizojazyčně|Vjazyce2?)[^}]+}}\s+)?'{3}.+?'{3})", rexp.group(0), flags = re.I)
                         if fs_aliases:
                             for fs_alias in fs_aliases:
                                 self.get_aliases(self.del_redundant_text(fs_alias).strip("'"))

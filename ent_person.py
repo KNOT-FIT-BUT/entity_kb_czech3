@@ -313,7 +313,7 @@ class EntPerson(EntCore):
                                 fs_first_aliases.append(tmp_fs_first_aliases.group(1).strip())
                                 tmp_first_sentence = tmp_fs_first_aliases.group(2).strip()
 
-                        fs_aliases = re.findall(r"'{3}(.+?)'{3}", tmp_first_sentence)
+                        fs_aliases = re.findall(r"((?:{{(?:Cj|Cizojazyčně|Vjazyce2?)[^}]+}}\s+)?'{3}.+?'{3})", tmp_first_sentence, flags = re.I)
                         fs_aliases += [' '.join(str for tup in re.findall(r"([Ss]v(?:\.|at[áéíý]))\s+'{3}(.+?)'{3}", tmp_first_sentence) for str in tup)]
                         fs_aliases += fs_first_aliases
 
