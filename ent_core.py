@@ -10,6 +10,7 @@ Soubor obsahuje třídu 'EntCore', jež je rodičovskou třídou pro podtřídy 
 """
 
 import re
+import sys
 from abc import ABCMeta, abstractmethod
 from hashlib import md5, sha224
 from libs.DictOfUniqueDict import *
@@ -117,7 +118,9 @@ class EntCore(metaclass=ABCMeta):
             return
 
         re_lang_aliases = re.compile("{{(?:Cj|Cizojazyčně|Vjazyce2)\|(?:\d=)?(\w+)\|(?:\d=)?([^}]+)}}", flags=re.I)
+        re_lang_aliases2 = re.compile("{{Vjazyce\|(\w+)}}\s+(.+)", flags=re.I)
         lang_aliases = re_lang_aliases.findall(alias)
+        lang_aliases += re_lang_aliases2.findall(alias)
         alias = re.sub(r"\s+", " ", alias).strip()
         alias = re.sub(r"\s*<hr\s*/>\s*", "", alias)
         alias = alias.strip(",")
@@ -130,7 +133,7 @@ class EntCore(metaclass=ABCMeta):
         alias = re.sub(r"\s*\({{(?:Cj|Cizojazyčně)\|(?:\d=)?\w+\|(?:\d=)?[^}]+}}\)\s*", "", alias, flags=re.I) # aliases are covered by "lang_aliases"
         alias = re.sub(r"\s*{{(?:Cj|Cizojazyčně)\|(?:\d=)?\w+\|(?:\d=)?[^}]+}}\s*", "", alias, flags=re.I) # aliases are covered by "lang_aliases"
         alias = re.sub(r"\s*\({{V ?jazyce2\|\w+\|[^}]+}}\)\s*", "", alias, flags=re.I) # aliases are covered by "lang_aliases"
-        alias = re.sub(r"\s*\(?{{V ?jazyce\|\w+}}\)?:?\s*", "", alias, flags=re.I)
+        alias = re.sub(r"\s*\(?{{V ?jazyce\|\w+}}\)?:?\s*", "", alias, flags=re.I) # aliases are covered by "lang_aliases"
         alias = re.sub(r"\s*\(?{{(?:Jaz|Jazyk)\|[\w-]+\|([^}]+)}}\)?:?\s*", r"\1", alias, flags=re.I)
         alias = re.sub(r"\s*{{(?:Malé|Velké)\|(.*?)}}\s*", r"\1", alias, flags=re.I)
         if re.search(r"\s*{{Možná hledáte", alias, flags=re.I):
