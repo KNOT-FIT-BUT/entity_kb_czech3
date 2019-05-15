@@ -7,6 +7,7 @@ wiki_stats
 
 # generated custom files
 entities_processing.log
+languages.json
 **/start.sh.stdout
 **/start.sh.stderr
 **/start.sh.stdmix

@@ -13,6 +13,7 @@ Poznámky:
 [^\W\d_] - pouze písmena
 """
 
+import json
 import sys
 import datetime
 import xml.etree.cElementTree as CElTree
@@ -24,6 +25,10 @@ from ent_waterarea import *
 from ent_geo import *
 from os import remove
 import argparse
+
+
+WIKI_LANG_FILE = "languages.json"
+LANG_TRANSFORMATIONS = {"aština": "ašsky", "ština": "sky", "čtina": "cky", "atina": "atinsky", "o": "u"}
 
 
 class WikiExtract(object):
@@ -184,10 +189,59 @@ class WikiExtract(object):
                     redirects[redirect_to] = set()
                 redirects[redirect_to].add(redirect_from)
 
+        langmap = dict()
+        try:
+            with open(WIKI_LANG_FILE, 'r', encoding = 'utf8') as f:
+                try:
+                    langmap = json.load(f)
+                except (ValueError, UnicodeDecodeError):
+                    pass # File is not valid -> we generate new one
+        except OSError:
+            pass # Do nothing - it does not matter, because in this case we generate new one
+
         # parsování XML souboru
         context = CElTree.iterparse(self.console_args.src_file, events=("start", "end"))
+
         context = iter(context)
         event, root = next(context)
+
+        if len(langmap) == 0:
+            pg_languages = None
+            found_639_1 = False
+            for event, elem in context:
+                if event == "end" and "page" in elem.tag:
+                    for child in elem:
+                        if "title" in child.tag and child.text == 'Seznam kódů ISO 639-1':
+                            found_639_1 = True
+                        if found_639_1 and "revision" in child.tag:
+                            for grandchild in child:
+                                if "text" in grandchild.tag:
+                                    pg_languages = grandchild.text
+                                    break
+                            break
+                    if found_639_1:
+                        break
+            if found_639_1:
+                tbl_languages = re.search(r"{\|(.*?)\|}", pg_languages, flags = re.S)
+                if tbl_languages:
+                    tbl_languages = tbl_languages.group(1)
+                    tbl_lang_header = re.search(r"^\s*!([^!]+(?:!![^!]+)+)$", tbl_languages, flags = re.M)
+                    if tbl_lang_header:
+                        tbl_lang_header = tbl_lang_header.group(1).split("!!")
+                        i_639_1 = tbl_lang_header.index("639-1")
+                        i_langname = tbl_lang_header.index("Název jazyka")
+
+                        for lang_row in re.findall(r"^\s*\|(.+?(?:\|\|.+?)+)$", tbl_languages, flags = re.M):
+                            lang_cols = lang_row.split("||")
+                            langname = lang_cols[i_langname].strip("[]")
+                            for suffix, replacement in LANG_TRANSFORMATIONS.items():
+                                if langname.endswith(suffix):
+                                    langname_normalized = langname[:-len(suffix)] + replacement
+                                    break
+                            langmap[langname_normalized] = lang_cols[i_639_1]
+
+                            with open(WIKI_LANG_FILE, 'w', encoding = 'utf8') as f:
+                                json.dump(langmap, f, ensure_ascii = False)
 
         for event, elem in context:
             if event == "end" and "page" in elem.tag:
