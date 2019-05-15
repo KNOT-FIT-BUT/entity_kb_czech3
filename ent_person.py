@@ -47,7 +47,7 @@ class EntPerson(EntCore):
     with open("person_infoboxes", "r", encoding="utf-8") as fl:
         ib_types = {x.lower().strip() for x in fl.readlines()}
 
-    def __init__(self, title, prefix, link, redirects):
+    def __init__(self, title, prefix, link, redirects, langmap):
         """
         Inicializuje třídu 'EntPerson'.
 
@@ -58,7 +58,7 @@ class EntPerson(EntCore):
         redirects - přesměrování Wiki stránek (dict)
         """
         # vyvolání inicializátoru nadřazené třídy
-        super(EntPerson, self).__init__(title, prefix, link, redirects)
+        super(EntPerson, self).__init__(title, prefix, link, redirects, langmap)
 
         # inicializace údajů specifických pro entitu
         self.birth_date = ""
@@ -313,8 +313,16 @@ class EntPerson(EntCore):
                                 fs_first_aliases.append(tmp_fs_first_aliases.group(1).strip())
                                 tmp_first_sentence = tmp_fs_first_aliases.group(2).strip()
 
-                        fs_aliases = re.findall(r"((?:{{(?:Cj|Cizojazyčně|Vjazyce2?)[^}]+}}\s+)?'{3}.+?'{3})", tmp_first_sentence, flags = re.I)
+                        fs_aliases_lang_links = []
+                        for link_lang_alias in re.findall(r"\[\[(?:.* )?([^ |]+)(?:\|(?:.* )?([^ ]+))?\]\]\s*('{3}.+?'{3})", tmp_first_sentence, flags = re.I):
+                            for i_group in [0,1]:
+                                if link_lang_alias[i_group] and link_lang_alias[i_group] in self.langmap:
+                                    fs_aliases_lang_links.append("{{{{Vjazyce|{}}}}} {}".format(self.langmap[link_lang_alias[i_group]], link_lang_alias[2]))
+                                    tmp_first_sentence = tmp_first_sentence.replace(link_lang_alias[2], '')
+                                    break
+                        fs_aliases = re.findall(r"((?:{{(?:Cj|Cizojazyčně|Vjazyce2?)[^}]+}}\s+)?(?<!\]\]\s)'{3}.+?'{3})", tmp_first_sentence, flags = re.I)
                         fs_aliases += [' '.join(str for tup in re.findall(r"([Ss]v(?:\.|at[áéíý]))\s+'{3}(.+?)'{3}", tmp_first_sentence) for str in tup)]
+                        fs_aliases += fs_aliases_lang_links
                         fs_aliases += fs_first_aliases
 
                         for fs_alias in fs_aliases:

@@ -305,7 +305,7 @@ class WikiExtract(object):
                                     # stránka pojednává o osobě
                                     if EntPerson.is_person(et_cont) >= 2:
                                         et_url = self._get_url(et_full_title)
-                                        et_person = EntPerson(et_full_title, "person", et_url, ent_redirects)
+                                        et_person = EntPerson(et_full_title, "person", et_url, ent_redirects, langmap)
                                         et_person.get_data(et_cont)
                                         et_person.write_to_file()
                                         continue
@@ -313,7 +313,7 @@ class WikiExtract(object):
                                     # stránka pojednává o státu
                                     if EntCountry.is_country(et_cont):
                                         et_url = self._get_url(et_full_title)
-                                        et_country = EntCountry(et_full_title, "country", et_url, ent_redirects)
+                                        et_country = EntCountry(et_full_title, "country", et_url, ent_redirects, langmap)
                                         et_country.get_data(et_cont)
                                         et_country.write_to_file()
                                         continue
@@ -322,7 +322,7 @@ class WikiExtract(object):
                                     id_level, id_type = EntSettlement.is_settlement(et_full_title, et_cont)
                                     if id_level:
                                         et_url = self._get_url(et_full_title)
-                                        et_settlement = EntSettlement(et_full_title, "settlement", et_url, ent_redirects)
+                                        et_settlement = EntSettlement(et_full_title, "settlement", et_url, ent_redirects, langmap)
                                         et_settlement.get_data(et_cont)
                                         et_settlement.write_to_file()
                                         continue
@@ -331,7 +331,7 @@ class WikiExtract(object):
                                     id_level, id_type = EntWatercourse.is_watercourse(et_full_title, et_cont)
                                     if id_level:
                                         et_url = self._get_url(et_full_title)
-                                        et_watercourse = EntWatercourse(et_full_title, "watercourse", et_url, ent_redirects)
+                                        et_watercourse = EntWatercourse(et_full_title, "watercourse", et_url, ent_redirects, langmap)
                                         et_watercourse.get_data(et_cont)
                                         et_watercourse.write_to_file()
                                         continue
@@ -340,7 +340,7 @@ class WikiExtract(object):
                                     id_level, id_type = EntWaterArea.is_water_area(et_full_title, et_cont)
                                     if id_level:
                                         et_url = self._get_url(et_full_title)
-                                        et_water_area = EntWaterArea(et_full_title, "waterarea", et_url, ent_redirects)
+                                        et_water_area = EntWaterArea(et_full_title, "waterarea", et_url, ent_redirects, langmap)
                                         et_water_area.get_data(et_cont)
                                         et_water_area.write_to_file()
                                         continue
@@ -349,7 +349,7 @@ class WikiExtract(object):
                                     id_level, id_type = EntGeo.is_geo(et_full_title, et_cont)
                                     if id_level:
                                         et_url = self._get_url(et_full_title)
-                                        et_geo = EntGeo(et_full_title, "geo", et_url, ent_redirects)
+                                        et_geo = EntGeo(et_full_title, "geo", et_url, ent_redirects, langmap)
                                         et_geo.set_entity_subtype(id_type)
                                         et_geo.get_data(et_cont)
                                         et_geo.write_to_file()

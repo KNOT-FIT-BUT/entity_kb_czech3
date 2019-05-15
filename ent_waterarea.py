@@ -30,7 +30,7 @@ class EntWaterArea(EntCore):
     continent - světadíl, na kterém se vodní plocha nachází (str)
     """
 
-    def __init__(self, title, prefix, link, redirects):
+    def __init__(self, title, prefix, link, redirects, langmap):
         """
         Inicializuje třídu 'EntWaterArea'.
 
@@ -40,7 +40,7 @@ class EntWaterArea(EntCore):
         link - odkaz na Wikipedii (str)
         redirects - přesměrování Wiki stránek (dict)
         """
-        super(EntWaterArea, self).__init__(title, prefix, link, redirects)
+        super(EntWaterArea, self).__init__(title, prefix, link, redirects, langmap)
 
         self.area = ""
         self.continent = ""
@@ -130,9 +130,18 @@ class EntWaterArea(EntCore):
                 if rexp:
                     if not self.description:
                         self.get_first_sentence(self.del_redundant_text(rexp.group(0), ", "))
+                        tmp_first_sentence = rexp.group(0)
 
                         # extrakce alternativních pojmenování z první věty
-                        fs_aliases = re.findall(r"((?:{{(?:Cj|Cizojazyčně|Vjazyce2?)[^}]+}}\s+)?'{3}.+?'{3})", rexp.group(0), flags = re.I)
+                        fs_aliases_lang_links = []
+                        for link_lang_alias in re.findall(r"\[\[(?:.* )?([^ |]+)(?:\|(?:.* )?([^ ]+))?\]\]\s*('{3}.+?'{3})", tmp_first_sentence, flags = re.I):
+                            for i_group in [0,1]:
+                                if link_lang_alias[i_group] and link_lang_alias[i_group] in self.langmap:
+                                    fs_aliases_lang_links.append("{{{{Vjazyce|{}}}}} {}".format(self.langmap[link_lang_alias[i_group]], link_lang_alias[2]))
+                                    tmp_first_sentence = tmp_first_sentence.replace(link_lang_alias[2], '')
+                                    break
+                        fs_aliases = re.findall(r"((?:{{(?:Cj|Cizojazyčně|Vjazyce2?)[^}]+}}\s+)?(?<!\]\]\s)'{3}.+?'{3})", tmp_first_sentence, flags = re.I)
+                        fs_aliases += fs_aliases_lang_links
                         if fs_aliases:
                             for fs_alias in fs_aliases:
                                 self.get_aliases(self.del_redundant_text(fs_alias).strip("'"))

@@ -44,7 +44,7 @@ class EntCore(metaclass=ABCMeta):
     LANG_UNKNOWN = "???"
 
     @abstractmethod
-    def __init__(self, title, prefix, link, redirects):
+    def __init__(self, title, prefix, link, redirects, langmap):
         """
         Inicializuje třídu 'EntCore'.
 
@@ -70,6 +70,7 @@ class EntCore(metaclass=ABCMeta):
         self.n_marked_czech = 0
         self.first_alias = None
         self.redirects = redirects
+        self.langmap = langmap
 
     @staticmethod
     def del_redundant_text(text, multiple_separator = "|"):
