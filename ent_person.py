@@ -11,6 +11,7 @@ Soubor obsahuje třídu 'EntPerson', která uchovává údaje o lidech.
 
 import re
 import regex
+import sys
 from ent_core import EntCore
 from libs.natToKB import *
 
@@ -156,9 +157,10 @@ class EntPerson(EntCore):
         # vrací pravděpodobnost, že je stránka na základě kategorií o osobě
         return id_level
 
-    def get_data(self, content):
+
+    def data_preprocess(self, content):
         """
-        Extrahuje data o osobě z obsahu stránky.
+        Předzpracování dat o osobě.
 
         Parametry:
         content - obsah stránky (str)
@@ -197,137 +199,129 @@ class EntPerson(EntCore):
                     elif infobox_gender == "žena":
                         self.gender = "F"
 
-        try:
-            data = content.splitlines()
-        except AttributeError:
-            pass
-        else:
-            for ln in data:
-                # aliasy
-                rexp_format = r"(jiná[\s_]+jména|(?:rodné|celé|úplné|posmrtné|chrámové|trůnní)[\s_]+jméno|pseudonym|přezdívka)\s*=(?!=)\s+(?!nezveřejněn[aáéoý]?|neznám[aáéoý]?)(.*)"
-                rexp = re.search(rexp_format, ln, re.I)
-                if rexp and rexp.group(2):
-                    nametype = None
-                    tmp_alias = rexp.group(2)
+        # Female surname variants with or without suffix "-ová"
+        if (self.gender == "F"):
+            female_variant = self.title[:-3] if self.title[-3:] == "ová" else (self.title + "ová")
+            if self.redirects and female_variant in self.redirects:
+                self.aliases[female_variant][self.KEY_LANG] = self.LANG_CZECH if self.title[-3:] == "ová" else self.LANG_UNKNOWN
 
-                    if rexp.group(1):
-                        tmp_name_type = rexp.group(1).lower()
-                        if tmp_name_type == "pseudonym":
-                            nametype = self.NT_PSEUDO
-                        elif tmp_name_type == "přezdívka":
-                            nametype = self.NT_NICK
-                        elif tmp_name_type == "rodné jméno":
-                            alias_spaces = len(re.findall(r"[^\s]+\s+[^\s]+", tmp_alias))
-                            if not alias_spaces:
-                                tmp_alias_new, was_replaced = re.subn(r"(?<=\s)(?:ze?|of|von)\s+.*", tmp_alias, self.title, flags=re.I)
-                                if was_replaced:
-                                    tmp_alias = tmp_alias_new
-                                else:
-                                    tmp_alias = re.sub(r"[^\s]+$", tmp_alias, self.title)
 
-                    tmp_alias = re.sub(r"^\s*německyː\s*", "", tmp_alias, flags = re.I) # https://cs.wikipedia.org/wiki/Marie_Gabriela_Bavorská =>   | celé jméno = německyː ''Marie Gabrielle Mathilde Isabelle Therese Antoinette Sabine Herzogin in Bayern''
-                    tmp_alias = re.sub(r"^\s*(?:viz\s+)?\[\[[^\]]+\]\]", "", tmp_alias, flags = re.I) # https://cs.wikipedia.org/wiki/T%C3%BArin =>   | přezdívka = viz [[Túrin#Jména, přezdívky a tituly|Jména, přezdívky a tituly]]
-                    self.get_aliases(self.del_redundant_text(tmp_alias), nametype = nametype)
-                    continue
+    def line_process_infobox(self, ln, is_infobox_block):
+        # Aliases
+        rexp_format = r"(jiná[\s_]+jména|(?:rodné|celé|úplné|posmrtné|chrámové|trůnní)[\s_]+jméno|pseudonym|přezdívka|alias)\s*=(?!=)\s+(?!nezveřejněn[aáéoý]?|neznám[aáéoý]?)(.*)"
+        rexp = re.search(rexp_format, ln, re.I)
+        if rexp and rexp.group(2):
+            nametype = None
+            tmp_alias = rexp.group(2)
 
-                if (self.gender == "F"):
-                    female_variant = self.title[:-3] if self.title[-3:] == "ová" else (self.title + "ová")
-                    if self.redirects and female_variant in self.redirects:
-                        self.aliases[female_variant][self.KEY_LANG] = self.LANG_CZECH if self.title[-3:] == "ová" else self.LANG_UNKNOWN
-
-                # obrázek - infobox
-                rexp = re.search(r"obrázek\s*=(?!=)\s*(.*)", ln, re.I)
-                if rexp and rexp.group(1):
-                    self.get_image(self.del_redundant_text(rexp.group(1)))
-                    continue
-
-                # obrázky - ostatní
-                rexp = re.search(r"\[\[(?:Soubor|File):([^|]+?\.(?:jpe?g|png|gif|bmp|ico|tif|tga|svg))(?:\|.*?)?\]\]", ln, re.I)
-                if rexp and rexp.group(1):
-                    self.get_image(rexp.group(1))
-                    continue
-
-                # datum narození
-                rexp = re.search(r"datum[\s_]narození\s+=(?!=)\s*(.*)", ln, re.I)
-                if rexp and rexp.group(1):
-                    self.get_birth_date(self.del_redundant_text(rexp.group(1)))
-                    continue
-
-                # datum úmrtí
-                rexp = re.search(r"datum[\s_]úmrtí\s+=(?!=)\s*(.*)", ln, re.I)
-                if rexp and rexp.group(1):
-                    self.get_death_date(self.del_redundant_text(rexp.group(1)))
-                    continue
-
-                # místo narození
-                rexp = re.search(r"místo[\s_]narození\s+=(?!=)\s*(.*)", ln, re.I)
-                if rexp and rexp.group(1):
-                    self.get_place(self.del_redundant_text(rexp.group(1)), True)
-                    continue
-
-                # místo úmrtí
-                rexp = re.search(r"místo[\s_]úmrtí\s+=(?!=)\s*(.*)", ln, re.I)
-                if rexp and rexp.group(1):
-                    self.get_place(self.del_redundant_text(rexp.group(1)), False)
-                    continue
-
-                # zaměstnání/profese
-                rexp = re.search(r"(?:profese|zaměstnání|povolání)\s*=(?!=)\s*(.*)", ln, flags=re.I)
-                if rexp and rexp.group(1):
-                    self.get_jobs(self.del_redundant_text(rexp.group(1)))
-                    continue
-
-                # národnost
-                rexp = re.search(r"národnost\s*=(?!=)\s*(.*)", ln, flags=re.I)
-                if rexp and rexp.group(1):
-                    if not self.nationality:
-                        self.get_nationality(self.del_redundant_text(rexp.group(1)))
-                    continue
-
-                # první věta
-                if not self.description and not re.search(r"^\s*({{Infobox|\|)", ln, flags=re.I):
-                    abbrs = "".join((r"(?<!\s(?:tzv|at[pd]|roz))", r"(?<!\s(?:apod|(?:ku|na|po)př|příp))", r"(?<!\s[amt]j)", r"(?<!\d)"))
-                    rexp = re.search(r".*?'''.+?'''.*?\s(?:byl[aiy]?|je|jsou|patř(?:í|il)|stal).*?" + abbrs + "\.(?![^[]*?\]\])", ln)
-                    if rexp:
-                        self.get_first_sentence(self.del_redundant_text(rexp.group(0), ", "))
-
-                        tmp_first_sentence = rexp.group(0)
-                        fs_first_aliases = []
-                        # extrakce alternativních pojmenování z první věty
-                        #  '''Jiří''' (též '''Jura''') '''Mandel''' -> vygenerovat "Jiří Mandel" a "Jura Mandel" (negenerovat "Jiří", "Jura", "Mandel")
-                        tmp_fs_first_aliases = regex.search(r"^((?:'{3}(?:[\"\p{L} ]|'(?!''))+'{3}\s+)+)\((?:(?:někdy|nebo)?\s*(?:také|též|rozená))?\s*(?:('{3}[^\)]+'{3}))?(?:'(?!'')|[^\)])*\)\s*((?:'{3}\p{L}+'{3}\s+)*)(.*)", tmp_first_sentence, flags = re.I)
-                        if tmp_fs_first_aliases:
-                            fs_fa_before_bracket = tmp_fs_first_aliases.group(1).strip()
-                            fs_fa_after_bracket = tmp_fs_first_aliases.group(3).strip()
-                            fs_first_aliases.append(fs_fa_before_bracket + " " + fs_fa_after_bracket)
-                            if tmp_fs_first_aliases.group(2):
-                                name_variants = re.findall(r"'{3}(.+?)'{3}", tmp_fs_first_aliases.group(2).strip())
-                                if name_variants:
-                                    for name_variant in name_variants:
-                                        fs_first_aliases.append(re.sub("[^ ]+$", name_variant, fs_fa_before_bracket) + " " + fs_fa_after_bracket)
-                            tmp_first_sentence = tmp_fs_first_aliases.group(4)
+            if rexp.group(1):
+                tmp_name_type = rexp.group(1).lower()
+                if tmp_name_type == "pseudonym":
+                    nametype = self.NT_PSEUDO
+                elif tmp_name_type in ["přezdívka", "alias"]:
+                    nametype = self.NT_NICK
+                elif tmp_name_type == "rodné jméno":
+                    alias_spaces = len(re.findall(r"[^\s]+\s+[^\s]+", tmp_alias))
+                    if not alias_spaces:
+                        tmp_alias_new, was_replaced = re.subn(r"(?<=\s)(?:ze?|of|von)\s+.*", tmp_alias, self.title, flags=re.I)
+                        if was_replaced:
+                            tmp_alias = tmp_alias_new
                         else:
-                            #  '''Jiří''' '''Jindra''' -> vygenerovat "Jiří Jindra" (negenerovat "Jiří" a "Jindra")
-                            tmp_fs_first_aliases = regex.search(r"^((?:'{3}\p{L}+'{3}\s+)+)(.*)", tmp_first_sentence)
-                            if tmp_fs_first_aliases:
-                                fs_first_aliases.append(tmp_fs_first_aliases.group(1).strip())
-                                tmp_first_sentence = tmp_fs_first_aliases.group(2).strip()
+                            tmp_alias = re.sub(r"[^\s]+$", tmp_alias, self.title)
+            tmp_alias = re.sub(r"^\s*německyː\s*", "", tmp_alias, flags = re.I) # https://cs.wikipedia.org/wiki/Marie_Gabriela_Bavorská =>   | celé jméno = německyː ''Marie Gabrielle Mathilde Isabelle Therese Antoinette Sabine Herzogin in Bayern''
+            tmp_alias = re.sub(r"^\s*(?:viz\s+)?\[\[[^\]]+\]\]", "", tmp_alias, flags = re.I) # https://cs.wikipedia.org/wiki/T%C3%BArin =>   | přezdívka = viz [[Túrin#Jména, přezdívky a tituly|Jména, přezdívky a tituly]]
+            self.get_aliases(self.del_redundant_text(tmp_alias), nametype = nametype)
+            if is_infobox_block:
+                return
 
-                        fs_aliases_lang_links = []
-                        for link_lang_alias in re.findall(r"\[\[(?:.* )?([^ |]+)(?:\|(?:.* )?([^ ]+))?\]\]\s*('{3}.+?'{3})", tmp_first_sentence, flags = re.I):
-                            for i_group in [0,1]:
-                                if link_lang_alias[i_group] and link_lang_alias[i_group] in self.langmap:
-                                    fs_aliases_lang_links.append("{{{{Vjazyce|{}}}}} {}".format(self.langmap[link_lang_alias[i_group]], link_lang_alias[2]))
-                                    tmp_first_sentence = tmp_first_sentence.replace(link_lang_alias[2], '')
-                                    break
-                        fs_aliases = re.findall(r"((?:{{(?:Cj|Cizojazyčně|Vjazyce2?)[^}]+}}\s+)?(?<!\]\]\s)'{3}.+?'{3})", tmp_first_sentence, flags = re.I)
-                        fs_aliases += [' '.join(str for tup in re.findall(r"([Ss]v(?:\.|at[áéíý]))\s+'{3}(.+?)'{3}", tmp_first_sentence) for str in tup)]
-                        fs_aliases += fs_aliases_lang_links
-                        fs_aliases += fs_first_aliases
+        # Date of birth
+        rexp = re.search(r"datum[\s_]narození\s+=(?!=)\s*(.*)", ln, re.I)
+        if rexp and rexp.group(1):
+            self.get_birth_date(self.del_redundant_text(rexp.group(1)))
+            if is_infobox_block:
+                return
 
-                        for fs_alias in fs_aliases:
-                            self.get_aliases(self.del_redundant_text(fs_alias).strip("'"))
-                        continue
+        # Date of death
+        rexp = re.search(r"datum[\s_]úmrtí\s+=(?!=)\s*(.*)", ln, re.I)
+        if rexp and rexp.group(1):
+            self.get_death_date(self.del_redundant_text(rexp.group(1)))
+            if is_infobox_block:
+                return
+
+        # Place of birth
+        rexp = re.search(r"místo[\s_]narození\s+=(?!=)\s*(.*)", ln, re.I)
+        if rexp and rexp.group(1):
+            self.get_place(rexp.group(1), True)
+            if is_infobox_block:
+                return
+
+        # Place of death
+        rexp = re.search(r"místo[\s_]úmrtí\s+=(?!=)\s*(.*)", ln, re.I)
+        if rexp and rexp.group(1):
+            self.get_place(rexp.group(1), False)
+            if is_infobox_block:
+                return
+
+        # Job / career
+        rexp = re.search(r"(?:profese|zaměstnání|povolání)\s*=(?!=)\s*(.*)", ln, flags=re.I)
+        if rexp and rexp.group(1):
+            self.get_jobs(self.del_redundant_text(rexp.group(1)))
+            if is_infobox_block:
+                return
+
+        # Nationality
+        rexp = re.search(r"národnost\s*=(?!=)\s*(.*)", ln, flags=re.I)
+        if rexp and rexp.group(1):
+            if not self.nationality:
+                self.get_nationality(self.del_redundant_text(rexp.group(1)))
+            if is_infobox_block:
+                return
+
+
+    def line_process_1st_sentence(self, ln):
+        # First sentence
+        if not self.description and not re.search(r"^\s*({{Infobox|\|)", ln, flags=re.I):
+            abbrs = "".join((r"(?<!\s(?:tzv|at[pd]|roz))", r"(?<!\s(?:apod|(?:ku|na|po)př|příp))", r"(?<!\s[amt]j)", r"(?<!\d)"))
+            rexp = re.search(r".*?'''.+?'''.*?\s(?:byl[aiy]?|je|jsou|patř(?:í|il|ila|ily)|stal).*?" + abbrs + "\.(?![^[]*?\]\])", ln)
+            if rexp:
+                self.get_first_sentence(self.del_redundant_text(rexp.group(0), ", "))
+
+                tmp_first_sentence = rexp.group(0)
+                fs_first_aliases = []
+                # extrakce alternativních pojmenování z první věty
+                #  '''Jiří''' (též '''Jura''') '''Mandel''' -> vygenerovat "Jiří Mandel" a "Jura Mandel" (negenerovat "Jiří", "Jura", "Mandel")
+                tmp_fs_first_aliases = regex.search(r"^((?:'{3}(?:[\"\p{L} ]|'(?!''))+'{3}\s+)+)\((?:(?:někdy|nebo)?\s*(?:také|též|rozená))?\s*(?:('{3}[^\)]+'{3}))?(?:'(?!'')|[^\)])*\)\s*((?:'{3}\p{L}+'{3}\s+)*)(.*)", tmp_first_sentence, flags = re.I)
+                if tmp_fs_first_aliases:
+                    fs_fa_before_bracket = tmp_fs_first_aliases.group(1).strip()
+                    fs_fa_after_bracket = tmp_fs_first_aliases.group(3).strip()
+                    fs_first_aliases.append(fs_fa_before_bracket + " " + fs_fa_after_bracket)
+                    if tmp_fs_first_aliases.group(2):
+                        name_variants = re.findall(r"'{3}(.+?)'{3}", tmp_fs_first_aliases.group(2).strip())
+                        if name_variants:
+                            for name_variant in name_variants:
+                                fs_first_aliases.append(re.sub("[^ ]+$", name_variant, fs_fa_before_bracket) + " " + fs_fa_after_bracket)
+                    tmp_first_sentence = tmp_fs_first_aliases.group(4)
+                else:
+                    #  '''Jiří''' '''Jindra''' -> vygenerovat "Jiří Jindra" (negenerovat "Jiří" a "Jindra")
+                    tmp_fs_first_aliases = regex.search(r"^((?:'{3}\p{L}+'{3}\s+)+)(.*)", tmp_first_sentence)
+                    if tmp_fs_first_aliases:
+                        fs_first_aliases.append(tmp_fs_first_aliases.group(1).strip())
+                        tmp_first_sentence = tmp_fs_first_aliases.group(2).strip()
+
+                fs_aliases_lang_links = []
+                for link_lang_alias in re.findall(r"\[\[(?:.* )?([^ |]+)(?:\|(?:.* )?([^ ]+))?\]\]\s*('{3}.+?'{3})", tmp_first_sentence, flags = re.I):
+                    for i_group in [0,1]:
+                        if link_lang_alias[i_group] and link_lang_alias[i_group] in self.langmap:
+                            fs_aliases_lang_links.append("{{{{Vjazyce|{}}}}} {}".format(self.langmap[link_lang_alias[i_group]], link_lang_alias[2]))
+                            tmp_first_sentence = tmp_first_sentence.replace(link_lang_alias[2], '')
+                            break
+                fs_aliases = re.findall(r"((?:{{(?:Cj|Cizojazyčně|Vjazyce2?)[^}]+}}\s+)?(?<!\]\]\s)'{3}.+?'{3})", tmp_first_sentence, flags = re.I)
+                fs_aliases += [' '.join(str for tup in re.findall(r"([Ss]v(?:\.|at[áéíý]))\s+'{3}(.+?)'{3}", tmp_first_sentence) for str in tup)]
+                fs_aliases += fs_aliases_lang_links
+                fs_aliases += fs_first_aliases
+
+                for fs_alias in fs_aliases:
+                    self.get_aliases(self.del_redundant_text(fs_alias).strip("'"))
 
 
     def get_birth_date(self, date):
@@ -497,12 +491,15 @@ class EntPerson(EntCore):
         place = re.sub(r"{{(?:vjazyce2|cizojazyčně|audio|cj)\|.*?\|(.+?)}}", r"\1", place, flags=re.I)
         place = re.sub(r"{{malé\|(.*?)}}", r"\1", place, flags=re.I)
         place = re.sub(r"{{.*?}}", "", place)
+        place = re.sub(r"<br(?: /)?>", " ", place)
         place = re.sub(r"<.*?>", "", place)
-        place = re.sub(r"(?:Soubor|File):.*?\.(?:jpe?g|png|gif|bmp|ico|tif|tga|svg)(?:\|[\w\s]+)?\|[\w\s]+\|[\w\s]+(?:,\s*)?", "", place, flags=re.I)
+        place = re.sub(r"\[\[(?:Soubor|File):.*?\.(?:jpe?g|png|gif|bmp|ico|tif|tga|svg)[^\]]*\]\]", "", place, flags=re.I)
         place = re.sub(r"\d+\s*px", "", place, flags=re.I)
         place = re.sub(r"(?:(?:,\s*)?\(.*?věk.*?\)$|\(.*?věk.*?\)(?:,\s*)?)", "", place, flags=re.I)
         place = re.sub(r"\(.*?let.*?\)", "", place, flags=re.I)
         place = re.sub(r",{2,}", ",", place)
+        place = re.sub(r"(\]\])[^,]", r"\1, ", place)
+        place = self.del_redundant_text(place)
         place = re.sub(r"[{}<>\[\]]", "", place)
         place = re.sub(r"\s+", " ", place).strip().strip(",")
 

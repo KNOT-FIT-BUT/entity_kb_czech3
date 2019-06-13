@@ -276,6 +276,7 @@ class WikiExtract(object):
                                         if delete_mode and tag_close:
                                             if text_part.startswith(tag_close):
                                                 text_parts[i_part] = text_part[len(tag_close):]
+                                                delete_mode = False
                                             else:
                                                 text_parts[i_part] = ""
                                         else:
@@ -285,7 +286,7 @@ class WikiExtract(object):
                                                 if matched_tag in ['nowiki', 'ref', 'refereces']:
                                                     tag_close = '/' + matched_tag + '>'
                                                     text_len = len(text_part)
-                                                    text_part = re.sub(r"^.*/>", "", text_part, 1)
+                                                    text_part = re.sub(r"^.*?/>", "", text_part, 1)
                                                     if text_len == len(text_part):
                                                          delete_mode = True
                                                     text_parts[i_part] = "" if delete_mode else text_part
@@ -294,12 +295,17 @@ class WikiExtract(object):
                                                     text_parts[i_part] = delimiter + text_part
                                     et_cont = "".join(text_parts)
 
-                                    et_cont = re.sub(r"{{citace[^}]+?}}", "", et_cont, flags=re.I)
+                                    et_cont = re.sub(r"{{citace[^}]+?}}", "", et_cont, flags=re.I | re.S)
                                     et_cont = re.sub(r"{{cite[^}]+?}}", "", et_cont, flags=re.I)
-                                    et_cont = re.sub(r"{{#tag:ref[^}]+?}}", "", et_cont, flags=re.I)
+                                    et_cont = re.sub(r"{{#tag:ref\s*\|(?:[^\|\[{]|\[\[[^\]]+\]\]|(?<!\[)\[[^\[\]]+\]|{{[^}]+}})*(\|[^}]+)?}}", "", et_cont, flags=re.I | re.S)
                                     et_cont = re.sub(r"<!--.+?-->", "", et_cont, flags=re.DOTALL)
-                                    et_cont = re.sub(r"{\|(?!\s+class=(?:\"|')infobox(?:\"|')).*?\|}", "", et_cont, flags=re.S)
 
+                                    link_multilines =  re.findall(r"\[\[(?:Soubor|File)(?:(?:[^\[\]\n{]|{{[^}]+}}|\[\[[^\]]+\]\])*\n)+(?:[^\[\]\n{]|{{[^}]+}}|\[\[[^\]]+\]\])*\]\]", et_cont, flags = re.S)
+                                    for link_multiline in link_multilines:
+                                        fixed_link_multiline = link_multiline.replace("\n", " ")
+                                        et_cont = et_cont.replace(link_multiline, fixed_link_multiline)
+                                    et_cont = re.sub(r"(<br(?:\s*/)?>)\n", r"\1", et_cont, flags = re.S)
+                                    et_cont = re.sub(r"{\|(?!\s+class=(?:\"|')infobox(?:\"|')).*?\|}", "", et_cont, flags=re.S)
                                     ent_redirects = redirects[et_full_title] if et_full_title in redirects else []
 
                                     # stránka pojednává o osobě
@@ -354,7 +360,6 @@ class WikiExtract(object):
                                         et_geo.get_data(et_cont)
                                         et_geo.write_to_file()
                                         continue
-
                 root.clear()
 
 

@@ -16,6 +16,10 @@ from hashlib import md5, sha224
 from libs.DictOfUniqueDict import *
 
 
+TAG_BRACES_OPENING = '{{'
+TAG_BRACES_CLOSING = '}}'
+
+
 class EntCore(metaclass=ABCMeta):
     """
     Abstraktní rodičovská třída, ze které dědí všechny entity.
@@ -106,6 +110,149 @@ class EntCore(metaclass=ABCMeta):
         return clean_text
 
 
+    def get_data(self, content):
+        """
+        Extract data of entity from the content of page.
+
+        Parameters:
+        * content - content of the page (str)
+        """
+
+        self.data_preprocess(content)
+
+        try:
+            data = content.splitlines()
+        except AttributeError:
+            pass
+        else:
+            is_infobox = False
+            is_infobox_block = None   # True = Block infobox / False = Inline (or combined) infobox / None = Unknown
+            was_infobox = False       # We accept only the 1st one infobox
+            maybe_infobox_end = False # Determines, whether an end of infobox could be found
+            for ln in data:
+                part_text = None
+                part_infobox = ln
+
+                # Common image
+                ln = self.process_and_clean_common_images(ln)
+
+                # Image located in infobox - but not only the first one, so implementation is located here
+                rexp = re.search(r"obrázek\s*=(?!=)\s*(.*)", ln, re.I)
+                if rexp and rexp.group(1):
+                    self.get_image(self.del_redundant_text(rexp.group(1)))
+
+                if not is_infobox:
+                    # If it is not infobox already, explore if it is an infobox
+                    infobox_data = re.search(r"{{Infobox[^\|]+(\|)?.*$", ln, flags = re.I)
+                    if infobox_data:
+                        ln = infobox_data.group(0)
+                        # Empty infobox
+                        ln_infobox_start = re.search(r"Infobox[^{]*}}\s*([^\s].*(?!}}))?$", ln, flags = re.I)
+                        if ln_infobox_start:
+                            # Line containing empty infobox as well as first paragraph
+                            # for example: {{Infobox - osoba}}'''Masao Mijamoto''' ...
+                            if ln_infobox_start.group(1):
+                                part_text = ln_infobox_start.group(1)
+                            # Line containing empty infobox only, for example: {{Infobox - osoba}}
+                            else:
+                                continue
+                        else:
+                            infobox_braces_depth = 0
+                            is_infobox = True
+                            # If pipe char is present, it is inline or combined infobox, otherwise it is block infobox
+                            if infobox_data.group(1):
+                                is_infobox_block = False
+                            else:
+                                is_infobox_block = True
+                    else:
+                        part_text = ln
+
+                # If line contains infobox, explore if contains the end tag of infobox
+                if is_infobox:
+                    l_braces = self.getOpeningBracesPosition(ln)
+                    r_braces = self.getClosingBracesPosition(ln)
+                    while True:
+                        if l_braces >= 0:
+                            if r_braces >= 0:
+                                if l_braces < r_braces:
+                                    infobox_braces_depth += 1
+                                    l_braces = self.getOpeningBracesPosition(ln, l_braces)
+                                else:
+                                    infobox_braces_depth -= 1
+                                    r_braces = self.getClosingBracesPosition(ln, r_braces)
+                            else:
+                                l_braces = self.getOpeningBracesPosition(ln, l_braces)
+                                infobox_braces_depth += 1
+                        else:
+                            if r_braces >= 0:
+                                infobox_braces_depth -= 1
+                                r_braces = self.getClosingBracesPosition(ln, r_braces)
+                            else:
+                                break
+                        if infobox_braces_depth == 0:
+                            is_infobox = False
+                            part_infobox = ln[:r_braces]
+                            part_text = ln[(r_braces + len(TAG_BRACES_CLOSING) + 1):]
+                            break
+
+                    if not was_infobox:
+                        # If line belongs to infobox and infobox was already not present, process it
+                        self.line_process_infobox(part_infobox, is_infobox_block)
+                        is_infobox_block = None
+                        if infobox_braces_depth == 0:
+                            was_infobox = True
+
+
+                if part_text:
+                    self.line_process_1st_sentence(part_text)
+
+
+    def getTagPosition(self, tag, ln, lastPosition = None):
+        if lastPosition != None:
+            findFrom = lastPosition + len(tag)
+        else:
+            findFrom = 0
+        return ln.find(tag, findFrom)
+
+
+    def getOpeningBracesPosition(self, ln, lastPosition = None):
+        return self.getTagPosition(TAG_BRACES_OPENING, ln, lastPosition)
+
+    def getClosingBracesPosition(self, ln, lastPosition = None):
+        return self.getTagPosition(TAG_BRACES_CLOSING, ln, lastPosition)
+
+
+    def data_preprocess(self, content):
+        """
+        Entity data preprocessing - method designed for override in child method (not designed as abstract!!)
+
+        Parameters:
+        * content - content of page (str)
+        """
+        return
+
+
+    def line_process_infobox(self, line, is_infobox_bloxk):
+        """
+        Processing of infobox line - method designed for override in child method (not designed as abstract!!)
+
+        Parameters:
+        * line - line of the content of page (str)
+        * is_infobox_block - type of infobox (True = block; False = inline (or combined); None = unknown)
+        """
+        return
+
+
+    def line_process_1st_sentence(self, line):
+        """
+        Processing of first sentence - method designed for override in child method (not designed as abstract!!)
+
+        Parameters:
+        * line - line of the content of page (str)
+        """
+        return
+
+
     def get_aliases(self, alias, marked_czech = False, nametype = None):
         """
         Převádí alternativní pojmenování do jednotného formátu.
@@ -164,7 +311,7 @@ class EntCore(metaclass=ABCMeta):
                     self.n_marked_czech += 1
 
                 else:
-                    if self.first_alias == None:
+                    if self.first_alias == None and nametype == None:
                         self.first_alias = a
                     self.scrape_nicks_inside_and_store(a, nametype)
 
@@ -195,9 +342,11 @@ class EntCore(metaclass=ABCMeta):
 
             self.store_alias(alias, nametype, lang)
 
+
     def store_alias(self, a, nametype, lang = None):
         self.aliases[a][self.KEY_LANG] = lang
         self.aliases[a][self.KEY_NAMETYPE] = nametype
+
 
     def custom_transform_alias(self, alias):
         """
@@ -247,6 +396,24 @@ class EntCore(metaclass=ABCMeta):
             preserialized.add(alias + tmp_flags)
 
         return "|".join(preserialized)
+
+
+    def process_and_clean_common_images(self, line):
+        """
+        Process common image, transform it to Wikimedia Commons absolute path and return the rest of line without this common image
+
+        Parameters:
+        * line - input line of wiki page (str)
+        """
+
+        retval = False
+        images = re.findall(r"(\[\[(?:Soubor|File):([^|]+?\.(?:jpe?g|png|gif|bmp|ico|tif|tga|svg))(?:\|(?:[^\[\]]|\[\[[^\]]+\]\]|(?<!\[)\[[^\[\]]+\])*)*\]\])", line, re.I)
+        for image in images:
+            if image[1]:
+                self.get_image(image[1])
+                line = line.replace(image[0], "")
+
+        return line
 
 
     def get_image(self, image):
