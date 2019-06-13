@@ -54,6 +54,8 @@ class EntWatercourse(EntCore):
         self.source_loc = ""
         self.streamflow = ""
 
+        self.re_infobox_kw_img = r"(?:obrázek|mapa)"
+
     @staticmethod
     def is_watercourse(title, content):
         """
@@ -82,9 +84,10 @@ class EntWatercourse(EntCore):
 
         return 0, ""
 
-    def get_data(self, content):
+
+    def data_preprocess(self, content):
         """
-        Extrahuje data o vodním toku z obsahu stránky.
+        Předzpracování dat o vodním toku z obsahu stránky.
 
         Parametry:
         content - obsah stránky (str)
@@ -92,81 +95,71 @@ class EntWatercourse(EntCore):
         content = content.replace("&nbsp;", " ")
         content = re.sub(r"m\sn\.\s*", "metrů nad ", content)
 
-        try:
-            data = content.splitlines()
-        except AttributeError:
-            pass
-        else:
-            for ln in data:
-                # aliasy
-                rexp = re.search(r"řeka\s*=(?!=)\s*(.*)", ln, re.I)
-                if rexp and rexp.group(1):
-                    self.get_aliases(self.del_redundant_text(rexp.group(1)))
-                    continue
 
-                # obrázek - infobox
-                rexp = re.search(r"(?:obrázek|mapa)\s*=(?!=)\s*(.*)", ln, re.I)
-                if rexp and rexp.group(1):
-                    self.get_image(self.del_redundant_text(rexp.group(1)))
-                    continue
+    def line_process_infobox(self, ln, is_infobox_block):
+        # aliasy
+        rexp = re.search(r"řeka\s*=(?!=)\s*(.*)", ln, re.I)
+        if rexp and rexp.group(1):
+            self.get_aliases(self.del_redundant_text(rexp.group(1)))
+            if is_infobox_block == True:
+                return
 
-                # obrázky - ostatní
-                rexp = re.search(r"\[\[(?:Soubor|File):([^|]+?\.(?:jpe?g|png|gif|bmp|ico|tif|tga|svg))(?:\|.*?)?\]\]", ln, re.I)
-                if rexp and rexp.group(1):
-                    self.get_image(rexp.group(1))
-                    continue
+        # délka toku
+        rexp = re.search(r"(?<!zeměpisná[\s_])délka\s*=(?!=)\s*(.*)", ln, re.I)
+        if rexp and rexp.group(1):
+            self.get_length(self.del_redundant_text(rexp.group(1)))
+            if is_infobox_block == True:
+                return
 
-                # délka toku
-                rexp = re.search(r"(?<!zeměpisná[\s_])délka\s*=(?!=)\s*(.*)", ln, re.I)
-                if rexp and rexp.group(1):
-                    self.get_length(self.del_redundant_text(rexp.group(1)))
-                    continue
+        # plocha
+        rexp = re.search(r"plocha\s*=(?!=)\s*(.*)", ln, re.I)
+        if rexp and rexp.group(1):
+            self.get_area(self.del_redundant_text(rexp.group(1)))
+            if is_infobox_block == True:
+                return
 
-                # plocha
-                rexp = re.search(r"plocha\s*=(?!=)\s*(.*)", ln, re.I)
-                if rexp and rexp.group(1):
-                    self.get_area(self.del_redundant_text(rexp.group(1)))
-                    continue
+        # světadíl
+        rexp = re.search(r"světadíl\s*=(?!=)\s*(.*)", ln, re.I)
+        if rexp and rexp.group(1):
+            self.get_continent(self.del_redundant_text(rexp.group(1)))
+            if is_infobox_block == True:
+                return
 
-                # světadíl
-                rexp = re.search(r"světadíl\s*=(?!=)\s*(.*)", ln, re.I)
-                if rexp and rexp.group(1):
-                    self.get_continent(self.del_redundant_text(rexp.group(1)))
-                    continue
-                # průtok
-                rexp = re.search(r"průtok\s*=(?!=)\s*(.*)", ln, re.I)
-                if rexp and rexp.group(1):
-                    self.get_streamflow(self.del_redundant_text(rexp.group(1)))
-                    continue
+        # průtok
+        rexp = re.search(r"průtok\s*=(?!=)\s*(.*)", ln, re.I)
+        if rexp and rexp.group(1):
+            self.get_streamflow(self.del_redundant_text(rexp.group(1)))
+            if is_infobox_block == True:
+                return
 
-                # pramen
-                rexp = re.search(r"pramen\s*=(?!=)\s*(.*)", ln, re.I)
-                if rexp and rexp.group(1):
-                    self.get_source_loc(self.del_redundant_text(rexp.group(1)))
-                    continue
+        # pramen
+        rexp = re.search(r"pramen\s*=(?!=)\s*(.*)", ln, re.I)
+        if rexp and rexp.group(1):
+            self.get_source_loc(self.del_redundant_text(rexp.group(1)))
+            if is_infobox_block == True:
+                return
 
-                # první věta
-                abbrs = "".join((r"(?<!\s(?:tzv|at[pd]))", r"(?<!\s(?:apod|(?:ku|na|po)př|příp))", r"(?<!\s(?:[amt]j|fr))", r"(?<!\d)", r"(?<!nad m)"))
-                rexp = re.search(r".*?'''.+?'''.*?\s(?:byl[aiy]?|je|jsou|nacház(?:í|ejí)|patř(?:í|il)|stal|rozprostír|lež(?:í|el)|pramen(?:í|il)).*?" + abbrs + "\.(?![^[]*?\]\])", ln)
-                if rexp:
-                    if not self.description:
-                        self.get_first_sentence(self.del_redundant_text(rexp.group(0), ", "))
-                        tmp_first_sentence = rexp.group(0)
+    def line_process_1st_sentence(self, ln):
+        abbrs = "".join((r"(?<!\s(?:tzv|at[pd]))", r"(?<!\s(?:apod|(?:ku|na|po)př|příp))", r"(?<!\s(?:[amt]j|fr))", r"(?<!\d)", r"(?<!nad m)"))
+        rexp = re.search(r".*?'''.+?'''.*?\s(?:byl[aiy]?|je|jsou|nacház(?:í|ejí)|patř(?:í|il)|stal|rozprostír|lež(?:í|el)|pramen(?:í|il)).*?" + abbrs + "\.(?![^[]*?\]\])", ln)
+        if rexp:
+            if not self.description:
+                self.get_first_sentence(self.del_redundant_text(rexp.group(0), ", "))
+                tmp_first_sentence = rexp.group(0)
 
-                        # extrakce alternativních pojmenování z první věty
-                        fs_aliases_lang_links = []
-                        for link_lang_alias in re.findall(r"\[\[(?:.* )?([^ |]+)(?:\|(?:.* )?([^ ]+))?\]\]\s*('{3}.+?'{3})", tmp_first_sentence, flags = re.I):
-                            for i_group in [0,1]:
-                                if link_lang_alias[i_group] and link_lang_alias[i_group] in self.langmap:
-                                    fs_aliases_lang_links.append("{{{{Vjazyce|{}}}}} {}".format(self.langmap[link_lang_alias[i_group]], link_lang_alias[2]))
-                                    tmp_first_sentence = tmp_first_sentence.replace(link_lang_alias[2], '')
-                                    break
-                        fs_aliases = re.findall(r"((?:{{(?:Cj|Cizojazyčně|Vjazyce2?)[^}]+}}\s+)?(?<!\]\]\s)'{3}.+?'{3})", tmp_first_sentence, flags = re.I)
-                        fs_aliases += fs_aliases_lang_links
-                        if fs_aliases:
-                            for fs_alias in fs_aliases:
-                                self.get_aliases(self.del_redundant_text(fs_alias).strip("'"))
-                    continue
+                # extrakce alternativních pojmenování z první věty
+                fs_aliases_lang_links = []
+                for link_lang_alias in re.findall(r"\[\[(?:.* )?([^ |]+)(?:\|(?:.* )?([^ ]+))?\]\]\s*('{3}.+?'{3})", tmp_first_sentence, flags = re.I):
+                    for i_group in [0,1]:
+                        if link_lang_alias[i_group] and link_lang_alias[i_group] in self.langmap:
+                            fs_aliases_lang_links.append("{{{{Vjazyce|{}}}}} {}".format(self.langmap[link_lang_alias[i_group]], link_lang_alias[2]))
+                            tmp_first_sentence = tmp_first_sentence.replace(link_lang_alias[2], '')
+                            break
+                fs_aliases = re.findall(r"((?:{{(?:Cj|Cizojazyčně|Vjazyce2?)[^}]+}}\s+)?(?<!\]\]\s)'{3}.+?'{3})", tmp_first_sentence, flags = re.I)
+                fs_aliases += fs_aliases_lang_links
+                if fs_aliases:
+                    for fs_alias in fs_aliases:
+                        self.get_aliases(self.del_redundant_text(fs_alias).strip("'"))
 
 
     def custom_transform_alias(self, alias):

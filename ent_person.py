@@ -70,6 +70,8 @@ class EntPerson(EntCore):
         self.jobs = ""
         self.nationality = ""
 
+        self.re_infobox_kw_img = r"obrázek"
+
     @classmethod
     def is_person(cls, content):
         """

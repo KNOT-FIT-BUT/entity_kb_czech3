@@ -75,6 +75,7 @@ class EntCore(metaclass=ABCMeta):
         self.first_alias = None
         self.redirects = redirects
         self.langmap = langmap
+        self.re_infobox_kw_img = r"obrázek"
 
     @staticmethod
     def del_redundant_text(text, multiple_separator = "|"):
@@ -133,13 +134,14 @@ class EntCore(metaclass=ABCMeta):
                 part_text = None
                 part_infobox = ln
 
+                # Image located in infobox - but not only the first one, so implementation is located here
+                rexp = re.search(self.re_infobox_kw_img + r"\s*=(?!=)\s*(.*)", ln, re.I)
+                if rexp and rexp.group(1):
+                    self.get_image(self.del_redundant_text(rexp.group(1)))
+
                 # Common image
                 ln = self.process_and_clean_common_images(ln)
 
-                # Image located in infobox - but not only the first one, so implementation is located here
-                rexp = re.search(r"obrázek\s*=(?!=)\s*(.*)", ln, re.I)
-                if rexp and rexp.group(1):
-                    self.get_image(self.del_redundant_text(rexp.group(1)))
 
                 if not is_infobox:
                     # If it is not infobox already, explore if it is an infobox

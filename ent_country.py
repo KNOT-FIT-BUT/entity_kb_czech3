@@ -50,6 +50,8 @@ class EntCountry(EntCore):
         self.area = ""
         self.population = ""
 
+        self.re_infobox_kw_img = r"(?:vlajka|znak|mapa[\s_]umístění)"
+
     @staticmethod
     def is_country(content):
         """
@@ -78,94 +80,85 @@ class EntCountry(EntCore):
 
         return 0
 
-    def get_data(self, content):
+
+    def data_preprocess(self, content):
         """
-        Extrahuje data o státu z obsahu stránky.
+        Předzpracování dat o státu.
 
         Parametry:
         content - obsah stránky (str)
         """
+
         # prefix - zaniklé státy
         if re.search(r"\[\[\s*Kategorie:\s*(?:Krátce\s+existující\s+státy|Zaniklé\s+(?:státy|monarchie))", content, re.I):
             self.prefix = "country:former"
 
-        try:
-            data = content.splitlines()
-        except AttributeError:
-            pass
-        else:
-            for ln in data:
-                # aliases - czech name is preferable
-                rexp = re.search(r"název[\s_]česky\s*=(?!=)\s*(.*)", ln, re.I)
-                if rexp and rexp.group(1):
-                    self.get_aliases(self.del_redundant_text(rexp.group(1)), True)
-                    continue
 
-                # aliases - common name may contain name in local language
-                rexp = re.search(r"název\s*=(?!=)\s*(.*)", ln, re.I)
-                if rexp and rexp.group(1):
-                    self.get_aliases(self.del_redundant_text(rexp.group(1)))
-                    continue
 
-                # obrázek - infobox
-                rexp = re.search(r"(?:vlajka|znak|mapa[\s_]umístění)\s*=(?!=)\s*(.*)", ln, re.I)
-                if rexp and rexp.group(1):
-                    self.get_image(self.del_redundant_text(rexp.group(1)))
-                    continue
+    def line_process_infobox(self, ln, is_infobox_block):
+        # aliases - czech name is preferable
+        rexp = re.search(r"název[\s_]česky\s*=(?!=)\s*(.*)", ln, re.I)
+        if rexp and rexp.group(1):
+            self.get_aliases(self.del_redundant_text(rexp.group(1)), True)
+            if is_infobox_block == True:
+                return
 
-                # obrázky - ostatní
-                rexp = re.search(r"\[\[(?:Soubor|File):([^|]+?\.(?:jpe?g|png|gif|bmp|ico|tif|tga|svg))(?:\|.*?)?\]\]", ln, re.I)
-                if rexp and rexp.group(1):
-                    self.get_image(rexp.group(1))
-                    continue
+        # aliases - common name may contain name in local language
+        rexp = re.search(r"název\s*=(?!=)\s*(.*)", ln, re.I)
+        if rexp and rexp.group(1):
+            self.get_aliases(self.del_redundant_text(rexp.group(1)))
+            if is_infobox_block == True:
+                return
 
-                # počet obyvatel
-                rexp = re.search(r"obyvatel\s*=(?!=)\s*(.*)", ln, re.I)
-                if rexp and rexp.group(1):
-                    self.get_population(self.del_redundant_text(rexp.group(1)))
-                    continue
+        # počet obyvatel
+        rexp = re.search(r"obyvatel\s*=(?!=)\s*(.*)", ln, re.I)
+        if rexp and rexp.group(1):
+            self.get_population(self.del_redundant_text(rexp.group(1)))
+            if is_infobox_block == True:
+                return
 
-                # rozloha
-                rexp = re.search(r"(?:rozloha|výměra)\s*=(?!=)\s*(.*)", ln, re.I)
-                if rexp and rexp.group(1):
-                    self.get_area(self.del_redundant_text(rexp.group(1)))
-                    continue
+        # rozloha
+        rexp = re.search(r"(?:rozloha|výměra)\s*=(?!=)\s*(.*)", ln, re.I)
+        if rexp and rexp.group(1):
+            self.get_area(self.del_redundant_text(rexp.group(1)))
+            if is_infobox_block == True:
+                return
 
-                # první věta
-                abbrs = "".join((r"(?<!\s(?:tzv|at[dp]))", r"(?<!\s(?:apod|(?:ku|na|po)př|příp))", r"(?<!\s(?:[amt]j|fr))", r"(?<!\d)"))
-                rexp = re.search(r".*?'''.+?'''.*?\s(?:byl[aiy]?|je|jsou|nacház(?:í|ejí)|patř(?:í|il)|stal|rozprostír|lež(?:í|el)).*?" + abbrs + "\.(?![^[]*?\]\])", ln)
-                if rexp:
-                    if not self.description:
-                        self.get_first_sentence(self.del_redundant_text(rexp.group(0), ", "))
 
-                        tmp_first_sentence = rexp.group(0)
-                        # TODO: refactorize + give this to other entity types
-                        # extrakce alternativních pojmenování z první věty
-                        fs_aliases_lang_links = []
-                        for link_lang_alias in re.findall(r"\[\[(?:.* )?([^ |]+)(?:\|(?:.* )?([^ ]+))?\]\]\s*('{3}.+?'{3})", tmp_first_sentence, flags = re.I):
-                            for i_group in [0,1]:
-                                if link_lang_alias[i_group] and link_lang_alias[i_group] in self.langmap:
-                                    fs_aliases_lang_links.append("{{{{Vjazyce|{}}}}} {}".format(self.langmap[link_lang_alias[i_group]], link_lang_alias[2]))
-                                    tmp_first_sentence = tmp_first_sentence.replace(link_lang_alias[2], '')
-                                    break
-                        fs_aliases = re.findall(r"((?:{{(?:Cj|Cizojazyčně|Vjazyce2?)[^}]+}}\s+)?(?<!\]\]\s)'{3}.+?'{3})", tmp_first_sentence, flags = re.I)
-                        fs_aliases += fs_aliases_lang_links
-                        if fs_aliases:
-                            for fs_alias in fs_aliases:
-                                self.get_aliases(self.del_redundant_text(fs_alias).strip("'"))
-                        # extrakce z 1. věty: Česká republika (Czech Republic) je ...
-                        fs_aliases = re.findall(re.escape(self.title) + r"\s+\((.+?)\)", rexp.group(0))
-                        if fs_aliases:
-                            for fs_alias in fs_aliases:
-                                self.get_aliases(self.del_redundant_text(fs_alias))
-                        fs_aliases = re.search(r"(?:\s+někdy)?\s+(?:označovan[áéý]|označován[ao]?|nazývan[áéý]|nazýván[ao]?)(?:\s+(?:(?:(?:i|také)\s+)?jako)|i|také)?\s+(''.+?''|{{.+?}})(.+)", rexp.group(0))
-                        if fs_aliases:
-                            self.get_aliases(self.del_redundant_text(fs_aliases.group(1)).strip("'"))
-                            fs_next_aliases = re.finditer(r"(?:,|\s+nebo)(?:\s+(?:(?:(?:i|také)\s+)?jako)|i|také)?\s+(''.+?''|{{.+?}})", fs_aliases.group(2))
-                            for fs_next_alias in fs_next_aliases:
-                                self.get_aliases(self.del_redundant_text(fs_next_alias.group(1).strip("'")))
+    def line_process_1st_sentence(self, ln):
+        # první věta
+        abbrs = "".join((r"(?<!\s(?:tzv|at[dp]))", r"(?<!\s(?:apod|(?:ku|na|po)př|příp))", r"(?<!\s(?:[amt]j|fr))", r"(?<!\d)"))
+        rexp = re.search(r".*?'''.+?'''.*?\s(?:byl[aiy]?|je|jsou|nacház(?:í|ejí)|patř(?:í|il)|stal|rozprostír|lež(?:í|el)).*?" + abbrs + "\.(?![^[]*?\]\])", ln)
+        if rexp:
+            if not self.description:
+                self.get_first_sentence(self.del_redundant_text(rexp.group(0), ", "))
 
-                    continue
+                tmp_first_sentence = rexp.group(0)
+                # TODO: refactorize + give this to other entity types
+                # extrakce alternativních pojmenování z první věty
+                fs_aliases_lang_links = []
+                for link_lang_alias in re.findall(r"\[\[(?:.* )?([^ |]+)(?:\|(?:.* )?([^ ]+))?\]\]\s*('{3}.+?'{3})", tmp_first_sentence, flags = re.I):
+                    for i_group in [0,1]:
+                        if link_lang_alias[i_group] and link_lang_alias[i_group] in self.langmap:
+                            fs_aliases_lang_links.append("{{{{Vjazyce|{}}}}} {}".format(self.langmap[link_lang_alias[i_group]], link_lang_alias[2]))
+                            tmp_first_sentence = tmp_first_sentence.replace(link_lang_alias[2], '')
+                            break
+                fs_aliases = re.findall(r"((?:{{(?:Cj|Cizojazyčně|Vjazyce2?)[^}]+}}\s+)?(?<!\]\]\s)'{3}.+?'{3})", tmp_first_sentence, flags = re.I)
+                fs_aliases += fs_aliases_lang_links
+                if fs_aliases:
+                    for fs_alias in fs_aliases:
+                        self.get_aliases(self.del_redundant_text(fs_alias).strip("'"))
+                # extrakce z 1. věty: Česká republika (Czech Republic) je ...
+                fs_aliases = re.findall(re.escape(self.title) + r"\s+\((.+?)\)", rexp.group(0))
+                if fs_aliases:
+                    for fs_alias in fs_aliases:
+                        self.get_aliases(self.del_redundant_text(fs_alias))
+                fs_aliases = re.search(r"(?:\s+někdy)?\s+(?:označovan[áéý]|označován[ao]?|nazývan[áéý]|nazýván[ao]?)(?:\s+(?:(?:(?:i|také)\s+)?jako)|i|také)?\s+(''.+?''|{{.+?}})(.+)", rexp.group(0))
+                if fs_aliases:
+                    self.get_aliases(self.del_redundant_text(fs_aliases.group(1)).strip("'"))
+                    fs_next_aliases = re.finditer(r"(?:,|\s+nebo)(?:\s+(?:(?:(?:i|také)\s+)?jako)|i|také)?\s+(''.+?''|{{.+?}})", fs_aliases.group(2))
+                    for fs_next_alias in fs_next_aliases:
+                        self.get_aliases(self.del_redundant_text(fs_next_alias.group(1).strip("'")))
 
 
     def custom_transform_alias(self, alias):

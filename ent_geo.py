@@ -57,6 +57,8 @@ class EntGeo(EntCore):
 
         self.subtype = ""
 
+        self.re_infobox_kw_img = r"(?:obrázek|mapa)"
+
     def set_entity_subtype(self, subtype):
         """
         Nastavuje podtyp geografické entity získaný z identifikace.
@@ -107,9 +109,10 @@ class EntGeo(EntCore):
 
         return 0, ""
 
-    def get_data(self, content):
+
+    def data_preprocess(self, content):
         """
-        Extrahuje data o geografické entitě z obsahu stránky.
+        Předzpracování dat o geografické entitě.
 
         Parametry:
         content - obsah stránky (str)
@@ -120,89 +123,80 @@ class EntGeo(EntCore):
 #        content = re.sub(r"(?sm)({{\s*Infobox\s*-\s*světové dědictví.*?)(?:|\s*název(?:[\s_]místním[\s_]jazykem)?\s*=(?!=)\s*)?(?:[^\n]*?\[[^\n]*?)(.*?^\s*}})", r"\1\2", content, re.I)
 #        content = re.sub(r"(?sm)({{\s*Infobox\s*-\s*světové dědictví.*?)(?:|\s*jméno\s*=(?!=)\s*)?(?:[^\n]*?\[[^\n]*?)(.*?^\s*}})", r"\1\2", content, re.I)
 
-        try:
-            data = content.splitlines()
-        except AttributeError:
-            pass
-        else:
-            for ln in data:
-                # aliasy
-                rexp = re.search(r"(?:název(?:[\s_]místním[\s_]jazykem)?|jméno)\s*=(?!=)\s*(.*)", ln, re.I)
-                if rexp and rexp.group(1):
-                    self.get_aliases(self.del_redundant_text(rexp.group(1)))
-                    continue
 
-                # obrázek - infobox
-                rexp = re.search(r"(?:obrázek|mapa)\s*=(?!=)\s*(.*)", ln, re.I)
-                if rexp and rexp.group(1):
-                    self.get_image(self.del_redundant_text(rexp.group(1)))
-                    continue
+    def line_process_infobox(self, ln, is_infobox_block):
+        # aliasy
+        rexp = re.search(r"(?:název(?:[\s_]místním[\s_]jazykem)?|jméno)\s*=(?!=)\s*(.*)", ln, re.I)
+        if rexp and rexp.group(1):
+            self.get_aliases(self.del_redundant_text(rexp.group(1)))
+            if is_infobox_block == True:
+                return
 
-                # obrázky - ostatní
-                rexp = re.search(r"\[\[(?:Soubor|File):([^|]+?\.(?:jpe?g|png|gif|bmp|ico|tif|tga|svg))(?:\|.*?)?\]\]", ln, re.I)
-                if rexp and rexp.group(1):
-                    self.get_image(rexp.group(1))
-                    continue
+        # světadíl
+        rexp = re.search(r"světadíl\s*=(?!=)\s*(.*)", ln, re.I)
+        if rexp and rexp.group(1):
+            self.get_continent(self.del_redundant_text(rexp.group(1)))
+            if is_infobox_block == True:
+                return
 
-                # světadíl
-                rexp = re.search(r"světadíl\s*=(?!=)\s*(.*)", ln, re.I)
-                if rexp and rexp.group(1):
-                    self.get_continent(self.del_redundant_text(rexp.group(1)))
-                    continue
+        # zeměpisná šířka
+        rexp = re.search(r"zeměpisná[\s_]šířka\s*=(?!=)\s*(.*)", ln, re.I)
+        if rexp and rexp.group(1):
+            self.get_latitude(self.del_redundant_text(rexp.group(1)))
+            if is_infobox_block == True:
+                return
 
-                # zeměpisná šířka
-                rexp = re.search(r"zeměpisná[\s_]šířka\s*=(?!=)\s*(.*)", ln, re.I)
-                if rexp and rexp.group(1):
-                    self.get_latitude(self.del_redundant_text(rexp.group(1)))
-                    continue
+        # zeměpisná výška
+        rexp = re.search(r"zeměpisná[\s_]délka\s*=(?!=)\s*(.*)", ln, re.I)
+        if rexp and rexp.group(1):
+            self.get_longitude(self.del_redundant_text(rexp.group(1)))
+            if is_infobox_block == True:
+                return
 
-                # zeměpisná výška
-                rexp = re.search(r"zeměpisná[\s_]délka\s*=(?!=)\s*(.*)", ln, re.I)
-                if rexp and rexp.group(1):
-                    self.get_longitude(self.del_redundant_text(rexp.group(1)))
-                    continue
+        if self.subtype in ("continent", "island"):
+            # rozloha
+            rexp = re.search(r"rozloha\s*=(?!=)\s*(.*)", ln, re.I)
+            if rexp and rexp.group(1):
+                self.get_area(self.del_redundant_text(rexp.group(1)))
+                if is_infobox_block == True:
+                    return
 
-                if self.subtype in ("continent", "island"):
-                    # rozloha
-                    rexp = re.search(r"rozloha\s*=(?!=)\s*(.*)", ln, re.I)
-                    if rexp and rexp.group(1):
-                        self.get_area(self.del_redundant_text(rexp.group(1)))
-                        continue
+            # počet obyvatel
+            rexp = re.search(r"počet[\s_]obyvatel\s*=(?!=)\s*(.*)", ln, re.I)
+            if rexp and rexp.group(1):
+                self.get_population(self.del_redundant_text(rexp.group(1)))
+                if is_infobox_block == True:
+                    return
 
-                    # počet obyvatel
-                    rexp = re.search(r"počet[\s_]obyvatel\s*=(?!=)\s*(.*)", ln, re.I)
-                    if rexp and rexp.group(1):
-                        self.get_population(self.del_redundant_text(rexp.group(1)))
-                        continue
+        if self.subtype == "waterfall":
+            rexp = re.search(r"celková[\s_]výška\s*=(?!=)\s*(.*)", ln, re.I)
+            if rexp and rexp.group(1):
+                self.get_total_height(self.del_redundant_text(rexp.group(1)))
+                if is_infobox_block == True:
+                    return
 
-                if self.subtype == "waterfall":
-                    rexp = re.search(r"celková[\s_]výška\s*=(?!=)\s*(.*)", ln, re.I)
-                    if rexp and rexp.group(1):
-                        self.get_total_height(self.del_redundant_text(rexp.group(1)))
-                        continue
 
-                # první věta
-                abbrs = "".join((r"(?<!\s(?:tzv|at[pd]))", r"(?<!\s(?:apod|(?:ku|na|po)př|příp))", r"(?<!\s(?:[amt]j|fr))", r"(?<!\d)", r"(?<!nad m|ev\.\sč)"))
-                rexp = re.search(r".*?'''.+?'''.*?\s(?:byl[aiy]?|je|jsou|nacház(?:í|ejí)|patř(?:í|il)|stal|rozprostír|lež(?:í|el)).*?" + abbrs + "\.(?![^[]*?\]\])", ln)
-                if rexp:
-                    if not self.description:
-                        self.get_first_sentence(self.del_redundant_text(rexp.group(0), ", "))
+    def line_process_1st_sentence(self, ln):
+        abbrs = "".join((r"(?<!\s(?:tzv|at[pd]))", r"(?<!\s(?:apod|(?:ku|na|po)př|příp))", r"(?<!\s(?:[amt]j|fr))", r"(?<!\d)", r"(?<!nad m|ev\.\sč)"))
+        rexp = re.search(r".*?'''.+?'''.*?\s(?:byl[aiy]?|je|jsou|nacház(?:í|ejí)|patř(?:í|il)|stal|rozprostír|lež(?:í|el)).*?" + abbrs + "\.(?![^[]*?\]\])", ln)
+        if rexp:
+            if not self.description:
+                self.get_first_sentence(self.del_redundant_text(rexp.group(0), ", "))
 
-                        tmp_first_sentence = rexp.group(0)
-                        fs_aliases_lang_links = []
-                        # extrakce alternativních pojmenování z první věty
-                        for link_lang_alias in re.findall(r"\[\[(?:.* )?([^ |]+)(?:\|(?:.* )?([^ ]+))?\]\]\s*('{3}.+?'{3})", tmp_first_sentence, flags = re.I):
-                            for i_group in [0,1]:
-                                if link_lang_alias[i_group] and link_lang_alias[i_group] in self.langmap:
-                                    fs_aliases_lang_links.append("{{{{Vjazyce|{}}}}} {}".format(self.langmap[link_lang_alias[i_group]], link_lang_alias[2]))
-                                    tmp_first_sentence = tmp_first_sentence.replace(link_lang_alias[2], '')
-                                    break
-                        fs_aliases = re.findall(r"((?:{{(?:Cj|Cizojazyčně|Vjazyce2?)[^}]+}}\s+)?(?<!\]\]\s)'{3}.+?'{3})", tmp_first_sentence, flags = re.I)
-                        fs_aliases += fs_aliases_lang_links
-                        if fs_aliases:
-                            for fs_alias in fs_aliases:
-                                self.get_aliases(self.del_redundant_text(fs_alias).strip("'"))
-                    continue
+                tmp_first_sentence = rexp.group(0)
+                fs_aliases_lang_links = []
+                # extrakce alternativních pojmenování z první věty
+                for link_lang_alias in re.findall(r"\[\[(?:.* )?([^ |]+)(?:\|(?:.* )?([^ ]+))?\]\]\s*('{3}.+?'{3})", tmp_first_sentence, flags = re.I):
+                    for i_group in [0,1]:
+                        if link_lang_alias[i_group] and link_lang_alias[i_group] in self.langmap:
+                            fs_aliases_lang_links.append("{{{{Vjazyce|{}}}}} {}".format(self.langmap[link_lang_alias[i_group]], link_lang_alias[2]))
+                            tmp_first_sentence = tmp_first_sentence.replace(link_lang_alias[2], '')
+                            break
+                fs_aliases = re.findall(r"((?:{{(?:Cj|Cizojazyčně|Vjazyce2?)[^}]+}}\s+)?(?<!\]\]\s)'{3}.+?'{3})", tmp_first_sentence, flags = re.I)
+                fs_aliases += fs_aliases_lang_links
+                if fs_aliases:
+                    for fs_alias in fs_aliases:
+                        self.get_aliases(self.del_redundant_text(fs_alias).strip("'"))
 
 
     def custom_transform_alias(self, alias):
