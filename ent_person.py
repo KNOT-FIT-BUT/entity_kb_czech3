@@ -3,7 +3,9 @@
 
 """
 Projekt: entity_kb_czech3 (https://knot.fit.vutbr.cz/wiki/index.php/Entity_kb_czech3)
-Autor: Michal Planička (xplani02)
+Autoři:
+    Michal Planička (xplani02)
+    Tomáš Volf (ivolf)
 
 Popis souboru:
 Soubor obsahuje třídu 'EntPerson', která uchovává údaje o lidech.
@@ -510,27 +512,28 @@ class EntPerson(EntCore):
         else:
             self.death_place = place
 
-    def write_to_file(self):
+    def serialize(self):
         """
-        Zapisuje údaje o osobě do znalostní báze.
+        Serializuje údaje o osobě.
         """
-        with open("kb_cs", "a", encoding="utf-8") as fl:
-            fl.write(self.eid + "\t")
-            fl.write(self.prefix + "\t")
-            fl.write(self.title + "\t")
-            fl.write((self.serialize_aliases() if self.prefix != "person:group" else "") + "\t")
-            fl.write('|'.join(self.redirects) + "\t")
-            fl.write(self.description + "\t")
-            fl.write(self.original_title + "\t")
-            fl.write(self.images + "\t")
-            fl.write(self.link + "\t")
-            fl.write(self.gender + "\t")
-            fl.write(self.birth_date + "\t")
-            fl.write(self.birth_place + "\t")
-            fl.write(self.death_date + "\t")
-            fl.write(self.death_place + "\t")
-            fl.write(self.jobs + "\t")
-            fl.write(self.nationality + "\n")
+        return "\t".join([
+                   self.eid,
+                   self.prefix,
+                   self.title,
+                   (self.serialize_aliases() if self.prefix != "person:group" else ""),
+                   '|'.join(self.redirects),
+                   self.description,
+                   self.original_title,
+                   self.images,
+                   self.link,
+                   self.gender,
+                   self.birth_date,
+                   self.birth_place,
+                   self.death_date,
+                   self.death_place,
+                   self.jobs,
+                   self.nationality
+               ])
 
     def _convert_date(self, date, is_birth):
         """

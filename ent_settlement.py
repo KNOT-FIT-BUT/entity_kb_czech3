@@ -3,7 +3,9 @@
 
 """
 Projekt: entity_kb_czech3 (https://knot.fit.vutbr.cz/wiki/index.php/Entity_kb_czech3)
-Autor: Michal Planička (xplani02)
+Autoři:
+    Michal Planička (xplani02)
+    Tomáš Volf (ivolf)
 
 Popis souboru:
 Soubor obsahuje třídu 'EntSettlement', která uchovává údaje o sídlech.
@@ -316,20 +318,21 @@ class EntSettlement(EntCore):
 
         self.population = population
 
-    def write_to_file(self):
+    def serialize(self):
         """
-        Zapisuje údaje o sídlu do znalostní báze.
+        Serializuje údaje o sídlu.
         """
-        with open("kb_cs", "a", encoding="utf-8") as fl:
-            fl.write(self.eid + "\t")
-            fl.write(self.prefix + "\t")
-            fl.write(self.title + "\t")
-            fl.write(self.serialize_aliases() + "\t")
-            fl.write('|'.join(self.redirects) + "\t")
-            fl.write(self.description + "\t")
-            fl.write(self.original_title + "\t")
-            fl.write(self.images + "\t")
-            fl.write(self.link + "\t")
-            fl.write(self.country + "\t")
-            fl.write(self.area + "\t")
-            fl.write(self.population + "\n")
+        return "\t".join([
+                   self.eid,
+                   self.prefix,
+                   self.title,
+                   self.serialize_aliases(),
+                   '|'.join(self.redirects),
+                   self.description,
+                   self.original_title,
+                   self.images,
+                   self.link,
+                   self.country,
+                   self.area,
+                   self.population
+               ])

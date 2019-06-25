@@ -3,7 +3,9 @@
 
 """
 Projekt: entity_kb_czech3 (https://knot.fit.vutbr.cz/wiki/index.php/Entity_kb_czech3)
-Autor: Michal Planička (xplani02)
+Autoři:
+    Michal Planička (xplani02)
+    Tomáš Volf (ivolf)
 
 Popis souboru:
 Soubor obsahuje třídu 'EntCore', jež je rodičovskou třídou pro podtřídy entit.
@@ -208,6 +210,8 @@ class EntCore(metaclass=ABCMeta):
                 if part_text:
                     self.line_process_1st_sentence(part_text)
 
+            return self.serialize()
+
 
     def getTagPosition(self, tag, ln, lastPosition = None):
         if lastPosition != None:
@@ -251,6 +255,12 @@ class EntCore(metaclass=ABCMeta):
 
         Parameters:
         * line - line of the content of page (str)
+        """
+        return
+
+    def serialize(self):
+        """
+        Entity data serializing - method designed for override in child method (not designed as abstract!!)
         """
         return
 

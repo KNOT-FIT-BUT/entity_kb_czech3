@@ -19,6 +19,7 @@ usage()
     echo "Usage: start.sh [PARAMETERS]"
     echo ""
     echo -e "  -h, --help   show this help message and exit"
+    echo -e "  -m <int>     number of pool processes to parallelize entities processing"
     echo -e "  -p <path>    set a path of wikipedia dump file for input of KB creation"
     echo -e "               (default: ${DUMP_PATH::${cut_DUMP_PATH}}"
     if test $cut_DUMP_PATH -lt ${#DUMP_PATH}
@@ -53,6 +54,10 @@ while [ "$1" != "" ]; do
         -r)
             CUSTOM_REDIR_PATH=true
             REDIR_PATH=$2
+            shift
+            ;;
+        -m)
+            MULTIPROC_PARAMS="-m ${2}"
             shift
             ;;
         -u)
@@ -124,7 +129,7 @@ then
 fi
 
 # Run CS Wikipedia extractor to create new KB
-python3 wiki_cs_extract.py "${DUMP_PATH}" -r "${REDIR_PATH}" 2>entities_processing.log
+python3 wiki_cs_extract.py "${DUMP_PATH}" -r "${REDIR_PATH}" ${MULTIPROC_PARAMS} 2>entities_processing.log
 
 # Create KB version info file
 echo -n "${VERSION}-`date +%s`" > VERSION
