@@ -106,7 +106,7 @@ class EntPerson(EntCore):
 
         # kontrola první věty článku
         if id_level < 2:
-            if re.search(r".*?'''.*?'''.*?\((?:.{0,10}[*†].*?|.*?[\-–—−].*?)\).*?\s(?:byl[aiy]?|je|jsou|patř(?:í|il)|stal)", content):
+            if re.search(r"'''.*?'''[^\(]*\((?:.{0,10}[*†]|[^\)]*[\-–—−])[^\)]*\).*?\s(?:byl[aiy]?|je|jsou|patř(?:í|il)|stal)", content):
                 id_level += 1
 
         return id_level
