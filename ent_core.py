@@ -3,7 +3,9 @@
 
 """
 Projekt: entity_kb_czech3 (https://knot.fit.vutbr.cz/wiki/index.php/Entity_kb_czech3)
-Autor: Michal Planička (xplani02)
+Autoři:
+    Michal Planička (xplani02)
+    Tomáš Volf (ivolf)
 
 Popis souboru:
 Soubor obsahuje třídu 'EntCore', jež je rodičovskou třídou pro podtřídy entit.
@@ -208,6 +210,8 @@ class EntCore(metaclass=ABCMeta):
                 if part_text:
                     self.line_process_1st_sentence(part_text)
 
+            return self.serialize()
+
 
     def getTagPosition(self, tag, ln, lastPosition = None):
         if lastPosition != None:
@@ -254,6 +258,12 @@ class EntCore(metaclass=ABCMeta):
         """
         return
 
+    def serialize(self):
+        """
+        Entity data serializing - method designed for override in child method (not designed as abstract!!)
+        """
+        return
+
 
     def get_aliases(self, alias, marked_czech = False, nametype = None):
         """
@@ -268,7 +278,7 @@ class EntCore(metaclass=ABCMeta):
             return
 
         re_lang_aliases = re.compile("{{(?:Cj|Cizojazyčně|Vjazyce2)\|(?:\d=)?(\w+)\|(?:\d=)?([^}]+)}}", flags=re.I)
-        re_lang_aliases2 = re.compile("{{Vjazyce\|(\w+)}}\s+(.+)", flags=re.I)
+        re_lang_aliases2 = re.compile("{{Vjazyce\|(\w+)}}\s+([^{]{2}.+)", flags=re.I)
         lang_aliases = re_lang_aliases.findall(alias)
         lang_aliases += re_lang_aliases2.findall(alias)
         alias = re.sub(r"\s+", " ", alias).strip()
