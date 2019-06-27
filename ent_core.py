@@ -201,7 +201,7 @@ class EntCore(metaclass=ABCMeta):
                         if infobox_braces_depth == 0:
                             is_infobox = False
                             part_infobox = ln[:r_braces]
-                            part_text = ln[(r_braces + len(TAG_BRACES_CLOSING)):]
+                            part_text = ln[(r_braces + len(TAG_BRACES_CLOSING)):].strip()
                             break
 
                     if not was_infobox:
