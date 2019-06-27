@@ -132,6 +132,7 @@ class EntCore(metaclass=ABCMeta):
             is_infobox_block = None   # True = Block infobox / False = Inline (or combined) infobox / None = Unknown
             was_infobox = False       # We accept only the 1st one infobox
             maybe_infobox_end = False # Determines, whether an end of infobox could be found
+            is_infobox_unesco = False # Determines infobox "světové dědictví"
             for ln in data:
                 part_text = None
                 part_infobox = ln
@@ -147,8 +148,10 @@ class EntCore(metaclass=ABCMeta):
 
                 if not is_infobox:
                     # If it is not infobox already, explore if it is an infobox
-                    infobox_data = re.search(r"{{Infobox[^\|]+(\|)?.*$", ln, flags = re.I)
+                    infobox_data = re.search(r"{{Infobox([^\|]+)(\|)?.*$", ln, flags = re.I)
                     if infobox_data:
+                        if re.search(r"světové\s+dědictví", infobox_data.group(1), flags = re.I):
+                            is_infobox_unesco = True
                         ln = infobox_data.group(0)
                         # Empty infobox
                         ln_infobox_start = re.search(r"Infobox[^{]*}}\s*([^\s].*(?!}}))?$", ln, flags = re.I)
@@ -164,7 +167,7 @@ class EntCore(metaclass=ABCMeta):
                             infobox_braces_depth = 0
                             is_infobox = True
                             # If pipe char is present, it is inline or combined infobox, otherwise it is block infobox
-                            if infobox_data.group(1):
+                            if infobox_data.group(2):
                                 is_infobox_block = False
                             else:
                                 is_infobox_block = True
@@ -183,28 +186,31 @@ class EntCore(metaclass=ABCMeta):
                                     l_braces = self.getOpeningBracesPosition(ln, l_braces)
                                 else:
                                     infobox_braces_depth -= 1
-                                    r_braces = self.getClosingBracesPosition(ln, r_braces)
+                                    if infobox_braces_depth > 0:
+                                        r_braces = self.getClosingBracesPosition(ln, r_braces)
                             else:
                                 l_braces = self.getOpeningBracesPosition(ln, l_braces)
                                 infobox_braces_depth += 1
                         else:
                             if r_braces >= 0:
                                 infobox_braces_depth -= 1
-                                r_braces = self.getClosingBracesPosition(ln, r_braces)
+                                if infobox_braces_depth > 0:
+                                    r_braces = self.getClosingBracesPosition(ln, r_braces)
                             else:
                                 break
                         if infobox_braces_depth == 0:
                             is_infobox = False
                             part_infobox = ln[:r_braces]
-                            part_text = ln[(r_braces + len(TAG_BRACES_CLOSING) + 1):]
+                            part_text = ln[(r_braces + len(TAG_BRACES_CLOSING)):].strip()
                             break
 
                     if not was_infobox:
-                        # If line belongs to infobox and infobox was already not present, process it
-                        self.line_process_infobox(part_infobox, is_infobox_block)
+                        # If line belongs to infobox and infobox was already not present and is not UNESCO infobox, process it
+                        if not is_infobox_unesco:
+                            self.line_process_infobox(part_infobox, is_infobox_block)
+                            if infobox_braces_depth == 0:
+                                was_infobox = True
                         is_infobox_block = None
-                        if infobox_braces_depth == 0:
-                            was_infobox = True
 
 
                 if part_text:
@@ -278,7 +284,7 @@ class EntCore(metaclass=ABCMeta):
             return
 
         re_lang_aliases = re.compile("{{(?:Cj|Cizojazyčně|Vjazyce2)\|(?:\d=)?(\w+)\|(?:\d=)?([^}]+)}}", flags=re.I)
-        re_lang_aliases2 = re.compile("{{Vjazyce\|(\w+)}}\s+(.+)", flags=re.I)
+        re_lang_aliases2 = re.compile("{{Vjazyce\|(\w+)}}\s+([^{]{2}.+)", flags=re.I)
         lang_aliases = re_lang_aliases.findall(alias)
         lang_aliases += re_lang_aliases2.findall(alias)
         alias = re.sub(r"\s+", " ", alias).strip()
@@ -380,7 +386,7 @@ class EntCore(metaclass=ABCMeta):
 
         alias = re.sub(r"\s*{{flagicon.*?}}\s*", "", alias, flags=re.I)
         alias = re.sub(r"\s*(,,|/,)\s*", ", ", alias)
-        alias = re.sub(r"\s*[,/;]\s*", "|", alias)
+        alias = re.sub(r"\s*(?:[,;]|(?<!<)/)\s*", "|", alias)
         alias = re.sub(r"malé\|", "", alias, flags=re.I)
 #        alias = alias.replace(", ", "|") # Původně bylo jen pro country.. Nedostávají se tam i okresy, kraje apod? (U jmen nelze kvůli titulům za jménem)
 

@@ -302,7 +302,7 @@ class WikiExtract(object):
         print("[{}] processing {}".format(str(datetime.datetime.now().time()), et_full_title), file = sys.stderr, flush = True)
         delimiter = '<'
         text_parts = page_content.split(delimiter)
-        re_tag = r"^[^ />]+(?=[ />])"
+        re_tag = r"^/?[^ />]+(?=[ />])"
         delete_mode = False
         tag_close = None
 
@@ -354,32 +354,60 @@ class WikiExtract(object):
             et_country = EntCountry(et_full_title, "country", et_url, ent_redirects, langmap)
             return et_country.get_data(et_cont)
 
+        min_level = None
+        ent_type = None
+
+        # kontrola pojednávání o sídle
+        id_level, id_subtype = EntSettlement.is_settlement(et_full_title, et_cont)
+        if id_level:
+            ent_type = "settlement"
+            min_level = id_level
+
+        # kontrola pojednávání o vodním toku
+        id_level, tmp_subtype = EntWatercourse.is_watercourse(et_full_title, et_cont)
+        if id_level and (min_level == None or id_level < min_level):
+            ent_type = "watercourse"
+            min_level = id_level
+            id_subtype = tmp_subtype
+
+        # kontrola pojednávání o vodní ploše
+        id_level, tmp_subtype = EntWaterArea.is_water_area(et_full_title, et_cont)
+        if id_level and (min_level == None or id_level < min_level):
+            ent_type = "waterarea"
+            min_level = id_level
+            id_subtype = tmp_subtype
+
+        # kontrola pojednávání o geografické entitě
+        id_level, tmp_subtype = EntGeo.is_geo(et_full_title, et_cont)
+        if id_level and (min_level == None or id_level < min_level):
+            ent_type = "geo"
+            min_level = id_level
+            id_subtype = tmp_subtype
+
+
         # stránka pojednává o sídle
-        id_level, id_type = EntSettlement.is_settlement(et_full_title, et_cont)
-        if id_level:
+        if ent_type == "settlement":
             et_url = self._get_url(et_full_title)
-            et_settlement = EntSettlement(et_full_title, "settlement", et_url, ent_redirects, langmap)
+            et_settlement = EntSettlement(et_full_title, ent_type, et_url, ent_redirects, langmap)
             return et_settlement.get_data(et_cont)
+
         # stránka pojednává o vodním toku
-        id_level, id_type = EntWatercourse.is_watercourse(et_full_title, et_cont)
-        if id_level:
+        if ent_type == "watercourse":
             et_url = self._get_url(et_full_title)
-            et_watercourse = EntWatercourse(et_full_title, "watercourse", et_url, ent_redirects, langmap)
+            et_watercourse = EntWatercourse(et_full_title, ent_type, et_url, ent_redirects, langmap)
             return et_watercourse.get_data(et_cont)
 
         # stránka pojednává o vodní ploše
-        id_level, id_type = EntWaterArea.is_water_area(et_full_title, et_cont)
-        if id_level:
+        if ent_type == "waterarea":
             et_url = self._get_url(et_full_title)
-            et_water_area = EntWaterArea(et_full_title, "waterarea", et_url, ent_redirects, langmap)
+            et_water_area = EntWaterArea(et_full_title, ent_type, et_url, ent_redirects, langmap)
             return et_water_area.get_data(et_cont)
 
         # stránka pojednává o geografické entitě
-        id_level, id_type = EntGeo.is_geo(et_full_title, et_cont)
-        if id_level:
+        if ent_type == "geo":
             et_url = self._get_url(et_full_title)
-            et_geo = EntGeo(et_full_title, "geo", et_url, ent_redirects, langmap)
-            et_geo.set_entity_subtype(id_type)
+            et_geo = EntGeo(et_full_title, ent_type, et_url, ent_redirects, langmap)
+            et_geo.set_entity_subtype(id_subtype)
             return et_geo.get_data(et_cont)
 
 

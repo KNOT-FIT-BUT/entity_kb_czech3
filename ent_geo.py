@@ -9,9 +9,12 @@ Autoři:
 
 Popis souboru:
 Soubor obsahuje třídu 'EntGeo', která uchovává údaje o geografických entitách.
+
+TODO: odstavec "Název"
 """
 
 import re
+import sys
 from ent_core import EntCore
 
 
@@ -180,7 +183,7 @@ class EntGeo(EntCore):
 
     def line_process_1st_sentence(self, ln):
         abbrs = "".join((r"(?<!\s(?:tzv|at[pd]))", r"(?<!\s(?:apod|(?:ku|na|po)př|příp))", r"(?<!\s(?:[amt]j|fr))", r"(?<!\d)", r"(?<!nad m|ev\.\sč)"))
-        rexp = re.search(r".*?'''.+?'''.*?\s(?:byl[aiy]?|je|jsou|nacház(?:í|ejí)|patř(?:í|il)|stal|rozprostír|lež(?:í|el)).*?" + abbrs + "\.(?![^[]*?\]\])", ln)
+        rexp = re.search(r".*?'''.+?'''.*?\s(?:byl[aiy]?|je|jsou|nacház(?:í|ejí)|patř(?:í|il)|stal|rozprostír|lež(?:í|el)).*?(?:" + abbrs + "\.(?!(?:[^[]*?\]\]|\s*[a-z]))|\.$)", ln)
         if rexp:
             if not self.description:
                 self.get_first_sentence(self.del_redundant_text(rexp.group(0), ", "))
