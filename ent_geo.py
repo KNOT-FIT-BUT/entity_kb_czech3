@@ -182,8 +182,8 @@ class EntGeo(EntCore):
 
 
     def line_process_1st_sentence(self, ln):
-        abbrs = "".join((r"(?<!\s(?:tzv|at[pd]))", r"(?<!\s(?:apod|(?:ku|na|po)př|příp))", r"(?<!\s(?:[amt]j|fr))", r"(?<!\d)", r"(?<!nad m|ev\.\sč)", r"(?<!\sm)", r"(?<!\s\m\sn)", r"(?<!\sm\.\sn)", r"(?<!\sm\sn\.\sm)", r"(?<!\sm\.\sn\.\sm)"))
-        rexp = re.search(r".*?'''.+?'''.*?\s(?:byl[aiy]?|je|jsou|nacház(?:í|ejí)|patř(?:í|il)|stal|rozprostír|lež(?:í|el)).*?(?:" + abbrs + "\.(?![^[]*?\]\])|\.$)", ln)
+        abbrs = "".join((r"(?<!\s(?:tzv|at[pd]))", r"(?<!\s(?:apod|(?:ku|na|po)př|příp))", r"(?<!\s(?:[amt]j|fr))", r"(?<!\d)", r"(?<!nad m|ev\.\sč)"))
+        rexp = re.search(r".*?'''.+?'''.*?\s(?:byl[aiy]?|je|jsou|nacház(?:í|ejí)|patř(?:í|il)|stal|rozprostír|lež(?:í|el)).*?(?:" + abbrs + "\.(?!(?:[^[]*?\]\]|\s*[a-z]))|\.$)", ln)
         if rexp:
             if not self.description:
                 self.get_first_sentence(self.del_redundant_text(rexp.group(0), ", "))
