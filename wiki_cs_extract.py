@@ -302,7 +302,7 @@ class WikiExtract(object):
         print("[{}] processing {}".format(str(datetime.datetime.now().time()), et_full_title), file = sys.stderr, flush = True)
         delimiter = '<'
         text_parts = page_content.split(delimiter)
-        re_tag = r"^[^ />]+(?=[ />])"
+        re_tag = r"^/?[^ />]+(?=[ />])"
         delete_mode = False
         tag_close = None
 

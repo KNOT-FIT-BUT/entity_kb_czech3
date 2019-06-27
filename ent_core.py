@@ -386,7 +386,7 @@ class EntCore(metaclass=ABCMeta):
 
         alias = re.sub(r"\s*{{flagicon.*?}}\s*", "", alias, flags=re.I)
         alias = re.sub(r"\s*(,,|/,)\s*", ", ", alias)
-        alias = re.sub(r"\s*[,/;]\s*", "|", alias)
+        alias = re.sub(r"\s*(?:[,;]|(?<!<)/)\s*", "|", alias)
         alias = re.sub(r"malé\|", "", alias, flags=re.I)
 #        alias = alias.replace(", ", "|") # Původně bylo jen pro country.. Nedostávají se tam i okresy, kraje apod? (U jmen nelze kvůli titulům za jménem)
 
