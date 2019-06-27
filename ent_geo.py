@@ -3,13 +3,18 @@
 
 """
 Projekt: entity_kb_czech3 (https://knot.fit.vutbr.cz/wiki/index.php/Entity_kb_czech3)
-Autor: Michal Planička (xplani02)
+Autoři:
+    Michal Planička (xplani02)
+    Tomáš Volf (ivolf)
 
 Popis souboru:
 Soubor obsahuje třídu 'EntGeo', která uchovává údaje o geografických entitách.
+
+TODO: odstavec "Název"
 """
 
 import re
+import sys
 from ent_core import EntCore
 
 
@@ -177,8 +182,8 @@ class EntGeo(EntCore):
 
 
     def line_process_1st_sentence(self, ln):
-        abbrs = "".join((r"(?<!\s(?:tzv|at[pd]))", r"(?<!\s(?:apod|(?:ku|na|po)př|příp))", r"(?<!\s(?:[amt]j|fr))", r"(?<!\d)", r"(?<!nad m|ev\.\sč)"))
-        rexp = re.search(r".*?'''.+?'''.*?\s(?:byl[aiy]?|je|jsou|nacház(?:í|ejí)|patř(?:í|il)|stal|rozprostír|lež(?:í|el)).*?" + abbrs + "\.(?![^[]*?\]\])", ln)
+        abbrs = "".join((r"(?<!\s(?:tzv|at[pd]))", r"(?<!\s(?:apod|(?:ku|na|po)př|příp))", r"(?<!\s(?:[amt]j|fr))", r"(?<!\d)", r"(?<!nad m|ev\.\sč)", r"(?<!\sm)", r"(?<!\s\m\sn)", r"(?<!\sm\.\sn)", r"(?<!\sm\sn\.\sm)", r"(?<!\sm\.\sn\.\sm)"))
+        rexp = re.search(r".*?'''.+?'''.*?\s(?:byl[aiy]?|je|jsou|nacház(?:í|ejí)|patř(?:í|il)|stal|rozprostír|lež(?:í|el)).*?(?:" + abbrs + "\.(?![^[]*?\]\])|\.$)", ln)
         if rexp:
             if not self.description:
                 self.get_first_sentence(self.del_redundant_text(rexp.group(0), ", "))
@@ -356,31 +361,42 @@ class EntGeo(EntCore):
 
         self.total_height = height
 
-    def write_to_file(self):
+    def serialize(self):
         """
-        Zapisuje údaje o geografické entitě do znalostní báze.
+        Serializuje údaje o geografické entitě.
         """
-        with open("kb_cs", "a", encoding="utf-8") as fl:
-            fl.write(self.eid + "\t")
-            fl.write(self.prefix + "\t")
-            fl.write(self.title + "\t")
-            fl.write(self.serialize_aliases() + "\t")
-            fl.write('|'.join(self.redirects) + "\t")
-            fl.write(self.description + "\t")
-            fl.write(self.original_title + "\t")
-            fl.write(self.images + "\t")
-            fl.write(self.link + ("\t" if self.subtype != "peninsula" else "\n"))
+        cols = [
+            self.eid,
+            self.prefix,
+            self.title,
+            self.serialize_aliases(),
+            '|'.join(self.redirects),
+            self.description,
+            self.original_title,
+            self.images,
+            self.link
+        ]
 
-            if self.subtype in ("relief", "waterfall", "island"):
-                fl.write(self.continent + "\t")
+        if self.subtype in ("relief", "waterfall", "island"):
+            cols.extend([
+                self.continent
+            ])
 
-            if self.subtype != "peninsula":
-                fl.write(self.latitude + "\t")
-                fl.write(self.longitude + ("\t" if self.subtype != "relief" else "\n"))
+        if self.subtype != "peninsula":
+            cols.extend([
+                self.latitude,
+                self.longitude
+            ])
 
-            if self.subtype == "waterfall":
-                fl.write(self.total_height + "\n")
+        if self.subtype == "waterfall":
+            cols.extend([
+                self.total_height
+            ])
 
-            if self.subtype in ("island", "continent"):
-                fl.write(self.area + "\t")
-                fl.write(self.population + "\n")
+        if self.subtype in ("island", "continent"):
+            cols.extend([
+                self.area,
+                self.population
+            ])
+
+        return "\t".join(cols)
