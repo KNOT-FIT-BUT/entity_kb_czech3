@@ -3,7 +3,9 @@
 
 """
 Projekt: entity_kb_czech3 (https://knot.fit.vutbr.cz/wiki/index.php/Entity_kb_czech3)
-Autor: Michal Planička (xplani02)
+Autoři:
+    Michal Planička (xplani02)
+    Tomáš Volf (ivolf)
 
 Popis souboru:
 Soubor obsahuje třídu 'WikiExtract', jež uchovává metody pro parsování argumentů příkazové řádky, parsování XML dumpu Wikipedie, vytvoření znalostní báze a hlavičkového souboru a správu entit a jejich údajů.
@@ -24,6 +26,8 @@ from ent_watercourse import *
 from ent_waterarea import *
 from ent_geo import *
 from os import remove
+from multiprocessing import Pool
+from itertools import repeat
 import argparse
 
 
@@ -166,10 +170,13 @@ class WikiExtract(object):
         """
         console_args_parser = argparse.ArgumentParser()
         console_args_parser.add_argument("src_file", nargs="?", default="/mnt/minerva1/nlp/corpora_datasets/monolingual/czech/wikipedia/cswiki-latest-pages-articles.xml", type=str, help="zdrojový soubor")
+        console_args_parser.add_argument("-m", default=2, type=int, help="počet procesů pro multiprocessing.Pool() na zpracovávání entit")
         # console_args_parser.add_argument("-d", "--dir", nargs="?", default="/mnt/minerva1/nlp/projects/entity_kb_czech/data/cs/", type=str, help="složka, ve které se nachází soubory s entitami")
         requiredNamed = console_args_parser.add_argument_group('required named arguments')
         requiredNamed.add_argument("-r", "--redirects", action="store", default="/mnt/minerva1/nlp/corpora_datasets/monolingual/czech/wikipedia/redirects_from_cswiki-latest-pages-articles.xml", type=str, help="soubor přesměrování", required=True)
         self.console_args = console_args_parser.parse_args()
+        if self.console_args.m < 1:
+            self.console_args.m = 1
 
     def parse_xml_dump(self):
         """
@@ -243,124 +250,165 @@ class WikiExtract(object):
                             with open(WIKI_LANG_FILE, 'w', encoding = 'utf8') as f:
                                 json.dump(langmap, f, ensure_ascii = False)
 
-        for event, elem in context:
-            if event == "end" and "page" in elem.tag:
-                is_entity = True
-                et_full_title = ""
+        ent_titles = []
+        ent_pages = []
+        with open("kb_cs", "a", encoding="utf-8") as fl:
+            for event, elem in context:
+                if event == "end" and "page" in elem.tag:
+                    is_entity = True
+                    et_full_title = ""
 
-                for child in elem:
-                    # na základě názvu stránky rozhodne, zda se jedná o entitu, či nikoliv
-                    if "title" in child.tag:
-                        is_entity = self._is_entity(child.text)
-                        et_full_title = child.text
+                    for child in elem:
+                        # na základě názvu stránky rozhodne, zda se jedná o entitu, či nikoliv
+                        if "title" in child.tag:
+                            is_entity = self._is_entity(child.text)
+                            et_full_title = child.text
 
-                    # získá obsah stránky
-                    elif "revision" in child.tag:
-                        for grandchild in child:
-                            if "text" in grandchild.tag:
-                                if is_entity and grandchild.text:
-                                    # přeskakuje stránky s přesměrováním a rozcestníkové stránky
-                                    if re.search(r"#(?:redirect|přesměruj)|{{\s*Rozcestník", grandchild.text, flags=re.I):
-                                        print("[{}] skipping {}".format(str(datetime.datetime.now().time()), et_full_title), file = sys.stderr, flush = True)
-                                        continue
+                        # získá obsah stránky
+                        elif "revision" in child.tag:
+                            for grandchild in child:
+                                if "text" in grandchild.tag:
+                                    if is_entity and grandchild.text:
+                                        # přeskakuje stránky s přesměrováním a rozcestníkové stránky
+                                        if re.search(r"#(?:redirect|přesměruj)|{{\s*Rozcestník", grandchild.text, flags=re.I):
+                                            print("[{}] skipping {}".format(str(datetime.datetime.now().time()), et_full_title), file = sys.stderr, flush = True)
+                                            continue
 
-                                    print("[{}] processing {}".format(str(datetime.datetime.now().time()), et_full_title), file = sys.stderr, flush = True)
+                                        ent_titles.append(et_full_title)
+                                        ent_pages.append(grandchild.text)
+                                        """
+                                        pools[cur_pool] = pool.apply_async(self.process_entity, (et_full_title, grandchild.text, redirects, langmap))
+                                        cur_pool = (cur_pool + 1) % max_pool
+                                        if pools[cur_pool] == None:
+                                            continue
 
-                                    # odstraňuje citace, reference a HTML poznámky
-                                    delimiter = '<'
-                                    text_parts = grandchild.text.split(delimiter)
-                                    re_tag = r"^[^ />]+(?=[ />])"
-                                    delete_mode = False
-                                    tag_close = None
-                                    for i_part, text_part in enumerate(text_parts[1:], 1): # skipping first one which is not begin of tag
-                                        if delete_mode and tag_close:
-                                            if text_part.startswith(tag_close):
-                                                text_parts[i_part] = text_part[len(tag_close):]
-                                                delete_mode = False
-                                            else:
-                                                text_parts[i_part] = ""
-                                        else:
-                                            matched_tag = re.search(re_tag, text_part)
-                                            if matched_tag:
-                                                matched_tag = matched_tag.group(0)
-                                                if matched_tag in ['nowiki', 'ref', 'refereces']:
-                                                    tag_close = '/' + matched_tag + '>'
-                                                    text_len = len(text_part)
-                                                    text_part = re.sub(r"^.*?/>", "", text_part, 1)
-                                                    if text_len == len(text_part):
-                                                         delete_mode = True
-                                                    text_parts[i_part] = "" if delete_mode else text_part
-                                                else:
-                                                    tag_close = None
-                                                    text_parts[i_part] = delimiter + text_part
-                                    et_cont = "".join(text_parts)
+                                        serialized_entity = pools[cur_pool].get()
+                                        if serialized_entity:
+                                            fl.write(serialized_entity + "\n")
+                                        """
+                    root.clear()
 
-                                    et_cont = re.sub(r"{{citace[^}]+?}}", "", et_cont, flags=re.I | re.S)
-                                    et_cont = re.sub(r"{{cite[^}]+?}}", "", et_cont, flags=re.I)
-                                    et_cont = re.sub(r"{{#tag:ref\s*\|(?:[^\|\[{]|\[\[[^\]]+\]\]|(?<!\[)\[[^\[\]]+\]|{{[^}]+}})*(\|[^}]+)?}}", "", et_cont, flags=re.I | re.S)
-                                    et_cont = re.sub(r"<!--.+?-->", "", et_cont, flags=re.DOTALL)
+            if len(ent_titles) > 0:
+                pool = Pool(processes=self.console_args.m)
+                serialized_entities = pool.starmap(self.process_entity, zip(ent_titles, ent_pages, repeat(redirects), repeat(langmap)))
+                fl.write("\n".join(filter(None, serialized_entities)))
+                pool.close()
+                pool.join()
 
-                                    link_multilines =  re.findall(r"\[\[(?:Soubor|File)(?:(?:[^\[\]\n{]|{{[^}]+}}|\[\[[^\]]+\]\])*\n)+(?:[^\[\]\n{]|{{[^}]+}}|\[\[[^\]]+\]\])*\]\]", et_cont, flags = re.S)
-                                    for link_multiline in link_multilines:
-                                        fixed_link_multiline = link_multiline.replace("\n", " ")
-                                        et_cont = et_cont.replace(link_multiline, fixed_link_multiline)
-                                    et_cont = re.sub(r"(<br(?:\s*/)?>)\n", r"\1", et_cont, flags = re.S)
-                                    et_cont = re.sub(r"{\|(?!\s+class=(?:\"|')infobox(?:\"|')).*?\|}", "", et_cont, flags=re.S)
-                                    ent_redirects = redirects[et_full_title] if et_full_title in redirects else []
 
-                                    # stránka pojednává o osobě
-                                    if EntPerson.is_person(et_cont) >= 2:
-                                        et_url = self._get_url(et_full_title)
-                                        et_person = EntPerson(et_full_title, "person", et_url, ent_redirects, langmap)
-                                        et_person.get_data(et_cont)
-                                        et_person.write_to_file()
-                                        continue
 
-                                    # stránka pojednává o státu
-                                    if EntCountry.is_country(et_cont):
-                                        et_url = self._get_url(et_full_title)
-                                        et_country = EntCountry(et_full_title, "country", et_url, ent_redirects, langmap)
-                                        et_country.get_data(et_cont)
-                                        et_country.write_to_file()
-                                        continue
+    def process_entity(self, et_full_title, page_content, redirects, langmap):
+        # odstraňuje citace, reference a HTML poznámky
+        print("[{}] processing {}".format(str(datetime.datetime.now().time()), et_full_title), file = sys.stderr, flush = True)
+        delimiter = '<'
+        text_parts = page_content.split(delimiter)
+        re_tag = r"^[^ />]+(?=[ />])"
+        delete_mode = False
+        tag_close = None
 
-                                    # stránka pojednává o sídle
-                                    id_level, id_type = EntSettlement.is_settlement(et_full_title, et_cont)
-                                    if id_level:
-                                        et_url = self._get_url(et_full_title)
-                                        et_settlement = EntSettlement(et_full_title, "settlement", et_url, ent_redirects, langmap)
-                                        et_settlement.get_data(et_cont)
-                                        et_settlement.write_to_file()
-                                        continue
+        for i_part, text_part in enumerate(text_parts[1:], 1): # skipping first one which is not begin of tag
+            if delete_mode and tag_close:
+                if text_part.startswith(tag_close):
+                    text_parts[i_part] = text_part[len(tag_close):]
+                    delete_mode = False
+                else:
+                    text_parts[i_part] = ""
+            else:
+                matched_tag = re.search(re_tag, text_part)
+                if matched_tag:
+                    matched_tag = matched_tag.group(0)
+                    if matched_tag in ['nowiki', 'ref', 'refereces']:
+                        tag_close = '/' + matched_tag + '>'
+                        text_len = len(text_part)
+                        text_part = re.sub(r"^.*?/>", "", text_part, 1)
+                        if text_len == len(text_part):
+                            delete_mode = True
+                        text_parts[i_part] = "" if delete_mode else text_part
+                    else:
+                        tag_close = None
+                        text_parts[i_part] = delimiter + text_part
 
-                                    # stránka pojednává o vodním toku
-                                    id_level, id_type = EntWatercourse.is_watercourse(et_full_title, et_cont)
-                                    if id_level:
-                                        et_url = self._get_url(et_full_title)
-                                        et_watercourse = EntWatercourse(et_full_title, "watercourse", et_url, ent_redirects, langmap)
-                                        et_watercourse.get_data(et_cont)
-                                        et_watercourse.write_to_file()
-                                        continue
+        et_cont = "".join(text_parts)
+        et_cont = re.sub(r"{{citace[^}]+?}}", "", et_cont, flags=re.I | re.S)
+        et_cont = re.sub(r"{{cite[^}]+?}}", "", et_cont, flags=re.I)
+        et_cont = re.sub(r"{{#tag:ref\s*\|(?:[^\|\[{]|\[\[[^\]]+\]\]|(?<!\[)\[[^\[\]]+\]|{{[^}]+}})*(\|[^}]+)?}}", "", et_cont, flags=re.I | re.S)
+        et_cont = re.sub(r"<!--.+?-->", "", et_cont, flags=re.DOTALL)
 
-                                    # stránka pojednává o vodní ploše
-                                    id_level, id_type = EntWaterArea.is_water_area(et_full_title, et_cont)
-                                    if id_level:
-                                        et_url = self._get_url(et_full_title)
-                                        et_water_area = EntWaterArea(et_full_title, "waterarea", et_url, ent_redirects, langmap)
-                                        et_water_area.get_data(et_cont)
-                                        et_water_area.write_to_file()
-                                        continue
+        link_multilines =  re.findall(r"\[\[(?:Soubor|File)(?:(?:[^\[\]\n{]|{{[^}]+}}|\[\[[^\]]+\]\])*\n)+(?:[^\[\]\n{]|{{[^}]+}}|\[\[[^\]]+\]\])*\]\]", et_cont, flags = re.S)
+        for link_multiline in link_multilines:
+            fixed_link_multiline = link_multiline.replace("\n", " ")
+            et_cont = et_cont.replace(link_multiline, fixed_link_multiline)
+        et_cont = re.sub(r"(<br(?:\s*/)?>)\n", r"\1", et_cont, flags = re.S)
+        et_cont = re.sub(r"{\|(?!\s+class=(?:\"|')infobox(?:\"|')).*?\|}", "", et_cont, flags=re.S)
+        ent_redirects = redirects[et_full_title] if et_full_title in redirects else []
 
-                                    # stránka pojednává o geografické entitě
-                                    id_level, id_type = EntGeo.is_geo(et_full_title, et_cont)
-                                    if id_level:
-                                        et_url = self._get_url(et_full_title)
-                                        et_geo = EntGeo(et_full_title, "geo", et_url, ent_redirects, langmap)
-                                        et_geo.set_entity_subtype(id_type)
-                                        et_geo.get_data(et_cont)
-                                        et_geo.write_to_file()
-                                        continue
-                root.clear()
+        # stránka pojednává o osobě
+        if EntPerson.is_person(et_cont) >= 2:
+            et_url = self._get_url(et_full_title)
+            et_person = EntPerson(et_full_title, "person", et_url, ent_redirects, langmap)
+            return et_person.get_data(et_cont)
+
+        # stránka pojednává o státu
+        if EntCountry.is_country(et_cont):
+            et_url = self._get_url(et_full_title)
+            et_country = EntCountry(et_full_title, "country", et_url, ent_redirects, langmap)
+            return et_country.get_data(et_cont)
+
+        min_level = None
+        ent_type = None
+
+        # kontrola pojednávání o sídle
+        id_level, id_subtype = EntSettlement.is_settlement(et_full_title, et_cont)
+        if id_level:
+            ent_type = "settlement"
+            min_level = id_level
+
+        # kontrola pojednávání o vodním toku
+        id_level, tmp_subtype = EntWatercourse.is_watercourse(et_full_title, et_cont)
+        if id_level and (min_level == None or id_level < min_level):
+            ent_type = "watercourse"
+            min_level = id_level
+            id_subtype = tmp_subtype
+
+        # kontrola pojednávání o vodní ploše
+        id_level, tmp_subtype = EntWaterArea.is_water_area(et_full_title, et_cont)
+        if id_level and (min_level == None or id_level < min_level):
+            ent_type = "waterarea"
+            min_level = id_level
+            id_subtype = tmp_subtype
+
+        # kontrola pojednávání o geografické entitě
+        id_level, tmp_subtype = EntGeo.is_geo(et_full_title, et_cont)
+        if id_level and (min_level == None or id_level < min_level):
+            ent_type = "geo"
+            min_level = id_level
+            id_subtype = tmp_subtype
+
+
+        # stránka pojednává o sídle
+        if ent_type == "settlement":
+            et_url = self._get_url(et_full_title)
+            et_settlement = EntSettlement(et_full_title, ent_type, et_url, ent_redirects, langmap)
+            return et_settlement.get_data(et_cont)
+
+        # stránka pojednává o vodním toku
+        if ent_type == "watercourse":
+            et_url = self._get_url(et_full_title)
+            et_watercourse = EntWatercourse(et_full_title, ent_type, et_url, ent_redirects, langmap)
+            return et_watercourse.get_data(et_cont)
+
+        # stránka pojednává o vodní ploše
+        if ent_type == "waterarea":
+            et_url = self._get_url(et_full_title)
+            et_water_area = EntWaterArea(et_full_title, ent_type, et_url, ent_redirects, langmap)
+            return et_water_area.get_data(et_cont)
+
+        # stránka pojednává o geografické entitě
+        if ent_type == "geo":
+            et_url = self._get_url(et_full_title)
+            et_geo = EntGeo(et_full_title, ent_type, et_url, ent_redirects, langmap)
+            et_geo.set_entity_subtype(id_subtype)
+            return et_geo.get_data(et_cont)
 
 
 # hlavní část programu
