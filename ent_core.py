@@ -183,20 +183,22 @@ class EntCore(metaclass=ABCMeta):
                                     l_braces = self.getOpeningBracesPosition(ln, l_braces)
                                 else:
                                     infobox_braces_depth -= 1
-                                    r_braces = self.getClosingBracesPosition(ln, r_braces)
+                                    if infobox_braces_depth > 0:
+                                        r_braces = self.getClosingBracesPosition(ln, r_braces)
                             else:
                                 l_braces = self.getOpeningBracesPosition(ln, l_braces)
                                 infobox_braces_depth += 1
                         else:
                             if r_braces >= 0:
                                 infobox_braces_depth -= 1
-                                r_braces = self.getClosingBracesPosition(ln, r_braces)
+                                if infobox_braces_depth > 0:
+                                    r_braces = self.getClosingBracesPosition(ln, r_braces)
                             else:
                                 break
                         if infobox_braces_depth == 0:
                             is_infobox = False
                             part_infobox = ln[:r_braces]
-                            part_text = ln[(r_braces + len(TAG_BRACES_CLOSING) + 1):]
+                            part_text = ln[(r_braces + len(TAG_BRACES_CLOSING)):]
                             break
 
                     if not was_infobox:
