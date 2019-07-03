@@ -48,6 +48,7 @@ class EntCore(metaclass=ABCMeta):
     KEY_NAMETYPE = 'ntype'
     LANG_CZECH = "cs"
     LANG_UNKNOWN = "???"
+    NTYPE_QUOTED = "quoted"
 
     @abstractmethod
     def __init__(self, title, prefix, link, redirects, langmap):
@@ -320,18 +321,19 @@ class EntCore(metaclass=ABCMeta):
         alias = re.sub(r"{{[^}]+?}}", "", alias) # vyhození ostatních šablon (nové šablony by dělaly nepořádek)
         alias = re.sub(r"[()\[\]{}]", "", alias)
         alias = re.sub(r"<.*?>", "", alias)
+        alias = re.sub(r"[„“”]", "\"", alias) # quotation unification
 
         for a in alias.split("|"):
             a = a.strip()
             if re.search(r"[^\W_]", a):
                 if marked_czech:
-                    self.scrape_nicks_inside_and_store(a, nametype, self.LANG_CZECH)
+                    self.scrape_quoted_inside_and_store(a, nametype, self.LANG_CZECH)
                     self.n_marked_czech += 1
 
                 else:
                     if self.first_alias == None and nametype == None:
                         self.first_alias = a
-                    self.scrape_nicks_inside_and_store(a, nametype)
+                    self.scrape_quoted_inside_and_store(a, nametype)
 
         for lng, a in lang_aliases:
             a = a.strip()
@@ -339,24 +341,26 @@ class EntCore(metaclass=ABCMeta):
             if re.search(r"[^\W_]", a):
                 if not len(self.aliases):
                     self.first_alias = a
-                self.scrape_nicks_inside_and_store(a, nametype, lng)
+                self.scrape_quoted_inside_and_store(a, nametype, lng)
 
 
-    def scrape_nicks_inside_and_store(self, alias, nametype, lang = None):
-        self.store_alias(alias, nametype, lang)
+    def scrape_quoted_inside_and_store(self, alias, nametype, lang = None):
+        if not alias.startswith('"') or not alias.endswith('"'):
+            self.store_alias(alias, nametype, lang)
 
-        nicks = []
+        quotedNames = []
         while True:
-            nick=re.search(r"(?P<quote>[\"„“])(.+?)(?P=quote)\s+", alias)
-            if nick:
-                nicks.append(nick.group(2))
-                alias = re.sub(re.escape(nick.group(0)), "", alias)
+            quotedName = re.search(r"(?P<quote>[\"])(.+?)(?P=quote)", alias)
+
+            if quotedName:
+                quotedNames.append(quotedName.group(2))
+                alias = re.sub(re.escape(quotedName.group(0)), "", alias)
             else:
                 break
 
-        if len(nicks):
-            for a in nicks:
-                self.store_alias(a, nametype, lang)
+        if len(quotedNames):
+            for qn in quotedNames:
+                self.store_alias(qn, self.NTYPE_QUOTED, lang)
 
             self.store_alias(alias, nametype, lang)
 
