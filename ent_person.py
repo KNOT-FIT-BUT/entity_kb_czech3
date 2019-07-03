@@ -319,7 +319,7 @@ class EntPerson(EntCore):
                             fs_aliases_lang_links.append("{{{{Vjazyce|{}}}}} {}".format(self.langmap[link_lang_alias[i_group]], link_lang_alias[2]))
                             tmp_first_sentence = tmp_first_sentence.replace(link_lang_alias[2], '')
                             break
-                fs_aliases = re.findall(r"((?:{{(?:Cj|Cizojazyčně|Vjazyce2?)[^}]+}}\s+)?(?<!\]\]\s)'{3}.+?'{3})", tmp_first_sentence, flags = re.I)
+                fs_aliases = re.findall(r"((?:{{(?:Cj|Cizojazyčně|Vjazyce2?)[^}]+}}\s+)?'{3}.+?'{3})", tmp_first_sentence, flags = re.I)
                 fs_aliases += [' '.join(str for tup in re.findall(r"([Ss]v(?:\.|at[áéíý]))\s+'{3}(.+?)'{3}", tmp_first_sentence) for str in tup)]
                 fs_aliases += fs_aliases_lang_links
                 fs_aliases += fs_first_aliases
