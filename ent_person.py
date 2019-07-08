@@ -306,7 +306,8 @@ class EntPerson(EntCore):
                                 for name_variant in name_variants:
                                     fs_first_aliases.append(re.sub("[^ ]+$", name_variant, fs_fa_before_bracket) + " " + fs_fa_after_bracket)
                     else:
-                        fs_first_aliases += re.findall(r"'{3}(.+?)'{3}", tmp_fs_first_aliases.group(2).strip())
+                        if tmp_fs_first_aliases.group(2):
+                            fs_first_aliases += re.findall(r"'{3}(.+?)'{3}", tmp_fs_first_aliases.group(2).strip())
                     tmp_first_sentence = tmp_fs_first_aliases.group(4)
                 else:
                     #  '''Jiří''' '''Jindra''' -> vygenerovat "Jiří Jindra" (negenerovat "Jiří" a "Jindra")
