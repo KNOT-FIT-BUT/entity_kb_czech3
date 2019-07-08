@@ -298,12 +298,15 @@ class EntPerson(EntCore):
                 if tmp_fs_first_aliases:
                     fs_fa_before_bracket = tmp_fs_first_aliases.group(1).strip()
                     fs_fa_after_bracket = tmp_fs_first_aliases.group(3).strip()
-                    fs_first_aliases.append(fs_fa_before_bracket + " " + fs_fa_after_bracket)
-                    if tmp_fs_first_aliases.group(2):
-                        name_variants = re.findall(r"'{3}(.+?)'{3}", tmp_fs_first_aliases.group(2).strip())
-                        if name_variants:
-                            for name_variant in name_variants:
-                                fs_first_aliases.append(re.sub("[^ ]+$", name_variant, fs_fa_before_bracket) + " " + fs_fa_after_bracket)
+                    if fs_fa_after_bracket:
+                        fs_first_aliases.append(fs_fa_before_bracket + " " + fs_fa_after_bracket)
+                        if tmp_fs_first_aliases.group(2):
+                            name_variants = re.findall(r"'{3}(.+?)'{3}", tmp_fs_first_aliases.group(2).strip())
+                            if name_variants:
+                                for name_variant in name_variants:
+                                    fs_first_aliases.append(re.sub("[^ ]+$", name_variant, fs_fa_before_bracket) + " " + fs_fa_after_bracket)
+                    else:
+                        fs_first_aliases += re.findall(r"'{3}(.+?)'{3}", tmp_fs_first_aliases.group(2).strip())
                     tmp_first_sentence = tmp_fs_first_aliases.group(4)
                 else:
                     #  '''Jiří''' '''Jindra''' -> vygenerovat "Jiří Jindra" (negenerovat "Jiří" a "Jindra")
