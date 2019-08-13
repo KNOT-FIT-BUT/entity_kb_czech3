@@ -17,6 +17,7 @@ Infobox anglické město
 """
 
 import re
+import sys
 from ent_core import EntCore
 
 
@@ -214,7 +215,7 @@ class EntSettlement(EntCore):
 
                 # extrakce alternativních pojmenování z první věty
                 fs_aliases_lang_links = []
-                for link_lang_alias in re.findall(r"\[\[(?:.* )?([^ |]+)(?:\|(?:.* )?([^ ]+))?\]\]\s*('{3}.+?'{3})", tmp_first_sentence, flags = re.I):
+                for link_lang_alias in re.findall(r"\[\[(?:[^\[]* )?([^\[\] |]+)(?:\|(?:[^\]]* )?([^\] ]+))?\]\]\s*('{3}.+?'{3})", tmp_first_sentence, flags = re.I):
                     for i_group in [0,1]:
                         if link_lang_alias[i_group] and link_lang_alias[i_group] in self.langmap:
                             fs_aliases_lang_links.append("{{{{Vjazyce|{}}}}} {}".format(self.langmap[link_lang_alias[i_group]], link_lang_alias[2]))
