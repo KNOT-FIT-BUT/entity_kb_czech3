@@ -81,7 +81,7 @@ class EntCore(metaclass=ABCMeta):
         self.re_infobox_kw_img = r"obrázek"
 
     @staticmethod
-    def del_redundant_text(text, multiple_separator = "|"):
+    def del_redundant_text(text, multiple_separator = "|", langmap = dict()):
         """
         Odstraňuje přebytečné části textu, ale pouze ty, které jsou společné pro všechny získávané údaje.
 
@@ -97,6 +97,11 @@ class EntCore(metaclass=ABCMeta):
 #        if clear_name_links:
 #            clean_text = re.sub(r"(|\s*.*?název\s*=\s*(?!=)\s*.*?)\[\[[^\]]+\]\]", r"\1", text).strip() # odkaz v názvu zřejmě vede na jinou entitu (u jmen často odkazem napsán jazyk názvu)
 #        else:
+        link_lang = re.search(r"\[\[(.*?)(?:\|.*?)?\]\]\s*(<br(?: ?/)?>)?", text)
+        if link_lang and link_lang.group(1):
+            txt_lang = link_lang.group(1).lower()
+            if txt_lang in langmap:
+                text = text.replace(link_lang.group(0), "{{{{Vjazyce|{}}}}} ".format(langmap[txt_lang]))
         clean_text = re.sub(r"\[\[[^\]|]+\|([^\]|]+)\]\]", r"\1", text)  # [[Sth (sth)|Sth]] -> Sth
         clean_text = re.sub(r"\[\[([^]]+)\]\]", r"\1", clean_text)  # [[Sth]] -> Sth
         clean_text = re.sub(r"'{2,}(.+?)'{2,}", r"\1", clean_text)  # '''Sth''' -> Sth

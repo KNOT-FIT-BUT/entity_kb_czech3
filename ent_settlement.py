@@ -170,7 +170,7 @@ class EntSettlement(EntCore):
         rexp_format = r"(?:název|(?:originální[\s_]+)?jméno)\s*=(?!=)\s*(.*)"
         rexp = re.search(rexp_format, ln, re.I)
         if rexp and rexp.group(1):
-            self.get_aliases(self.del_redundant_text(rexp.group(1)))
+            self.get_aliases(self.del_redundant_text(rexp.group(1), langmap = self.langmap))
             if is_infobox_block == True:
                 return
 
