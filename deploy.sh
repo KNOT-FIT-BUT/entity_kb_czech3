@@ -14,9 +14,9 @@ usage()
 {
     echo "Usage: deploy.sh [PARAMETERS]"
     echo ""
-    echo -e "  -h, --help   show this help message and exit"
-    echo -e "  -u <login>   upload (deploy) KB to webstorage via given login"
-    echo -e "               (default current user)"
+    echo -e "  -h, --help     show this help message and exit"
+    echo -e "  -u [<login>]   upload (deploy) KB to webstorage via given login"
+    echo -e "                 (default current user)"
     echo ""
 }
 
@@ -65,12 +65,21 @@ if $DEPLOY
 then
     DEPLOY_VERSION=`cat ./outputs/VERSION`
     DEPLOY_CONNECTION="${DEPLOY_USER}@athena3.fit.vutbr.cz"
-    DEPLOY_FOLDER="/mnt/knot/www/NAKI_CPK/NER_CZ_inputs/kb/${DEPLOY_VERSION}"
+    DEPLOY_FOLDER_OLD="/mnt/knot/www/NAKI_CPK/NER_CZ_inputs/kb/${DEPLOY_VERSION}"
+    DEPLOY_FOLDER_GKB="/mnt/knot/www/NAKI_CPK/ml/KB/KB_cs/KB_cs_${DEPLOY_VERSION}"
 
-    echo "Creating new folder: ${DEPLOY_FOLDER}"
-    ssh "${DEPLOY_CONNECTION}" "mkdir -p \"${DEPLOY_FOLDER}\""
-    echo "Upload files to new folder: ${DEPLOY_FOLDER}"
-    scp outputs/* "${DEPLOY_CONNECTION}:${DEPLOY_FOLDER}"
+    echo "Creating new folder: ${DEPLOY_FOLDER_OLD}"
+    ssh "${DEPLOY_CONNECTION}" "mkdir -p \"${DEPLOY_FOLDER_OLD}\""
+    echo "Upload files to new folder: ${DEPLOY_FOLDER_OLD}"
+    scp outputs/VERSION outputs/HEAD-KB outputs/KBstatsMetrics.all "${DEPLOY_CONNECTION}:${DEPLOY_FOLDER_OLD}"
     echo "Change symlink of new to this latest version of KB"
-    ssh "${DEPLOY_CONNECTION}" "cd \"`dirname "${DEPLOY_FOLDER}"`\"; ln -sfT \"${DEPLOY_VERSION}\" new"
+    ssh "${DEPLOY_CONNECTION}" "cd \"`dirname "${DEPLOY_FOLDER_OLD}"`\"; ln -sfT \"${DEPLOY_VERSION}\" new"
+    echo
+    echo "### GENERIC KB ###"
+    echo "Creating new folder: ${DEPLOY_FOLDER_GKB}"
+    ssh "${DEPLOY_CONNECTION}" "mkdir -p \"${DEPLOY_FOLDER_GKB}\""
+    echo "Upload files to new folder: ${DEPLOY_FOLDER_GKB}"
+    scp outputs/VERSION outputs/*.tsv "${DEPLOY_CONNECTION}:${DEPLOY_FOLDER_GKB}"
+    echo "Change symlink of new to this latest version of KB"
+    ssh "${DEPLOY_CONNECTION}" "cd \"`dirname "${DEPLOY_FOLDER_GKB}"`\"; ln -sfT \"KB_cs_${DEPLOY_VERSION}\" new"
 fi

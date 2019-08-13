@@ -26,7 +26,7 @@ usage()
         echo -e "               ${DUMP_PATH:${cut_DUMP_PATH}}"
     fi
     echo -e "  -r <path>    set a path of wikipedia redirects file input"
-    echo -e "  -u <login>   upload (deploy) KB to webstorage via given login"
+    echo -e "  -u [<login>] upload (deploy) KB to webstorage via given login"
     echo -e "               (default current user)"
     echo -e "  --log        log to start.sh.stdout, start.sh.stderr and start.sh.stdmix"
     echo ""
@@ -135,6 +135,10 @@ then
     metrics_params="--log"
 fi
 ./metrics/start.sh ${metrics_params}
+
+
+# Convert Wikipedia KB format to Generic KB format
+python3 kbwiki2gkb.py --indir outputs --outdir outputs -g
 
 
 if $DEPLOY
