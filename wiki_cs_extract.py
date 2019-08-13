@@ -214,40 +214,59 @@ class WikiExtract(object):
 
         if len(langmap) == 0:
             pg_languages = None
-            found_639_1 = False
+            found_639_2 = False
             for event, elem in context:
                 if event == "end" and "page" in elem.tag:
                     for child in elem:
-                        if "title" in child.tag and child.text == 'Seznam kódů ISO 639-1':
-                            found_639_1 = True
-                        if found_639_1 and "revision" in child.tag:
+                        if "title" in child.tag and child.text == 'Seznam kódů ISO 639-2':
+                            found_639_2 = True
+                        if found_639_2 and "revision" in child.tag:
                             for grandchild in child:
                                 if "text" in grandchild.tag:
                                     pg_languages = grandchild.text
                                     break
                             break
-                    if found_639_1:
+                    if found_639_2:
                         break
-            if found_639_1:
+            if found_639_2:
                 tbl_languages = re.search(r"{\|(.*?)\|}", pg_languages, flags = re.S)
                 if tbl_languages:
                     tbl_languages = tbl_languages.group(1)
                     tbl_lang_header = re.search(r"^\s*!([^!]+(?:!![^!]+)+)$", tbl_languages, flags = re.M)
                     if tbl_lang_header:
                         tbl_lang_header = tbl_lang_header.group(1).split("!!")
-                        i_639_1 = tbl_lang_header.index("639-1")
+                        i_639_1 = tbl_lang_header.index("ISO 639-1")
+                        i_639_2 = tbl_lang_header.index("ISO 639-2")
                         i_langname = tbl_lang_header.index("Název jazyka")
 
                         for lang_row in re.findall(r"^\s*\|(.+?(?:\|\|.+?)+)$", tbl_languages, flags = re.M):
+                            i_lang_col = None
                             lang_cols = lang_row.split("||")
-                            langname = lang_cols[i_langname].strip("[]")
-                            for suffix, replacement in LANG_TRANSFORMATIONS.items():
-                                if langname.endswith(suffix):
-                                    langname_normalized = langname[:-len(suffix)] + replacement
-                                    break
-                            langmap[langname] = lang_cols[i_639_1]
-                            langmap[langname_normalized] = lang_cols[i_639_1]
+                            langnames = re.sub(r"\(.*?\)", "", lang_cols[i_langname])
+                            if lang_cols[i_639_1].strip() and lang_cols[i_639_1].strip() != "&nbsp;":
+                                i_lang_col = i_639_1
+                            else:
+                                i_lang_col = i_639_2
 
+                            for langnames2 in langnames.split(','):
+                                for langname in langnames2.split(' a '):
+                                    langname_normalized = None
+                                    langname = re.sub(r"\[\[(.*?)\]\]", r"\1", langname).strip().lower()
+                                    if not langname:
+                                        continue
+                                    for langname in langname.split('|'):
+                                        for suffix, replacement in LANG_TRANSFORMATIONS.items():
+                                            if langname.endswith(suffix):
+                                                langname_normalized = langname[:-len(suffix)] + replacement
+                                                break
+
+                                        lang_abbr = re.sub(r"{{.*?}}", "", lang_cols[i_lang_col]).strip()
+                                        langmap[langname] = lang_abbr
+                                        if langname_normalized:
+                                            langmap[langname_normalized] = lang_abbr
+
+                        if len(langmap):
+                            langmap["krymskotatarština"] = "crh"
                             with open(WIKI_LANG_FILE, 'w', encoding = 'utf8') as f:
                                 json.dump(langmap, f, ensure_ascii = False)
 
