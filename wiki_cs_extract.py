@@ -245,6 +245,7 @@ class WikiExtract(object):
                                 if langname.endswith(suffix):
                                     langname_normalized = langname[:-len(suffix)] + replacement
                                     break
+                            langmap[langname] = lang_cols[i_639_1]
                             langmap[langname_normalized] = lang_cols[i_639_1]
 
                             with open(WIKI_LANG_FILE, 'w', encoding = 'utf8') as f:
