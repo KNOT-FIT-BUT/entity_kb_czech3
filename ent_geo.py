@@ -191,7 +191,7 @@ class EntGeo(EntCore):
                 tmp_first_sentence = rexp.group(0)
                 fs_aliases_lang_links = []
                 # extrakce alternativních pojmenování z první věty
-                for link_lang_alias in re.findall(r"\[\[(?:.* )?([^ |]+)(?:\|(?:.* )?([^ ]+))?\]\]\s*('{3}.+?'{3})", tmp_first_sentence, flags = re.I):
+                for link_lang_alias in re.findall(r"\[\[(?:[^\[]* )?([^\[\] |]+)(?:\|(?:[^\]]* )?([^\] ]+))?\]\]\s*('{3}.+?'{3})", tmp_first_sentence, flags = re.I):
                     for i_group in [0,1]:
                         if link_lang_alias[i_group] and link_lang_alias[i_group] in self.langmap:
                             fs_aliases_lang_links.append("{{{{Vjazyce|{}}}}} {}".format(self.langmap[link_lang_alias[i_group]], link_lang_alias[2]))
