@@ -64,6 +64,9 @@ class EntGeo(EntCore):
 
         self.re_infobox_kw_img = r"(?:obrázek|mapa)"
 
+        self.get_wiki_api_location(title)
+
+
     def set_entity_subtype(self, subtype):
         """
         Nastavuje podtyp geografické entity získaný z identifikace.
@@ -279,43 +282,6 @@ class EntGeo(EntCore):
 
         self.description = fs
 
-    def get_latitude(self, latitude):
-        """
-        Převádí zeměpisnou šířku geografické entity do jednotného formátu.
-
-        Parametry:
-        latitude - zeměpisná šířka geografické entity (str)
-        """
-        latitude = re.sub(r"\(.*?\)", "", latitude)
-        latitude = re.sub(r"\[.*?\]", "", latitude)
-        latitude = re.sub(r"<.*?>", "", latitude)
-        latitude = re.sub(r"{{.*?}}", "", latitude).replace("{", "").replace("}", "")
-        latitude = re.sub(r"(?<=\d)\s(?=\d)", "", latitude).strip()
-        latitude = re.sub(r"(?<=\d)\.(?=\d)", ",", latitude)
-        latitude = re.sub(r"^[^\d-]*(?=\d)", "", latitude)
-        latitude = re.sub(r"^(\d+(?:,\d+)?)[^\d,]+.*$", r"\1", latitude)
-        latitude = "" if not re.search(r"\d", latitude) else latitude
-
-        self.latitude = latitude
-
-    def get_longitude(self, longitude):
-        """
-        Převádí zeměpisnou délku geografické entity do jednotného formátu.
-
-        Parametry:
-        longitude - zeměpisná délka geografické entity (str)
-        """
-        longitude = re.sub(r"\(.*?\)", "", longitude)
-        longitude = re.sub(r"\[.*?\]", "", longitude)
-        longitude = re.sub(r"<.*?>", "", longitude)
-        longitude = re.sub(r"{{.*?}}", "", longitude).replace("{", "").replace("}", "")
-        longitude = re.sub(r"(?<=\d)\s(?=\d)", "", longitude).strip()
-        longitude = re.sub(r"(?<=\d)\.(?=\d)", ",", longitude)
-        longitude = re.sub(r"^[^\d-]*(?=\d)", "", longitude)
-        longitude = re.sub(r"^(\d+(?:,\d+)?)[^\d,]+.*$", r"\1", longitude)
-        longitude = "" if not re.search(r"\d", longitude) else longitude
-
-        self.longitude = longitude
 
     def get_population(self, population):
         """
@@ -382,11 +348,10 @@ class EntGeo(EntCore):
                 self.continent
             ])
 
-        if self.subtype != "peninsula":
-            cols.extend([
-                self.latitude,
-                self.longitude
-            ])
+        cols.extend([
+            self.latitude,
+            self.longitude
+        ])
 
         if self.subtype == "waterfall":
             cols.extend([

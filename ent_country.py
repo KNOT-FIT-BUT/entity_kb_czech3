@@ -47,12 +47,15 @@ class EntCountry(EntCore):
         link - odkaz na Wikipedii (str)
         redirects - přesměrování Wiki stránek (dict)
         """
+
         super(EntCountry, self).__init__(title, prefix, link, redirects, langmap)
 
         self.area = ""
         self.population = ""
 
         self.re_infobox_kw_img = r"(?:vlajka|znak|mapa[\s_]umístění)"
+
+        self.get_wiki_api_location(title)
 
     @staticmethod
     def is_country(content):
@@ -65,6 +68,7 @@ class EntCountry(EntCore):
         Návratové hodnoty:
         1 v případě, že stránka pojednává o státu, jinak 0. (int)
         """
+
         # kontrola kategorií - začátek
         # státy podle kontinentů
         rexp_format = "Státy\s+(?:Afriky|Asie|Austrálie\s+a\s+Oceánie|Evropy|(?:Severní|Jižní)\s+Ameriky)"
@@ -257,6 +261,8 @@ class EntCountry(EntCore):
                    self.original_title,
                    self.images,
                    self.link,
+                   self.latitude,
+                   self.longitude,
                    self.area,
                    self.population
                ])

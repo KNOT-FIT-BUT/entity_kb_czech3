@@ -12,6 +12,7 @@ Soubor obsahuje třídu 'EntCore', jež je rodičovskou třídou pro podtřídy 
 """
 
 import re
+import requests
 import sys
 from abc import ABCMeta, abstractmethod
 from hashlib import md5, sha224
@@ -20,6 +21,13 @@ from libs.DictOfUniqueDict import *
 
 TAG_BRACES_OPENING = '{{'
 TAG_BRACES_CLOSING = '}}'
+
+
+WIKI_API_URL = 'https://cs.wikipedia.org/w/api.php'
+WIKI_API_PARAMS_BASE = {
+    "action": "query",
+    "format": "json",
+}
 
 
 class EntCore(metaclass=ABCMeta):
@@ -79,6 +87,63 @@ class EntCore(metaclass=ABCMeta):
         self.redirects = redirects
         self.langmap = langmap
         self.re_infobox_kw_img = r"obrázek"
+
+
+    def get_wiki_api_location(self, title):
+        wiki_api_params = WIKI_API_PARAMS_BASE.copy()
+        wiki_api_params['prop'] = 'coordinates'
+        wiki_api_params['titles'] = title
+        try:
+          r = requests.get(WIKI_API_URL, params = wiki_api_params)
+          pages = r.json()['query']['pages']
+          first_page = next(iter(pages))
+          if first_page != '-1':
+            self.latitude = pages[first_page]['coordinates'][0]['lat']
+            self.longitude = pages[first_page]['coordinates'][0]['lon']
+        except Exception as e:
+          self.latitude = ''
+          self.longitude = ''
+
+
+    def get_latitude(self, latitude):
+        """
+        Převádí zeměpisnou šířku geografické entity do jednotného formátu.
+
+        Parametry:
+        latitude - zeměpisná šířka geografické entity (str)
+        """
+        latitude = re.sub(r"\(.*?\)", "", latitude)
+        latitude = re.sub(r"\[.*?\]", "", latitude)
+        latitude = re.sub(r"<.*?>", "", latitude)
+        latitude = re.sub(r"{{.*?}}", "", latitude).replace("{", "").replace("}", "")
+        latitude = re.sub(r"(?<=\d)\s(?=\d)", "", latitude).strip()
+        latitude = re.sub(r"(?<=\d)\.(?=\d)", ",", latitude)
+        latitude = re.sub(r"^[^\d-]*(?=\d)", "", latitude)
+        latitude = re.sub(r"^(\d+(?:,\d+)?)[^\d,]+.*$", r"\1", latitude)
+        latitude = "" if not re.search(r"\d", latitude) else latitude
+
+        self.latitude = latitude
+
+
+    def get_longitude(self, longitude):
+        """
+        Převádí zeměpisnou délku geografické entity do jednotného formátu.
+
+        Parametry:
+        longitude - zeměpisná délka geografické entity (str)
+        """
+        longitude = re.sub(r"\(.*?\)", "", longitude)
+        longitude = re.sub(r"\[.*?\]", "", longitude)
+        longitude = re.sub(r"<.*?>", "", longitude)
+        longitude = re.sub(r"{{.*?}}", "", longitude).replace("{", "").replace("}", "")
+        longitude = re.sub(r"(?<=\d)\s(?=\d)", "", longitude).strip()
+        longitude = re.sub(r"(?<=\d)\.(?=\d)", ",", longitude)
+        longitude = re.sub(r"^[^\d-]*(?=\d)", "", longitude)
+        longitude = re.sub(r"^(\d+(?:,\d+)?)[^\d,]+.*$", r"\1", longitude)
+        longitude = "" if not re.search(r"\d", longitude) else longitude
+
+        self.longitude = longitude
+
 
     @staticmethod
     def del_redundant_text(text, multiple_separator = "|", langmap = dict()):
@@ -221,6 +286,12 @@ class EntCore(metaclass=ABCMeta):
 
                 if part_text:
                     self.line_process_1st_sentence(part_text)
+
+            try:
+                self.latitude = str(self.latitude)
+                self.longitude = str(self.longitude)
+            except:
+                pass
 
             return self.serialize()
 

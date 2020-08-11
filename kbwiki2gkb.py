@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+
 """
 # Convert KB format based on data from Wikipedia to General KB format
 #
-# author: Tom� Volf
+# author: Tomáš Volf
 """
 
 import argparse
+import os
 import re
 from collections import OrderedDict
 
@@ -65,7 +67,7 @@ ARTIST_OTHER_URLS = 'ARTIST:OTHER_URLS'
 
 GEO_LAT = 'GEO:LATITUDE'
 GEO_LONG = 'GEO:LONGITUDE'
-GEO_SETTLETYPES = 'GEO:SETTLEMENT_TYPES'
+GEO_TYPES = 'GEO:TYPES'
 GEO_COUNTRY = 'GEO:COUNTRY'
 GEO_POPULATION = 'GEO:POPULATION'
 GEO_ELEVATION = 'GEO:ELEVATION'
@@ -162,7 +164,7 @@ HEAD_GEOGRAPHICAL = OrderedDict([
   # (GenericKB column code , GenericKB column name (eventually with flags and other properties))
   (GEO_LAT, 'LATITUDE'),
   (GEO_LONG, 'LONGITUDE'),
-  (GEO_SETTLETYPES, '{m}SETTLEMENT TYPES'),
+  (GEO_TYPES, '{m}GEOTYPES'),
   (GEO_COUNTRY, 'COUNTRY'),
   (GEO_POPULATION, 'POPULATION'),
   (GEO_ELEVATION, 'ELEVATION'),
@@ -233,7 +235,7 @@ MAP_NEWCOLS_OLDCOLS = {
 
   GEO_LAT: 'LATITUDE',
   GEO_LONG: 'LONGITUDE',
-  # GEO_SETTLETYPES: None,
+  # GEO_TYPES: None,
   GEO_COUNTRY: 'COUNTRY',
   GEO_POPULATION: 'POPULATION',
   # GEO_ELEVATION: None,
@@ -259,19 +261,18 @@ MAP_COLROLE_OLDCOL = {
 
 
 # Transform KB HEAD in WikipediaKB format to GenericKB format
-def transform_head(out_head):
-  with open(out_head, 'w', encoding = 'utf8') as fout:
-    for ent_type, ent_columns in MAP_TYPES_COLUMNS.items():
-      out_columns = []
-      for ent_column in ent_columns.values():
-        out_columns.append(ent_column)
-      if len(out_columns):
-        out_columns[0] = '<{}>{}'.format(ent_type, out_columns[0])
-      fout.write('\t'.join(out_columns) + '\n')
+def transform_head(fout_head):
+  for ent_type, ent_columns in MAP_TYPES_COLUMNS.items():
+    out_columns = []
+    for ent_column in ent_columns.values():
+      out_columns.append(ent_column)
+    if len(out_columns):
+      out_columns[0] = '<{}>{}'.format(ent_type, out_columns[0])
+    fout_head.write('\t'.join(out_columns) + '\n')
 
 
 # Transform KB data in WikipediaKB format to GenericKB format
-def transform_data(in_head, in_kb, out_kb):
+def transform_data(in_head, in_kb, fout_kb):
   in_columns = dict()
   col_type = None
   # list of columns with their positional index for each entity type of WikipediaKB format
@@ -289,46 +290,48 @@ def transform_data(in_head, in_kb, out_kb):
           col_type = in_columns[ent_type][INFILE_KB_HEAD_TYPE]
   # print(in_columns)
   with open(in_kb, 'r', encoding = 'utf8') as fin_kb:
-    with open(out_kb, 'w', encoding = 'utf8') as fout_kb:
-      for line in fin_kb:
-        line = line.strip('\n')
-        # line of data from KB in WikipediaKB format
-        in_data = line.split('\t')
-        # entity type of this line
-        in_type = in_data[col_type].lower()
-        out_basetype = MAP_ENTITIES_BASETYPES[in_type]
-        out_types = MAP_BASETYPES_COMPOSITE_TYPES[out_basetype]
-        out_alltypes = [COLTYPE_GENERIC] + out_types + [COLTYPE_STATS]
-        out_data = []
-        for out_type in out_alltypes:
-          for out_column, trash in MAP_TYPES_COLUMNS[out_type].items():
-	    # Type is consisting of multiple types (except generic types prefixed and suffixed by underscore) in GenericKB format
-            if out_column == __GENERIC_TYPE:
-              out_data.append('+'.join(out_types))
-            # Fictional flag of GenericKB format is based on "person:fictional" entity type of WikipediaKB format
-            elif out_column == __GENERIC_FICTIONAL:
-              if in_type == 'person:fictional':
-                out_data.append('1')
-              # If entity type is person (except group), it is likely to be a non-fictional entity
-              elif in_type.startswith('person') and in_type != 'person:group':
-                out_data.append('0')
-              # ...otherwise we do not know
-              else:
-                out_data.append('')
-            # Special processing for column ROLES of GenericKB format
-            elif out_column == __GENERIC_ROLES:
-              if out_basetype in MAP_COLROLE_OLDCOL:
-                out_data.append(in_data[in_columns[in_type][MAP_COLROLE_OLDCOL[out_basetype]]])
-              else:
-                out_data.append('')
-            # For column code of GenericKB format find data in KB of WikipediaKB format (with help of WikipediaKB HEAD definition and its entity types)
+    for line in fin_kb:
+      line = line.strip('\n')
+      # line of data from KB in WikipediaKB format
+      in_data = line.split('\t')
+      # entity type of this line
+      in_type = in_data[col_type].lower()
+      out_basetype = MAP_ENTITIES_BASETYPES[in_type]
+      out_types = MAP_BASETYPES_COMPOSITE_TYPES[out_basetype]
+      out_alltypes = [COLTYPE_GENERIC] + out_types + [COLTYPE_STATS]
+      out_data = []
+      for out_type in out_alltypes:
+        for out_column, trash in MAP_TYPES_COLUMNS[out_type].items():
+          # Type is consisting of multiple types (except generic types prefixed and suffixed by underscore) in GenericKB format
+          if out_column == __GENERIC_TYPE:
+            out_data.append('+'.join(out_types))
+          # Fictional flag of GenericKB format is based on "person:fictional" entity type of WikipediaKB format
+          elif out_column == __GENERIC_FICTIONAL:
+            if in_type == 'person:fictional':
+              out_data.append('1')
+            # If entity type is person (except group), it is likely to be a non-fictional entity
+            elif in_type.startswith('person') and in_type != 'person:group':
+              out_data.append('0')
+            # ...otherwise we do not know
             else:
-              if out_column in MAP_NEWCOLS_OLDCOLS and in_type in in_columns and MAP_NEWCOLS_OLDCOLS[out_column] in in_columns[in_type]:
-                out_data.append(in_data[in_columns[in_type][MAP_NEWCOLS_OLDCOLS[out_column]]])
-              else:
-                out_data.append('')
-        if in_type in in_columns:
-          fout_kb.write('\t'.join(out_data) + '\n')
+              out_data.append('')
+          # Special processing for column ROLES of GenericKB format
+          elif out_column == __GENERIC_ROLES:
+            if out_basetype in MAP_COLROLE_OLDCOL:
+              out_data.append(in_data[in_columns[in_type][MAP_COLROLE_OLDCOL[out_basetype]]])
+            else:
+              out_data.append('')
+          # Special processing for column GEOTYPES of GenericKB format
+          elif out_column == GEO_TYPES:
+            out_data.append(in_type.split(':')[-1])
+          # For column code of GenericKB format find data in KB of WikipediaKB format (with help of WikipediaKB HEAD definition and its entity types)
+          else:
+            if out_column in MAP_NEWCOLS_OLDCOLS and in_type in in_columns and MAP_NEWCOLS_OLDCOLS[out_column] in in_columns[in_type]:
+              out_data.append(in_data[in_columns[in_type][MAP_NEWCOLS_OLDCOLS[out_column]]])
+            else:
+              out_data.append('')
+      if in_type in in_columns:
+        fout_kb.write('\t'.join(out_data) + '\n')
             
 
 
@@ -337,14 +340,18 @@ parser.add_argument('--indir', default = '.', help = 'Input files (wikipedia for
 parser.add_argument('--outdir', default = '.', help = 'Output files (generic format) directory path (default: %(default)s).')
 parser.add_argument('--inhead', default = INFILE_KB_HEAD, help = 'Input KB head (wikipedia format) file name (default: %(default)s).')
 parser.add_argument('--inkb', default = INFILE_KB_DATA, help = 'Input KB data (wikipedia format) file name (default: %(default)s).')
-parser.add_argument('--outhead', default = OUTFILE_KB_HEAD, help = 'Output KB head (generic format) file name (default: %(default)s).')
-parser.add_argument('--outkb', default = OUTFILE_KB_DATA, help = 'Output KB data (generic format) file name\n(default: %(default)s).')
+parser.add_argument('--outkb', default = OUTFILE_KB_DATA, help = 'Output KB (generic format) file name\n(default: %(default)s).')
 parser.add_argument('--group-is-person', '-g', action='store_true', help = 'Group is formed by people only.')
 args = parser.parse_args()
 
 if args.group_is_person:
   MAP_BASETYPES_COMPOSITE_TYPES[COLTYPE_GROUP] = [COLTYPE_PERSON] + MAP_BASETYPES_COMPOSITE_TYPES[COLTYPE_GROUP]
 
-
-transform_head('{}/{}'.format(args.indir, args.outhead))
-transform_data('{}/{}'.format(args.indir, args.inhead), '{}/{}'.format(args.indir, args.inkb), '{}/{}'.format(args.indir, args.outkb))
+outkb = os.path.join(args.outdir, args.outkb)
+with open(outkb, 'w') as fout_kb:
+  with open(os.path.join(args.indir, 'VERSION'), 'r') as fin_version:
+    fout_kb.write(fin_version.read())
+  fout_kb.write('\n')
+  transform_head(fout_kb)
+  fout_kb.write('\n')
+  transform_data(os.path.join(args.indir, args.inhead), os.path.join(args.indir, args.inkb), fout_kb)

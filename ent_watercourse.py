@@ -58,6 +58,9 @@ class EntWatercourse(EntCore):
 
         self.re_infobox_kw_img = r"(?:obrázek|mapa)"
 
+        self.get_wiki_api_location(title)
+
+
     @staticmethod
     def is_watercourse(title, content):
         """
@@ -103,6 +106,20 @@ class EntWatercourse(EntCore):
         rexp = re.search(r"řeka\s*=(?!=)\s*(.*)", ln, re.I)
         if rexp and rexp.group(1):
             self.get_aliases(self.del_redundant_text(rexp.group(1)))
+            if is_infobox_block == True:
+                return
+
+        # zeměpisná šířka
+        rexp = re.search(r"zeměpisná[\s_]šířka\s*=(?!=)\s*(.*)", ln, re.I)
+        if rexp and rexp.group(1):
+            self.get_latitude(self.del_redundant_text(rexp.group(1)))
+            if is_infobox_block == True:
+                return
+
+        # zeměpisná výška
+        rexp = re.search(r"zeměpisná[\s_]délka\s*=(?!=)\s*(.*)", ln, re.I)
+        if rexp and rexp.group(1):
+            self.get_longitude(self.del_redundant_text(rexp.group(1)))
             if is_infobox_block == True:
                 return
 
@@ -298,6 +315,8 @@ class EntWatercourse(EntCore):
                    self.images,
                    self.link,
                    self.continent,
+                   self.latitude,
+                   self.longitude,
                    self.length,
                    self.area,
                    self.streamflow,

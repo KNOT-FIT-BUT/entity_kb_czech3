@@ -49,6 +49,9 @@ class EntWaterArea(EntCore):
 
         self.re_infobox_kw_img = r"(?:obrázek|mapa)"
 
+        self.get_wiki_api_location(title)
+
+
     @staticmethod
     def is_water_area(title, content):
         """
@@ -105,6 +108,20 @@ class EntWaterArea(EntCore):
         rexp = re.search(r"světadíl\s*=(?!=)\s*(.*)", ln, re.I)
         if rexp and rexp.group(1):
             self.get_continent(self.del_redundant_text(rexp.group(1)))
+            if is_infobox_block == True:
+                return
+
+        # zeměpisná šířka
+        rexp = re.search(r"zeměpisná[\s_]šířka\s*=(?!=)\s*(.*)", ln, re.I)
+        if rexp and rexp.group(1):
+            self.get_latitude(self.del_redundant_text(rexp.group(1)))
+            if is_infobox_block == True:
+                return
+
+        # zeměpisná výška
+        rexp = re.search(r"zeměpisná[\s_]délka\s*=(?!=)\s*(.*)", ln, re.I)
+        if rexp and rexp.group(1):
+            self.get_longitude(self.del_redundant_text(rexp.group(1)))
             if is_infobox_block == True:
                 return
 
@@ -229,5 +246,7 @@ class EntWaterArea(EntCore):
                    self.images,
                    self.link,
                    self.continent,
+                   self.latitude,
+                   self.longitude,
                    self.area
                ])

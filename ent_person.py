@@ -356,7 +356,7 @@ class EntPerson(EntCore):
         """
 
         # u titulů bez teček je třeba kontrolova mezeru, čárku nebo konec (například MA jinak vezme následující příjmení začínající "Ma..." a bude toto jméno považovat za součást předchozího)
-        alias = re.sub(r", (?!(J[rn]\.?|Sr\.?|ml(?:\.|adší)?|[PT]h\.?D\.?|MBA|M\.?A\.?|M\.?S\.?|M\.?Sc\.?|CSc\.|D(?:\.|r\.?)Sc\.|[Dd]r\. ?h\. ?\c.|DiS\.|CC)(\.|,| |$))", "|", alias, flags=re.I)
+        alias = re.sub(r", (?!(J[rn]\.?|Sr\.?|ml(?:\.|adší)?|[PT]h\.?D\.?|MBA|M\.?A\.?|M\.?S\.?|M\.?Sc\.?|CSc\.|D(?:\.|r\.?)Sc\.|[Dd]r\. ?h\. ?c\.|DiS\.|CC)(\.|,| |$))", "|", alias, flags=re.I)
 #        alias = re.sub(r"^(?:prof|doc)\.)?\s*((BcA?\.|Ing\.(\s*arch\.)?|M[SDUV]Dr\.|Mg[Ar]\.|(?:JU|Ph|RN|Pharm|Th|Paed)Dr\.|PhMr\.|ThMgr\.|R[CST]Dr\.|Dr.)(\s+et)?\s*)*", "", alias, flags=re.I) # pro zničení titulů před jménem
         return alias
 

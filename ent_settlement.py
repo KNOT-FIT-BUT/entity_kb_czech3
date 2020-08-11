@@ -59,6 +59,9 @@ class EntSettlement(EntCore):
 
         self.re_infobox_kw_img = r"(?:obrázek|vlajka|znak|logo)"
 
+        self.get_wiki_api_location(title)
+
+
     @classmethod
     def is_settlement(cls, title, content):
         """
@@ -334,6 +337,8 @@ class EntSettlement(EntCore):
                    self.images,
                    self.link,
                    self.country,
+                   self.latitude,
+                   self.longitude,
                    self.area,
                    self.population
                ])
