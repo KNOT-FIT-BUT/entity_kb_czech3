@@ -16,21 +16,25 @@ Poznámky:
 """
 
 import json
+import os
 import sys
+import argparse
 import datetime
+import time
 import xml.etree.cElementTree as CElTree
+
+from multiprocessing import Pool
+from itertools import repeat
+
 from ent_person import *
 from ent_country import *
 from ent_settlement import *
 from ent_watercourse import *
 from ent_waterarea import *
 from ent_geo import *
-from os import remove
-from multiprocessing import Pool
-from itertools import repeat
-import argparse
 
 
+LANG_MAP = {"cz": "cs"}
 WIKI_LANG_FILE = "languages.json"
 LANG_TRANSFORMATIONS = {"aština": "ašsky", "ština": "sky", "čtina": "cky", "atina": "atinsky", "o": "u"}
 
@@ -97,7 +101,7 @@ class WikiExtract(object):
         kb_name - název znalostní báze, která má být odstraněna (str)
         """
         try:
-            remove(kb_name)
+            os.remove(kb_name)
         except OSError:
             pass
 
@@ -164,19 +168,43 @@ class WikiExtract(object):
     #         print("[[ CHYBA ]] Zadaná složka s entitami je neplatná nebo některé soubory v ní neexistují")
     #         exit(1)
 
+
+    def get_dump_fpath(self,  dump_file,  dump_file_mask):
+        if dump_file is None:
+            dump_file = dump_file_mask.format(self.console_args.lang,  self.console_args.dump)
+        elif dump_file[0] == '/':
+            return dump_file
+        elif dump_file[0] == '.' and (dump_file[1] == '/' or dump_file[1:3] == './'):
+            return os.path.join(os.getcwd(),  dump_file)
+
+        return os.path.join(self.console_args.indir,  dump_file)
+
+
     def parse_args(self):
         """
         Parsuje argumenty zadané při spuštění skriptu.
         """
-        console_args_parser = argparse.ArgumentParser()
-        console_args_parser.add_argument("src_file", nargs="?", default="/mnt/minerva1/nlp/corpora_datasets/monolingual/czech/wikipedia/cswiki-latest-pages-articles.xml", type=str, help="zdrojový soubor")
-        console_args_parser.add_argument("-m", default=2, type=int, help="počet procesů pro multiprocessing.Pool() na zpracovávání entit")
-        # console_args_parser.add_argument("-d", "--dir", nargs="?", default="/mnt/minerva1/nlp/projects/entity_kb_czech/data/cs/", type=str, help="složka, ve které se nachází soubory s entitami")
-        requiredNamed = console_args_parser.add_argument_group('required named arguments')
-        requiredNamed.add_argument("-r", "--redirects", action="store", default="/mnt/minerva1/nlp/corpora_datasets/monolingual/czech/wikipedia/redirects_from_cswiki-latest-pages-articles.xml", type=str, help="soubor přesměrování", required=True)
-        self.console_args = console_args_parser.parse_args()
+        parser = argparse.ArgumentParser()
+        parser.add_argument('-I', '--indir', default = '/mnt/minerva1/nlp/corpora_datasets/monolingual/czech/wikipedia/', type = str, help = 'Directory, where input files are located (applied for files withoud directory location only).')
+        parser.add_argument('-l',  '--lang', default = 'cs', type = str, help = 'Language of processing also used for input files, when defined by version (by default) and not by files (default: %(default)s).')
+        parser.add_argument('-d',  '--dump', default = 'latest', type = str, help = 'Dump version to process (in format "yyyymmdd"; default: %(default)s).')
+        parser.add_argument('-m', default = 2, type = int, help = 'Number of processors of multiprocessing.Pool() for entity processing.')
+        parser.add_argument('-g', '--geotags', action = 'store', type = str, help = 'Source file of wiki geo tags (with GPS locations) dump.')
+        parser.add_argument('-p', '--pages', action = 'store', type = str, help = 'Source file of wiki pages dump.')
+        parser.add_argument('-r', '--redirects', action = 'store', type = str, help = 'Source file of wiki redirects dump.')
+        self.console_args = parser.parse_args()
+
         if self.console_args.m < 1:
             self.console_args.m = 1
+
+        self.console_args.lang = self.console_args.lang.lower()
+        if self.console_args.lang in LANG_MAP:
+            self.console_args.lang = LANG_MAP[self.console_args.lang]
+
+        self.pages_dump_fpath = self.get_dump_fpath(self.console_args.pages,  '{}wiki-{}-pages-articles.xml')
+        self.geotags_dump_fpath = self.get_dump_fpath(self.console_args.geotags,  '{}wiki-{}-geo_tags.sql')
+        self.redirects_dump_fpath = self.get_dump_fpath(self.console_args.redirects,  'redirects_from_{}wiki-{}-pages-articles.xml')
+
 
     def parse_xml_dump(self):
         """
@@ -189,7 +217,7 @@ class WikiExtract(object):
         # self._load_entities()
 
         redirects = dict()
-        with open(self.console_args.redirects, 'r') as f:
+        with open(self.redirects_dump_fpath, 'r') as f:
             for line in f:
                 redirect_from, redirect_to = line.strip().split("\t")
                 if not redirect_to in redirects:
@@ -207,7 +235,7 @@ class WikiExtract(object):
             pass # Do nothing - it does not matter, because in this case we generate new one
 
         # parsování XML souboru
-        context = CElTree.iterparse(self.console_args.src_file, events=("start", "end"))
+        context = CElTree.iterparse(self.pages_dump_fpath, events=("start", "end"))
 
         context = iter(context)
         event, root = next(context)
@@ -431,6 +459,24 @@ class WikiExtract(object):
             return et_geo.get_data(et_cont)
 
 
+    def assign_version(self):
+        try:
+            target = os.readlink(self.pages_dump_fpath)
+            matches = re.search(self.console_args.lang + r"wiki-([0-9]{8})-", target)
+            if matches:
+                dump_version = matches[1]
+        except OSError:
+            try:
+                target = os.readlink(self.redirects_dump_fpath)
+                matches = re.search(self.console_args.lang + r"wiki-([0-9]{8})-", target)
+                if matches:
+                    dump_version = matches[1]
+            except OSError:
+                dump_version = self.console_args.dump
+        with open('VERSION', 'w') as f:
+            f.write('{}_{}-{}'.format(self.console_args.lang, dump_version, int(round(time.time())) ))
+
+
 # hlavní část programu
 if __name__ == "__main__":
     wiki_extract = WikiExtract()
@@ -439,3 +485,4 @@ if __name__ == "__main__":
     wiki_extract.create_head_kb()
     wiki_extract.del_knowledge_base("kb_cs")
     wiki_extract.parse_xml_dump()
+    wiki_extract.assign_version()

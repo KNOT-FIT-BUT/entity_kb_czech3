@@ -286,7 +286,7 @@ class EntPerson(EntCore):
         # First sentence
         if not self.description and not re.search(r"^\s*({{Infobox|\|)", ln, flags=re.I):
             abbrs = "".join((r"(?<!\s(?:tzv|at[pd]|roz))", r"(?<!\s(?:apod|(?:ku|na|po)př|příp))", r"(?<!\s[amt]j)", r"(?<!\d)"))
-            rexp = re.search(r".*?'''.+?'''.*?\s(?:byl[aiy]?|je|jsou|patř(?:í|il|ila|ily)|stal).*?" + abbrs + "\.(?![^[]*?\]\])", ln)
+            rexp = re.search(r".*?'''.+?'''.*?\s(?:byl[aiy]?|je|jsou|(?:patř|působ)(?:í|il|ila|ily)|stal).*?" + abbrs + "\.(?![^[]*?\]\])", ln)
             if rexp:
                 self.get_first_sentence(self.del_redundant_text(rexp.group(0), ", "))
 
@@ -317,7 +317,9 @@ class EntPerson(EntCore):
                         tmp_first_sentence = tmp_fs_first_aliases.group(2).strip()
 
                 fs_aliases_lang_links = []
-                for link_lang_alias in re.findall(r"\[\[(?:[^\[]* )?([^\[\] |]+)(?:\|(?:[^\]]* )?([^\] ]+))?\]\]\s*('{3}.+?'{3})", tmp_first_sentence, flags = re.I):
+                link_lang_aliases = re.findall(r"\[\[(?:[^\[]* )?([^\[\] |]+)(?:\|(?:[^\]]* )?([^\] ]+))?\]\]\s*('{3}.+?'{3})", tmp_first_sentence, flags = re.I)
+                link_lang_aliases += re.findall(r"(" +  "|".join(self.langmap.keys()) + r")():?\s+('{3}.+?'{3})", tmp_first_sentence, flags = re.I)
+                for link_lang_alias in link_lang_aliases:
                     for i_group in [0,1]:
                         if link_lang_alias[i_group] and link_lang_alias[i_group] in self.langmap:
                             fs_aliases_lang_links.append("{{{{Vjazyce|{}}}}} {}".format(self.langmap[link_lang_alias[i_group]], link_lang_alias[2]))
@@ -354,10 +356,112 @@ class EntPerson(EntCore):
         Parametry:
         alias - alternativní pojmenování entity (str)
         """
-
+        re_titles_religious = []
+        if self.infobox_type in ['křesťanský vůdce',  'světec']:
+            # https://cs.wikipedia.org/wiki/Seznam_zkratek_c%C3%ADrkevn%C3%ADch_%C5%99%C3%A1d%C5%AF_a_kongregac%C3%AD
+            # https://cs.qwe.wiki/wiki/List_of_ecclesiastical_abbreviations#Abbreviations_of_titles_of_the_principal_religious_orders_and_congregations_of_priests
+            # http://www.katolik.cz/otazky/ot.asp?ot=657
+            re_titles_religious = [
+                "A(?:\. ?)?(?:F|M)\.?",  # AF, AM
+                "A(?:\. ?)?(?:B(?:\. ?)?)?A\.?",  # AA, ABA
+                "A(?:\. ?)?C(?:\. ?)?S\.?",  # ACS
+                "A(?:\. ?)?M(?:\. ?)?B(?:\. ?)?V\.?",  # AMBV
+                "B\.?",  # B
+                "C(?:\. ?)?C\.?(?: ?G\.?)?",  # CC, CCG
+                "C(?:\. ?)?F(?:\. ?)?C\.?",  # CFC
+                "C(?:\. ?)?F(?:\. ?)?Ss(?:\. ?)?S\.?",  # CFSsS
+                "C(?:\. ?)?C(?:\. ?)?R(?:\. ?)?R(?:\. ?)?M(?:\. ?)?M\.?",  # CCRRMM
+                "C(?:\. ?)?(?:J(?:\. ?)?)?M\.?",  # CJM, CM
+                "C(?:\. ?)?M(?:\. ?)?F\.?",  # CMF
+                "C(?:\. ?)?M(?:\. ?)?S(?:\. ?)?Sp(?:\. ?)?S\.?",  # CMSSpS
+                "C(?:\. ?)?P\.?(?: ?P(?:\. ?)?S\.?)?",  # CP, CPPS
+                "Č(?:\. ?)?R\.?",  # ČR
+                "C(?:\. ?)?R(?:\. ?)?C(?:\. ?)?S\.?",  # CRCS
+                "C(?:\. ?)?R(?:\. ?)?I(?:\. ?)?C\.?",  # CRIC
+                "C(?:\. ?)?R(?:\. ?)?(?:L|M|T|V)\.?",  # CRL, CRM, CRT, CRV
+                "C(?:\. ?)?R(?:\. ?)?M(?:\. ?)?(?:D|I)\.?",  # CRMD, CRMI
+                "C(?:\. ?)?R(?:\. ?)?(?:S(?:\. ?)?)?P\.?",  # CRP, CRSP
+                "C(?:\. ?)?S(?:\. ?)?(?:B|C|J|P|V)\.?",  # CSB, CSC, CSJ, CSP, CSV
+                "C(?:\. ?)?S(?:\. ?)?C(?:\. ?)?D(?:\. ?)?I(?:\. ?)?J\.?",  # CSCDIJ
+                "C(?:\. ?)?S(?:\. ?)?S(?:\. ?)?E\.?",  # CSSE
+                "C(?:\. ?)?S(?:\. ?)?Sp\.?",  # CSSp
+                "C(?:\. ?)?Ss(?:\. ?)?(?:CC|Cc|R)\.?",  # CSsCC, CSsR
+                "C(?:\. ?)?S(?:\. ?)?T(?:\. ?)?F\.?",  # CSTF
+                "D(?:\. ?)?K(?:\. ?)?L\.?",  # DKL
+                "D(?:\. ?)?N(?:\. ?)?S\.?",  # DNS
+                "F(?:\. ?)?D(?:\. ?)?C\.?",  # FDC
+                "F(?:\. ?)?M(?:\. ?)?A\.?",  # FMA
+                "F(?:\. ?)?M(?:\. ?)?C(?:\. ?)?S\.?",  # FMCS
+                "F(?:\. ?)?M(?:\. ?)?D(?:\. ?)?D\.?",  # FMDD
+                "F(?:\. ?)?S(?:\. ?)?C(?:\. ?)?I\.?",  # FSCI
+                "F(?:\. ?)?S(?:\. ?)?P\.?",  # FSP
+                "I(?:\. ?)?B(?:\. ?)?M(?:\. ?)?V\.?",  # IBMV
+                "Inst(?:\. ?)?Char\.?",  # Inst. Char.
+                "I(?:\. ?)?Sch\.?",  # ISch
+                "I(?:\. ?)?S(?:\. ?)?P(?:\. ?)?X\.?",  # ISPX
+                "I(?:\. ?)?S(?:\. ?)?S(?:\. ?)?M\.?",  # ISSM
+                "K(?:\. ?)?M(?:\. ?)?B(?:\. ?)?M\.?",  # KMBM
+                "K(?:\. ?)?S(?:\. ?)?H\.?",  # KSH
+                "K(?:\. ?)?S(?:\. ?)?N(?:\. ?)?S\.?",  # KSNS
+                "(?:L|M|O|S)(?:\. ?)?C\.?",  # LC, MC, OC, SC
+                "M(?:\. ?)?I(?:\. ?)?C\.?",  # MIC
+                "N(?:\. ?)?Id\.?",  # MId
+                "M(?:\. ?)?S\.?(?: ?(?:C|J)\.?)?",  # MS, MSC, MSJ
+                "N(?:\. ?)?D\.?",  # ND
+                "O(?:\. ?)?(?:Camald|Carm|Cart|Cist|Cr|Crucig|F|H|M|Melit|Merced|P|Praed|Praem|T|Trinit)\.?",  # OCamald, OCarm, OCart, OCist, OCr, OCrucig, OF, OH, OM, OMelit, OMerced, OP, OPraed, OPraem, OT, OTrinit
+                "O(?:\. ?)?C(?:\. ?)?(?:C|D|R)\.?",  # OCC, OCD, OCR
+                "O(?:\. ?)?C(?:\. ?)?S(?:\. ?)?O\.?",  # OCSO
+                "O(?:\. ?)?F(?:\. ?)?M\.?(?: ?(?:Cap|Conv|Rec)\.?)?",  # OFM, OFM Cap., OFM Conv., OFM Rec.
+                "O(?:\. ?)?M(\. ?)?(?:C|I)\.?",  # OMC, OMI
+                "O(?:\. ?)?(?:F(\. ?)?)?M(\. ?)?Cap\.?",  # OM Cap. OFM Cap.
+                "O(?:\. ?)?S(?:\. ?)?(?:A|B|C|E|F|H|M|U)\.?",  # OSA, OSB, OSC, OSE, OSF, OSH, OSM, OSU
+                "O(?:\. ?)?S(?:\. ?)?B(\. ?)?M\.?",  # OSBM
+                "O(?:\. ?)?S(?:\. ?)?C(\. ?)?(?:Cap|O)\.?",  # OSC Cap., OSCO
+                "O(?:\. ?)?S(?:\. ?)?F(?:\. ?)?(?:C|S)\.?",  # OSFC, OSFS
+                "O(?:\. ?)?S(?:\. ?)?F(\. ?)?Gr\.?",  # OSFGr
+                "O(?:\. ?)?Ss(?:\. ?)?C\.?",  # OSsC
+                "O(?:\. ?)?V(?:\. ?)?M\.?",  # OVM
+                "P(?:\. ?)?D(?:\. ?)?D(\. ?)?M\.?",  # PDDM
+                "P(?:\. ?)?O\.?",  # PO
+                "P(?:\. ?)?S(?:\. ?)?(?:M|S)\.?",  # PSM, PSS
+                "R(?:\. ?)?G(?:\. ?)?S\.?",  # RGS
+                "S(?:\. ?)?(?:A|J|S)(?:\. ?)?C\.?",  # SAC, SJC, SSC
+                "S(?:\. ?)?C(?:\. ?)?(?:B|H|M)\.?",  # SCB, SCH, SCM
+                "S(?:\. ?)?C(?:\. ?)?S(\. ?)?C\.?",  # SCSC
+                "S(?:\. ?)?D(?:\. ?)?(?:B|J|S)\.?",  # SDB, SDJ, SDS
+                "Sch(?:\. ?)?P\.?",  # SchP
+                "(?:S|T)(?:\. ?)?(?:I|J)\.?",  # SI, SJ, TI, TJ
+                "S(?:\. ?)?(?:P(?:\. ?)?)?M\.?",  # SM, SPM
+                "S(?:\. ?)?M(?:\. ?)?F(?:\. ?)?O\.?",  # SMFO
+                "S(?:\. ?)?M(?:\. ?)?O(?:\. ?)?M\.?",  # SMOM
+                "S(?:\. ?)?(?:P|Praem)\.?",  # SP, SPraem
+                "S(?:\. ?)?S(?:\. ?)?J\.?",  # SSJ
+                "S(?:\. ?)?S(?:\. ?)?N(?:\. ?)?D\.?",  # SSND
+                "S(?:\. ?)?(?:S|T)(?:\. ?)?S\.?",  # SSS, STS
+                "S(?:\. ?)?V\.?(?: ?D\.?)?",  # SV, SVD
+            ]
         # u titulů bez teček je třeba kontrolova mezeru, čárku nebo konec (například MA jinak vezme následující příjmení začínající "Ma..." a bude toto jméno považovat za součást předchozího)
-        alias = re.sub(r", (?!(J[rn]\.?|Sr\.?|ml(?:\.|adší)?|[PT]h\.?D\.?|MBA|M\.?A\.?|M\.?S\.?|M\.?Sc\.?|CSc\.|D(?:\.|r\.?)Sc\.|[Dd]r\. ?h\. ?c\.|DiS\.|CC)(\.|,| |$))", "|", alias, flags=re.I)
-#        alias = re.sub(r"^(?:prof|doc)\.)?\s*((BcA?\.|Ing\.(\s*arch\.)?|M[SDUV]Dr\.|Mg[Ar]\.|(?:JU|Ph|RN|Pharm|Th|Paed)Dr\.|PhMr\.|ThMgr\.|R[CST]Dr\.|Dr.)(\s+et)?\s*)*", "", alias, flags=re.I) # pro zničení titulů před jménem
+        re_titles_civil = [
+            r"J[rn]\.?",
+            "Sr\.?",
+            "ml(?:\.|adší)?",
+            "st(?:\.|arší)?",
+            "jun(\.|ior)?",
+            "[PT]h(\.\s?)?D\.?",
+            "MBA",
+            "M\.?A\.?",
+            "M\.?S\.?",
+            "M\.?Sc\.?",
+            "CSc\.",
+            "D(?:\.|r\.?)Sc\.",
+            "[Dd]r\. ?h\. ?c\.",
+            "DiS\.",
+            "CC"
+        ]
+        #                 v---- need to be space without asterisk - with asterisk the comma will be replaced
+        alias = re.sub(r", (?!(" + "|".join(re_titles_civil + re_titles_religious) + r")(\.|,| |$))", "|", alias, flags=re.I)
+        alias = regex.sub(r"(?<=^|\|)\p{Lu}\.(?:\s*\p{Lu}\.)+(\||$)",  "\g<1>",  alias) # Elimination of initials like "V. H." (also in infobox pseudonymes, nicknames, ...)
+
         return alias
 
 

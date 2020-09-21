@@ -350,7 +350,7 @@ if args.group_is_person:
 outkb = os.path.join(args.outdir, args.outkb)
 with open(outkb, 'w') as fout_kb:
   with open(os.path.join(args.indir, 'VERSION'), 'r') as fin_version:
-    fout_kb.write(fin_version.read())
+    fout_kb.write('VERSION=' + fin_version.read())
   fout_kb.write('\n')
   transform_head(fout_kb)
   fout_kb.write('\n')

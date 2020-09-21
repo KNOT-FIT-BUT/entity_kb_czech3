@@ -12,6 +12,7 @@ Soubor obsahuje třídu 'EntCore', jež je rodičovskou třídou pro podtřídy 
 """
 
 import re
+import regex
 import requests
 import sys
 from abc import ABCMeta, abstractmethod
@@ -22,6 +23,7 @@ from libs.DictOfUniqueDict import *
 TAG_BRACES_OPENING = '{{'
 TAG_BRACES_CLOSING = '}}'
 
+ALIASES_SEPARATOR = re.escape(', ')
 
 WIKI_API_URL = 'https://cs.wikipedia.org/w/api.php'
 WIKI_API_PARAMS_BASE = {
@@ -86,7 +88,10 @@ class EntCore(metaclass=ABCMeta):
         self.first_alias = None
         self.redirects = redirects
         self.langmap = langmap
+        self.infobox_type = None
         self.re_infobox_kw_img = r"obrázek"
+        self.latitude = ''
+        self.longitude = ''
 
 
     def get_wiki_api_location(self, title):
@@ -221,6 +226,7 @@ class EntCore(metaclass=ABCMeta):
                     # If it is not infobox already, explore if it is an infobox
                     infobox_data = re.search(r"{{Infobox([^\|]+)(\|)?.*$", ln, flags = re.I)
                     if infobox_data:
+                        self.infobox_type = infobox_data.group(1).strip().lstrip('- ').lower()
                         if re.search(r"světové\s+dědictví", infobox_data.group(1), flags = re.I):
                             is_infobox_unesco = True
                         ln = infobox_data.group(0)
@@ -348,6 +354,22 @@ class EntCore(metaclass=ABCMeta):
         return
 
 
+    def unfold_alias_variants(self, alias):
+        # workaround for Ludvík z Pruska:
+        alias_variants = [alias]
+        alias_matches = re.match(r"(.*[^\s])\s*/\s*([^\s].*)", alias)
+        if alias_matches:
+            alias_variant_1st = alias_matches.group(1)
+            alias_variant_2nd = alias_matches.group(2)
+
+            alias_variants.append(alias_variant_1st) # Alias1 / Alias2 -> add Alias1 to aliases also
+            if alias_variant_1st.count(' ') > 0:
+                alias_variants.append("{} {}".format(alias_variant_1st.rsplit(' ', 1)[0], alias_variant_2nd)) # Name Surname1 / Surname2 -> add Name Surname2 to aliases also
+            else:
+                alias_variants.append(alias_variant_2nd) # Alias1 / Alias2 -> add Alias2 to aliases also
+        return alias_variants
+
+
     def get_aliases(self, alias, marked_czech = False, nametype = None):
         """
         Převádí alternativní pojmenování do jednotného formátu.
@@ -359,7 +381,6 @@ class EntCore(metaclass=ABCMeta):
         # Eliminating of an alias identical with a title is now contraproductive, 'cause we need ensure that first alias is in czech language (it is eliminated in serializing step).
         if alias.strip() == "{{PAGENAME}}":
             return
-
         re_lang_aliases = re.compile("{{(?:Cj|Cizojazyčně|Vjazyce2)\|(?:\d=)?(\w+)\|(?:\d=)?([^}]+)}}", flags=re.I)
         re_lang_aliases2 = re.compile("{{Vjazyce\|(\w+)}}\s+([^{]{2}.+)", flags=re.I)
         lang_aliases = re_lang_aliases.findall(alias)
@@ -368,8 +389,8 @@ class EntCore(metaclass=ABCMeta):
         alias = re.sub(r"\s*<hr\s*/>\s*", "", alias)
         alias = alias.strip(",")
         alias = re.sub(r"(?:'')", "", alias)
-        alias = re.sub(r"(?:,{2,}|;)\s*", ", ", alias)
-        alias = re.sub(r"\s+/\s+", ", ", alias)
+        alias = re.sub(r"(?:,{2,}|;)\s*", ALIASES_SEPARATOR, alias)
+#        alias = re.sub(r"\s+/\s+", ", ", alias) # commented / deactivated due to Ludvík z Pruska
         alias = re.sub(r"\s*<hiero>.*</hiero>\s*", "", alias, flags=re.I)
         alias = re.sub(r"\s*{{Poznámka pod čarou.*(?:}})?\s*$", "", alias, flags=re.I)
         alias = re.sub(r"\s*\{{Unicode\|([^}]+)}}\s*", r" \1", alias, flags=re.I)
@@ -385,7 +406,7 @@ class EntCore(metaclass=ABCMeta):
         # TODO: přidat šablonu přesměrování
         alias = re.sub(r"\s*{{[a-z]{2}}};?\s*", "", alias)
         alias = re.sub(r"\s*\[[^]]+\]\s*", "", alias)
-        alias = re.sub(r",(?!\s)", ", ", alias)
+        alias = re.sub(r",(?!\s)", ALIASES_SEPARATOR, alias)
         alias = alias.replace(",|", "|")
         alias = re.sub(r"[\w\s\-–—−,.()]+:\s*\|?", "", alias)
         alias = re.sub(r"\s*\([^)]+\)\s*", " ", alias)
@@ -401,23 +422,25 @@ class EntCore(metaclass=ABCMeta):
 
         for a in alias.split("|"):
             a = a.strip()
-            if re.search(r"[^\W_]", a):
-                if marked_czech:
-                    self.scrape_quoted_inside_and_store(a, nametype, self.LANG_CZECH)
-                    self.n_marked_czech += 1
+            for av in self.unfold_alias_variants(a):
+                if re.search(r"[^\W_/]", av):
+                    if marked_czech:
+                        self.scrape_quoted_inside_and_store(av, nametype, self.LANG_CZECH)
+                        self.n_marked_czech += 1
 
-                else:
-                    if self.first_alias == None and nametype == None:
-                        self.first_alias = a
-                    self.scrape_quoted_inside_and_store(a, nametype)
+                    else:
+                        if self.first_alias == None and nametype == None:
+                            self.first_alias = av
+                        self.scrape_quoted_inside_and_store(av, nametype)
 
         for lng, a in lang_aliases:
             a = a.strip()
-            # TODO: maybe, it is needed custom_transform_alias()?
-            if re.search(r"[^\W_]", a):
-                if not len(self.aliases):
-                    self.first_alias = a
-                self.scrape_quoted_inside_and_store(a, nametype, lng)
+            for av in self.unfold_alias_variants(a):
+                # TODO: maybe, it is needed custom_transform_alias()?
+                if re.search(r"[^\W_]", av):
+                    if not len(self.aliases):
+                        self.first_alias = av
+                    self.scrape_quoted_inside_and_store(av, nametype, lng)
 
 
     def scrape_quoted_inside_and_store(self, alias, nametype, lang = None):
@@ -429,7 +452,8 @@ class EntCore(metaclass=ABCMeta):
             quotedName = re.search(r"(?P<quote>[\"])(.+?)(?P=quote)", alias)
 
             if quotedName:
-                quotedNames.append(quotedName.group(2))
+                if not regex.match("^\p{Lu}\.(\s*\p{Lu}\.)+$",  quotedName.group(2)): # Elimination of initials like "V. H."
+                    quotedNames.append(quotedName.group(2))
                 alias = re.sub(re.escape(quotedName.group(0)), "", alias)
             else:
                 break

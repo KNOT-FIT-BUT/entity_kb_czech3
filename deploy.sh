@@ -66,7 +66,7 @@ then
     DEPLOY_VERSION=`cat ./outputs/VERSION`
     DEPLOY_CONNECTION="${DEPLOY_USER}@minerva3.fit.vutbr.cz"
     DEPLOY_FOLDER_OLD="/mnt/knot/www/NAKI_CPK/NER_CZ_inputs/kb/${DEPLOY_VERSION}"
-    DEPLOY_FOLDER_GKB="/mnt/knot/www/NAKI_CPK/NER_CZ_inputs/gkb/KB_cs/KB_cs_${DEPLOY_VERSION}"
+    DEPLOY_FOLDER_GKB="/mnt/knot/www/NAKI_CPK/NER_ML_inputs/KB/KB_`echo ${DEPLOY_VERSION} | cut -d'_' -f 1`/KB_${DEPLOY_VERSION}"
 
     echo "Creating new folder: ${DEPLOY_FOLDER_OLD}"
     ssh "${DEPLOY_CONNECTION}" "mkdir -p \"${DEPLOY_FOLDER_OLD}\""
@@ -81,5 +81,5 @@ then
     echo "Upload files to new folder: ${DEPLOY_FOLDER_GKB}"
     scp outputs/*.tsv "${DEPLOY_CONNECTION}:${DEPLOY_FOLDER_GKB}"
     echo "Change symlink of new to this latest version of KB"
-    ssh "${DEPLOY_CONNECTION}" "cd \"`dirname "${DEPLOY_FOLDER_GKB}"`\"; ln -sfT \"KB_cs_${DEPLOY_VERSION}\" new"
+    ssh "${DEPLOY_CONNECTION}" "cd \"`dirname "${DEPLOY_FOLDER_GKB}"`\"; ln -sfT \"KB_${DEPLOY_VERSION}\" new"
 fi
