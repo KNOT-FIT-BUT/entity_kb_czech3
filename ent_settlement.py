@@ -109,7 +109,7 @@ class EntSettlement(EntCore):
             return 1, "Sídlo (světa)"
         if re.search(ib_prefix + r"-\s+česká\s+obec", content, re.I):
             return 1, "Česká obec"
-        if re.search(ib_prefix + r"katastrální\s+území\s+Prahy", content, re.I):
+        if re.search(ib_prefix + r"-\s+katastrální\s+území\s+Prahy", content, re.I):
             return 1, "Česká obec"
         if re.search(ib_prefix + r"-\s+statutární\s+město", content, re.I):
             return 1, "Statutární město"
