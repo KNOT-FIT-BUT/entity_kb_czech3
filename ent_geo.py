@@ -107,7 +107,7 @@ class EntGeo(EntCore):
             return 1, rexp.group(1).lower()
 
         # kontrola kategorií
-        if re.search(r"\[\[\s*Kategorie:\s*Poloostrovy\s+(?:na|v)", content, re.I):
+        if re.search(r"\[\[\s*Kategorie:\s*Poloostrovy\s+(?:na|ve?)", content, re.I):
             return 2, "poloostrov"
 
         # kontrola závorek v názvu
