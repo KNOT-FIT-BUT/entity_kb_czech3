@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 # Author: Tomas Volf, ivolf@fit.vutbr.cz
 
 # TODO: -g, -p, -r processing
