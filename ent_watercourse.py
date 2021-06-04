@@ -60,7 +60,6 @@ class EntWatercourse(EntCore):
 
         self.get_wiki_api_location(title)
 
-
     @staticmethod
     def is_watercourse(title, content):
         """
@@ -78,8 +77,13 @@ class EntWatercourse(EntCore):
             return 1, "Infobox 'vodní tok'"
 
         # kontrola kategorií
-        for kw in ("Potoky", "Řeky"):  # žádná další klíčová slova nejsou vhodná, zejména ne "Říčky"
-            if re.search(r"\[\[\s*Kategorie:\s*" + kw + r"\s+(?:na|ve?)\s+.+?\]\]", content, re.I):
+        for kw in (
+            "Potoky",
+            "Řeky",
+        ):  # žádná další klíčová slova nejsou vhodná, zejména ne "Říčky"
+            if re.search(
+                r"\[\[\s*Kategorie:\s*" + kw + r"\s+(?:na|ve?)\s+.+?\]\]", content, re.I
+            ):
                 return 2, "Kategorie '" + kw + "'"
 
         # kontrola názvu
@@ -88,7 +92,6 @@ class EntWatercourse(EntCore):
             return 3, "Název '" + rexp.group(0) + "'"
 
         return 0, ""
-
 
     def data_preprocess(self, content):
         """
@@ -99,7 +102,6 @@ class EntWatercourse(EntCore):
         """
         content = content.replace("&nbsp;", " ")
         content = re.sub(r"m\sn\.\s*", "metrů nad ", content)
-
 
     def line_process_infobox(self, ln, is_infobox_block):
         # aliasy
@@ -159,8 +161,21 @@ class EntWatercourse(EntCore):
                 return
 
     def line_process_1st_sentence(self, ln):
-        abbrs = "".join((r"(?<!\s(?:tzv|at[pd]))", r"(?<!\s(?:apod|(?:ku|na|po)př|příp))", r"(?<!\s(?:[amt]j|fr))", r"(?<!\d)", r"(?<!nad m)"))
-        rexp = re.search(r".*?'''.+?'''.*?\s(?:byl[aiy]?|je|jsou|nacház(?:í|ejí)|patř(?:í|il)|stal|rozprostír|lež(?:í|el)|pramen(?:í|il)).*?" + abbrs + "\.(?![^[]*?\]\])", ln)
+        abbrs = "".join(
+            (
+                r"(?<!\s(?:tzv|at[pd]))",
+                r"(?<!\s(?:apod|(?:ku|na|po)př|příp))",
+                r"(?<!\s(?:[amt]j|fr))",
+                r"(?<!\d)",
+                r"(?<!nad m)",
+            )
+        )
+        rexp = re.search(
+            r".*?'''.+?'''.*?\s(?:byl[aiy]?|je|jsou|nacház(?:í|ejí)|patř(?:í|il)|stal|rozprostír|lež(?:í|el)|pramen(?:í|il)).*?"
+            + abbrs
+            + "\.(?![^[]*?\]\])",
+            ln,
+        )
         if rexp:
             if not self.description:
                 self.get_first_sentence(self.del_redundant_text(rexp.group(0), ", "))
@@ -168,18 +183,35 @@ class EntWatercourse(EntCore):
 
                 # extrakce alternativních pojmenování z první věty
                 fs_aliases_lang_links = []
-                for link_lang_alias in re.findall(r"\[\[(?:[^\[]* )?([^\[\] |]+)(?:\|(?:[^\]]* )?([^\] ]+))?\]\]\s*('{3}.+?'{3})", tmp_first_sentence, flags = re.I):
-                    for i_group in [0,1]:
-                        if link_lang_alias[i_group] and link_lang_alias[i_group] in self.langmap:
-                            fs_aliases_lang_links.append("{{{{Vjazyce|{}}}}} {}".format(self.langmap[link_lang_alias[i_group]], link_lang_alias[2]))
-                            tmp_first_sentence = tmp_first_sentence.replace(link_lang_alias[2], '')
+                for link_lang_alias in re.findall(
+                    r"\[\[(?:[^\[]* )?([^\[\] |]+)(?:\|(?:[^\]]* )?([^\] ]+))?\]\]\s*('{3}.+?'{3})",
+                    tmp_first_sentence,
+                    flags=re.I,
+                ):
+                    for i_group in [0, 1]:
+                        if (
+                            link_lang_alias[i_group]
+                            and link_lang_alias[i_group] in self.langmap
+                        ):
+                            fs_aliases_lang_links.append(
+                                "{{{{Vjazyce|{}}}}} {}".format(
+                                    self.langmap[link_lang_alias[i_group]],
+                                    link_lang_alias[2],
+                                )
+                            )
+                            tmp_first_sentence = tmp_first_sentence.replace(
+                                link_lang_alias[2], ""
+                            )
                             break
-                fs_aliases = re.findall(r"((?:{{(?:Cj|Cizojazyčně|Vjazyce2?)[^}]+}}\s+)?(?<!\]\]\s)'{3}.+?'{3})", tmp_first_sentence, flags = re.I)
+                fs_aliases = re.findall(
+                    r"((?:{{(?:Cj|Cizojazyčně|Vjazyce2?)[^}]+}}\s+)?(?<!\]\]\s)'{3}.+?'{3})",
+                    tmp_first_sentence,
+                    flags=re.I,
+                )
                 fs_aliases += fs_aliases_lang_links
                 if fs_aliases:
                     for fs_alias in fs_aliases:
                         self.get_aliases(self.del_redundant_text(fs_alias).strip("'"))
-
 
     def custom_transform_alias(self, alias):
         """
@@ -190,7 +222,6 @@ class EntWatercourse(EntCore):
         """
 
         return self.transform_geo_alias(alias)
-
 
     def get_area(self, area):
         """
@@ -234,16 +265,18 @@ class EntWatercourse(EntCore):
         Parametry:
         fs - první věta stránky (str)
         """
-        #TODO: refactorize
+        # TODO: refactorize
         fs = re.sub(r"\(.*?\)", "", fs)
         fs = re.sub(r"\[.*?\]", "", fs)
         fs = re.sub(r"<.*?>", "", fs)
-        fs = re.sub(r"{{(?:cj|cizojazyčně|vjazyce\d?)\|\w+\|(.*?)}}", r"\1", fs, flags=re.I)
+        fs = re.sub(
+            r"{{(?:cj|cizojazyčně|vjazyce\d?)\|\w+\|(.*?)}}", r"\1", fs, flags=re.I
+        )
         fs = re.sub(r"{{PAGENAME}}", self.title, fs, flags=re.I)
         fs = re.sub(r"{{.*?}}", "", fs).replace("{", "").replace("}", "")
         fs = re.sub(r"/.*?/", "", fs)
         fs = re.sub(r"\s+", " ", fs).strip()
-        fs = re.sub(r"^\s*}}", "", fs) # Eliminate the end of a template
+        fs = re.sub(r"^\s*}}", "", fs)  # Eliminate the end of a template
         fs = re.sub(r"[()<>\[\]{}/]", "", fs).replace(" ,", ",").replace(" .", ".")
 
         self.description = fs
@@ -276,7 +309,9 @@ class EntWatercourse(EntCore):
         """
         source_loc = re.sub(r"\[.*?\]", "", source_loc)
         source_loc = re.sub(r"<.*?>", "", source_loc)
-        source_loc = re.sub(r"{{.*?}}", "", source_loc).replace("()", "").strip().strip(",")
+        source_loc = (
+            re.sub(r"{{.*?}}", "", source_loc).replace("()", "").strip().strip(",")
+        )
         source_loc = re.sub(r"\s+", " ", source_loc).strip()
 
         self.source_loc = source_loc
@@ -291,7 +326,9 @@ class EntWatercourse(EntCore):
         streamflow = re.sub(r"\(.*?\)", "", streamflow)
         streamflow = re.sub(r"\[.*?\]", "", streamflow)
         streamflow = re.sub(r"<.*?>", "", streamflow)
-        streamflow = re.sub(r"{{.*?}}", "", streamflow).replace("{", "").replace("}", "")
+        streamflow = (
+            re.sub(r"{{.*?}}", "", streamflow).replace("{", "").replace("}", "")
+        )
         streamflow = re.sub(r"(?<=\d)\s(?=\d)", "", streamflow).strip()
         streamflow = re.sub(r"(?<=\d)\.(?=\d)", ",", streamflow)
         streamflow = re.sub(r"^\D*(?=\d)", "", streamflow)
@@ -304,21 +341,23 @@ class EntWatercourse(EntCore):
         """
         Serializuje údaje o vodním toku.
         """
-        return "\t".join([
-                   self.eid,
-                   self.prefix,
-                   self.title,
-                   self.serialize_aliases(),
-                   '|'.join(self.redirects),
-                   self.description,
-                   self.original_title,
-                   self.images,
-                   self.link,
-                   self.continent,
-                   self.latitude,
-                   self.longitude,
-                   self.length,
-                   self.area,
-                   self.streamflow,
-                   self.source_loc
-               ])
+        return "\t".join(
+            [
+                self.eid,
+                self.prefix,
+                self.title,
+                self.serialize_aliases(),
+                "|".join(self.redirects),
+                self.description,
+                self.original_title,
+                self.images,
+                self.link,
+                self.continent,
+                self.latitude,
+                self.longitude,
+                self.length,
+                self.area,
+                self.streamflow,
+                self.source_loc,
+            ]
+        )

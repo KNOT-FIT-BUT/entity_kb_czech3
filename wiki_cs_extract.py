@@ -36,7 +36,13 @@ from ent_geo import *
 
 LANG_MAP = {"cz": "cs"}
 WIKI_LANG_FILE = "languages.json"
-LANG_TRANSFORMATIONS = {"aština": "ašsky", "ština": "sky", "čtina": "cky", "atina": "atinsky", "o": "u"}
+LANG_TRANSFORMATIONS = {
+    "aština": "ašsky",
+    "ština": "sky",
+    "čtina": "cky",
+    "atina": "atinsky",
+    "o": "u",
+}
 
 
 class WikiExtract(object):
@@ -84,8 +90,8 @@ class WikiExtract(object):
             "<geo:island>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\t{m}CONTINENT\tLATITUDE\tLONGITUDE\tAREA\tPOPULATION\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
             "<geo:peninsula>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tLATITUDE\tLONGITUDE\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
             "<geo:continent>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tLATITUDE\tLONGITUDE\tAREA\tPOPULATION\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
-            #<organisation>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tFOUNDED\tCANCELLED\tORGANIZATION TYPE\tLOCATION\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
-            #"<event>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tSTART\tEND\tLOCATION\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n"
+            # <organisation>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tFOUNDED\tCANCELLED\tORGANIZATION TYPE\tLOCATION\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+            # "<event>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tSTART\tEND\tLOCATION\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n"
         ]
 
         with open("HEAD-KB", "w", encoding="utf-8") as fl:
@@ -132,7 +138,23 @@ class WikiExtract(object):
         True, pokud stránka pojednává o entitě, jinak False. (bool)
         """
         # speciální stránky Wikipedie nepojednávají o entitách
-        if title.startswith(("Wikipedie:", "Redaktor:", "Soubor:", "MediaWiki:", "Šablona:", "Pomoc:", "Kategorie:", "Speciální:", "Portál:", "Modul:", "Seznam", "Geografie", "Společenstvo")):
+        if title.startswith(
+            (
+                "Wikipedie:",
+                "Redaktor:",
+                "Soubor:",
+                "MediaWiki:",
+                "Šablona:",
+                "Pomoc:",
+                "Kategorie:",
+                "Speciální:",
+                "Portál:",
+                "Modul:",
+                "Seznam",
+                "Geografie",
+                "Společenstvo",
+            )
+        ):
             return False
 
         # stránky pro data (datumy) nepojednávají o entitách
@@ -168,30 +190,71 @@ class WikiExtract(object):
     #         print("[[ CHYBA ]] Zadaná složka s entitami je neplatná nebo některé soubory v ní neexistují")
     #         exit(1)
 
-
-    def get_dump_fpath(self,  dump_file,  dump_file_mask):
+    def get_dump_fpath(self, dump_file, dump_file_mask):
         if dump_file is None:
-            dump_file = dump_file_mask.format(self.console_args.lang,  self.console_args.dump)
-        elif dump_file[0] == '/':
+            dump_file = dump_file_mask.format(
+                self.console_args.lang, self.console_args.dump
+            )
+        elif dump_file[0] == "/":
             return dump_file
-        elif dump_file[0] == '.' and (dump_file[1] == '/' or dump_file[1:3] == './'):
-            return os.path.join(os.getcwd(),  dump_file)
+        elif dump_file[0] == "." and (dump_file[1] == "/" or dump_file[1:3] == "./"):
+            return os.path.join(os.getcwd(), dump_file)
 
-        return os.path.join(self.console_args.indir,  dump_file)
-
+        return os.path.join(self.console_args.indir, dump_file)
 
     def parse_args(self):
         """
         Parsuje argumenty zadané při spuštění skriptu.
         """
         parser = argparse.ArgumentParser()
-        parser.add_argument('-I', '--indir', default = '/mnt/minerva1/nlp/corpora_datasets/monolingual/czech/wikipedia/', type = str, help = 'Directory, where input files are located (applied for files withoud directory location only).')
-        parser.add_argument('-l',  '--lang', default = 'cs', type = str, help = 'Language of processing also used for input files, when defined by version (by default) and not by files (default: %(default)s).')
-        parser.add_argument('-d',  '--dump', default = 'latest', type = str, help = 'Dump version to process (in format "yyyymmdd"; default: %(default)s).')
-        parser.add_argument('-m', default = 2, type = int, help = 'Number of processors of multiprocessing.Pool() for entity processing.')
-        parser.add_argument('-g', '--geotags', action = 'store', type = str, help = 'Source file of wiki geo tags (with GPS locations) dump.')
-        parser.add_argument('-p', '--pages', action = 'store', type = str, help = 'Source file of wiki pages dump.')
-        parser.add_argument('-r', '--redirects', action = 'store', type = str, help = 'Source file of wiki redirects dump.')
+        parser.add_argument(
+            "-I",
+            "--indir",
+            default="/mnt/minerva1/nlp/corpora_datasets/monolingual/czech/wikipedia/",
+            type=str,
+            help="Directory, where input files are located (applied for files withoud directory location only).",
+        )
+        parser.add_argument(
+            "-l",
+            "--lang",
+            default="cs",
+            type=str,
+            help="Language of processing also used for input files, when defined by version (by default) and not by files (default: %(default)s).",
+        )
+        parser.add_argument(
+            "-d",
+            "--dump",
+            default="latest",
+            type=str,
+            help='Dump version to process (in format "yyyymmdd"; default: %(default)s).',
+        )
+        parser.add_argument(
+            "-m",
+            default=2,
+            type=int,
+            help="Number of processors of multiprocessing.Pool() for entity processing.",
+        )
+        parser.add_argument(
+            "-g",
+            "--geotags",
+            action="store",
+            type=str,
+            help="Source file of wiki geo tags (with GPS locations) dump.",
+        )
+        parser.add_argument(
+            "-p",
+            "--pages",
+            action="store",
+            type=str,
+            help="Source file of wiki pages dump.",
+        )
+        parser.add_argument(
+            "-r",
+            "--redirects",
+            action="store",
+            type=str,
+            help="Source file of wiki redirects dump.",
+        )
         self.console_args = parser.parse_args()
 
         if self.console_args.m < 1:
@@ -201,10 +264,15 @@ class WikiExtract(object):
         if self.console_args.lang in LANG_MAP:
             self.console_args.lang = LANG_MAP[self.console_args.lang]
 
-        self.pages_dump_fpath = self.get_dump_fpath(self.console_args.pages,  '{}wiki-{}-pages-articles.xml')
-        self.geotags_dump_fpath = self.get_dump_fpath(self.console_args.geotags,  '{}wiki-{}-geo_tags.sql')
-        self.redirects_dump_fpath = self.get_dump_fpath(self.console_args.redirects,  'redirects_from_{}wiki-{}-pages-articles.xml')
-
+        self.pages_dump_fpath = self.get_dump_fpath(
+            self.console_args.pages, "{}wiki-{}-pages-articles.xml"
+        )
+        self.geotags_dump_fpath = self.get_dump_fpath(
+            self.console_args.geotags, "{}wiki-{}-geo_tags.sql"
+        )
+        self.redirects_dump_fpath = self.get_dump_fpath(
+            self.console_args.redirects, "redirects_from_{}wiki-{}-pages-articles.xml"
+        )
 
     def parse_xml_dump(self):
         """
@@ -217,7 +285,7 @@ class WikiExtract(object):
         # self._load_entities()
 
         redirects = dict()
-        with open(self.redirects_dump_fpath, 'r') as f:
+        with open(self.redirects_dump_fpath, "r") as f:
             for line in f:
                 redirect_from, redirect_to = line.strip().split("\t")
                 if not redirect_to in redirects:
@@ -226,13 +294,13 @@ class WikiExtract(object):
 
         langmap = dict()
         try:
-            with open(WIKI_LANG_FILE, 'r', encoding = 'utf8') as f:
+            with open(WIKI_LANG_FILE, "r", encoding="utf8") as f:
                 try:
                     langmap = json.load(f)
                 except (ValueError, UnicodeDecodeError):
-                    pass # File is not valid -> we generate new one
+                    pass  # File is not valid -> we generate new one
         except OSError:
-            pass # Do nothing - it does not matter, because in this case we generate new one
+            pass  # Do nothing - it does not matter, because in this case we generate new one
 
         # parsování XML souboru
         context = CElTree.iterparse(self.pages_dump_fpath, events=("start", "end"))
@@ -246,7 +314,10 @@ class WikiExtract(object):
             for event, elem in context:
                 if event == "end" and "page" in elem.tag:
                     for child in elem:
-                        if "title" in child.tag and child.text == 'Seznam kódů ISO 639-2':
+                        if (
+                            "title" in child.tag
+                            and child.text == "Seznam kódů ISO 639-2"
+                        ):
                             found_639_2 = True
                         if found_639_2 and "revision" in child.tag:
                             for grandchild in child:
@@ -257,46 +328,65 @@ class WikiExtract(object):
                     if found_639_2:
                         break
             if found_639_2:
-                tbl_languages = re.search(r"{\|(.*?)\|}", pg_languages, flags = re.S)
+                tbl_languages = re.search(r"{\|(.*?)\|}", pg_languages, flags=re.S)
                 if tbl_languages:
                     tbl_languages = tbl_languages.group(1)
-                    tbl_lang_header = re.search(r"^\s*!([^!]+(?:!![^!]+)+)$", tbl_languages, flags = re.M)
+                    tbl_lang_header = re.search(
+                        r"^\s*!([^!]+(?:!![^!]+)+)$", tbl_languages, flags=re.M
+                    )
                     if tbl_lang_header:
                         tbl_lang_header = tbl_lang_header.group(1).split("!!")
                         i_639_1 = tbl_lang_header.index("ISO 639-1")
                         i_639_2 = tbl_lang_header.index("ISO 639-2")
                         i_langname = tbl_lang_header.index("Název jazyka")
 
-                        for lang_row in re.findall(r"^\s*\|(.+?(?:\|\|.+?)+)$", tbl_languages, flags = re.M):
+                        for lang_row in re.findall(
+                            r"^\s*\|(.+?(?:\|\|.+?)+)$", tbl_languages, flags=re.M
+                        ):
                             i_lang_col = None
                             lang_cols = lang_row.split("||")
                             langnames = re.sub(r"\(.*?\)", "", lang_cols[i_langname])
-                            if lang_cols[i_639_1].strip() and lang_cols[i_639_1].strip() != "&nbsp;":
+                            if (
+                                lang_cols[i_639_1].strip()
+                                and lang_cols[i_639_1].strip() != "&nbsp;"
+                            ):
                                 i_lang_col = i_639_1
                             else:
                                 i_lang_col = i_639_2
 
-                            for langnames2 in langnames.split(','):
-                                for langname in langnames2.split(' a '):
+                            for langnames2 in langnames.split(","):
+                                for langname in langnames2.split(" a "):
                                     langname_normalized = None
-                                    langname = re.sub(r"\[\[(.*?)\]\]", r"\1", langname).strip().lower()
+                                    langname = (
+                                        re.sub(r"\[\[(.*?)\]\]", r"\1", langname)
+                                        .strip()
+                                        .lower()
+                                    )
                                     if not langname:
                                         continue
-                                    for langname in langname.split('|'):
-                                        for suffix, replacement in LANG_TRANSFORMATIONS.items():
+                                    for langname in langname.split("|"):
+                                        for (
+                                            suffix,
+                                            replacement,
+                                        ) in LANG_TRANSFORMATIONS.items():
                                             if langname.endswith(suffix):
-                                                langname_normalized = langname[:-len(suffix)] + replacement
+                                                langname_normalized = (
+                                                    langname[: -len(suffix)]
+                                                    + replacement
+                                                )
                                                 break
 
-                                        lang_abbr = re.sub(r"{{.*?}}", "", lang_cols[i_lang_col]).strip()
+                                        lang_abbr = re.sub(
+                                            r"{{.*?}}", "", lang_cols[i_lang_col]
+                                        ).strip()
                                         langmap[langname] = lang_abbr
                                         if langname_normalized:
                                             langmap[langname_normalized] = lang_abbr
 
                         if len(langmap):
                             langmap["krymskotatarština"] = "crh"
-                            with open(WIKI_LANG_FILE, 'w', encoding = 'utf8') as f:
-                                json.dump(langmap, f, ensure_ascii = False)
+                            with open(WIKI_LANG_FILE, "w", encoding="utf8") as f:
+                                json.dump(langmap, f, ensure_ascii=False)
 
         ent_titles = []
         ent_pages = []
@@ -318,8 +408,19 @@ class WikiExtract(object):
                                 if "text" in grandchild.tag:
                                     if is_entity and grandchild.text:
                                         # přeskakuje stránky s přesměrováním a rozcestníkové stránky
-                                        if re.search(r"#(?:redirect|přesměruj)|{{\s*Rozcestník", grandchild.text, flags=re.I):
-                                            print("[{}] skipping {}".format(str(datetime.datetime.now().time()), et_full_title), file = sys.stderr, flush = True)
+                                        if re.search(
+                                            r"#(?:redirect|přesměruj)|{{\s*Rozcestník",
+                                            grandchild.text,
+                                            flags=re.I,
+                                        ):
+                                            print(
+                                                "[{}] skipping {}".format(
+                                                    str(datetime.datetime.now().time()),
+                                                    et_full_title,
+                                                ),
+                                                file=sys.stderr,
+                                                flush=True,
+                                            )
                                             continue
 
                                         ent_titles.append(et_full_title)
@@ -338,26 +439,35 @@ class WikiExtract(object):
 
             if len(ent_titles) > 0:
                 pool = Pool(processes=self.console_args.m)
-                serialized_entities = pool.starmap(self.process_entity, zip(ent_titles, ent_pages, repeat(redirects), repeat(langmap)))
+                serialized_entities = pool.starmap(
+                    self.process_entity,
+                    zip(ent_titles, ent_pages, repeat(redirects), repeat(langmap)),
+                )
                 fl.write("\n".join(filter(None, serialized_entities)))
                 pool.close()
                 pool.join()
 
-
-
     def process_entity(self, et_full_title, page_content, redirects, langmap):
         # odstraňuje citace, reference a HTML poznámky
-        print("[{}] processing {}".format(str(datetime.datetime.now().time()), et_full_title), file = sys.stderr, flush = True)
-        delimiter = '<'
+        print(
+            "[{}] processing {}".format(
+                str(datetime.datetime.now().time()), et_full_title
+            ),
+            file=sys.stderr,
+            flush=True,
+        )
+        delimiter = "<"
         text_parts = page_content.split(delimiter)
         re_tag = r"^/?[^ />]+(?=[ />])"
         delete_mode = False
         tag_close = None
 
-        for i_part, text_part in enumerate(text_parts[1:], 1): # skipping first one which is not begin of tag
+        for i_part, text_part in enumerate(
+            text_parts[1:], 1
+        ):  # skipping first one which is not begin of tag
             if delete_mode and tag_close:
                 if text_part.startswith(tag_close):
-                    text_parts[i_part] = text_part[len(tag_close):]
+                    text_parts[i_part] = text_part[len(tag_close) :]
                     delete_mode = False
                 else:
                     text_parts[i_part] = ""
@@ -365,8 +475,8 @@ class WikiExtract(object):
                 matched_tag = re.search(re_tag, text_part)
                 if matched_tag:
                     matched_tag = matched_tag.group(0)
-                    if matched_tag in ['nowiki', 'ref', 'refereces']:
-                        tag_close = '/' + matched_tag + '>'
+                    if matched_tag in ["nowiki", "ref", "refereces"]:
+                        tag_close = "/" + matched_tag + ">"
                         text_len = len(text_part)
                         text_part = re.sub(r"^.*?/>", "", text_part, 1)
                         if text_len == len(text_part):
@@ -379,27 +489,42 @@ class WikiExtract(object):
         et_cont = "".join(text_parts)
         et_cont = re.sub(r"{{citace[^}]+?}}", "", et_cont, flags=re.I | re.S)
         et_cont = re.sub(r"{{cite[^}]+?}}", "", et_cont, flags=re.I)
-        et_cont = re.sub(r"{{#tag:ref\s*\|(?:[^\|\[{]|\[\[[^\]]+\]\]|(?<!\[)\[[^\[\]]+\]|{{[^}]+}})*(\|[^}]+)?}}", "", et_cont, flags=re.I | re.S)
+        et_cont = re.sub(
+            r"{{#tag:ref\s*\|(?:[^\|\[{]|\[\[[^\]]+\]\]|(?<!\[)\[[^\[\]]+\]|{{[^}]+}})*(\|[^}]+)?}}",
+            "",
+            et_cont,
+            flags=re.I | re.S,
+        )
         et_cont = re.sub(r"<!--.+?-->", "", et_cont, flags=re.DOTALL)
 
-        link_multilines =  re.findall(r"\[\[(?:Soubor|File)(?:(?:[^\[\]\n{]|{{[^}]+}}|\[\[[^\]]+\]\])*\n)+(?:[^\[\]\n{]|{{[^}]+}}|\[\[[^\]]+\]\])*\]\]", et_cont, flags = re.S)
+        link_multilines = re.findall(
+            r"\[\[(?:Soubor|File)(?:(?:[^\[\]\n{]|{{[^}]+}}|\[\[[^\]]+\]\])*\n)+(?:[^\[\]\n{]|{{[^}]+}}|\[\[[^\]]+\]\])*\]\]",
+            et_cont,
+            flags=re.S,
+        )
         for link_multiline in link_multilines:
             fixed_link_multiline = link_multiline.replace("\n", " ")
             et_cont = et_cont.replace(link_multiline, fixed_link_multiline)
-        et_cont = re.sub(r"(<br(?:\s*/)?>)\n", r"\1", et_cont, flags = re.S)
-        et_cont = re.sub(r"{\|(?!\s+class=(?:\"|')infobox(?:\"|')).*?\|}", "", et_cont, flags=re.S)
+        et_cont = re.sub(r"(<br(?:\s*/)?>)\n", r"\1", et_cont, flags=re.S)
+        et_cont = re.sub(
+            r"{\|(?!\s+class=(?:\"|')infobox(?:\"|')).*?\|}", "", et_cont, flags=re.S
+        )
         ent_redirects = redirects[et_full_title] if et_full_title in redirects else []
 
         # stránka pojednává o osobě
         if EntPerson.is_person(et_cont) >= 2:
             et_url = self._get_url(et_full_title)
-            et_person = EntPerson(et_full_title, "person", et_url, ent_redirects, langmap)
+            et_person = EntPerson(
+                et_full_title, "person", et_url, ent_redirects, langmap
+            )
             return et_person.get_data(et_cont)
 
         # stránka pojednává o státu
         if EntCountry.is_country(et_cont):
             et_url = self._get_url(et_full_title)
-            et_country = EntCountry(et_full_title, "country", et_url, ent_redirects, langmap)
+            et_country = EntCountry(
+                et_full_title, "country", et_url, ent_redirects, langmap
+            )
             return et_country.get_data(et_cont)
 
         min_level = None
@@ -432,23 +557,28 @@ class WikiExtract(object):
             min_level = id_level
             id_subtype = tmp_subtype
 
-
         # stránka pojednává o sídle
         if ent_type == "settlement":
             et_url = self._get_url(et_full_title)
-            et_settlement = EntSettlement(et_full_title, ent_type, et_url, ent_redirects, langmap)
+            et_settlement = EntSettlement(
+                et_full_title, ent_type, et_url, ent_redirects, langmap
+            )
             return et_settlement.get_data(et_cont)
 
         # stránka pojednává o vodním toku
         if ent_type == "watercourse":
             et_url = self._get_url(et_full_title)
-            et_watercourse = EntWatercourse(et_full_title, ent_type, et_url, ent_redirects, langmap)
+            et_watercourse = EntWatercourse(
+                et_full_title, ent_type, et_url, ent_redirects, langmap
+            )
             return et_watercourse.get_data(et_cont)
 
         # stránka pojednává o vodní ploše
         if ent_type == "waterarea":
             et_url = self._get_url(et_full_title)
-            et_water_area = EntWaterArea(et_full_title, ent_type, et_url, ent_redirects, langmap)
+            et_water_area = EntWaterArea(
+                et_full_title, ent_type, et_url, ent_redirects, langmap
+            )
             return et_water_area.get_data(et_cont)
 
         # stránka pojednává o geografické entitě
@@ -457,7 +587,6 @@ class WikiExtract(object):
             et_geo = EntGeo(et_full_title, ent_type, et_url, ent_redirects, langmap)
             et_geo.set_entity_subtype(id_subtype)
             return et_geo.get_data(et_cont)
-
 
     def assign_version(self):
         try:
@@ -468,13 +597,19 @@ class WikiExtract(object):
         except OSError:
             try:
                 target = os.readlink(self.redirects_dump_fpath)
-                matches = re.search(self.console_args.lang + r"wiki-([0-9]{8})-", target)
+                matches = re.search(
+                    self.console_args.lang + r"wiki-([0-9]{8})-", target
+                )
                 if matches:
                     dump_version = matches[1]
             except OSError:
                 dump_version = self.console_args.dump
-        with open('VERSION', 'w') as f:
-            f.write('{}_{}-{}'.format(self.console_args.lang, dump_version, int(round(time.time())) ))
+        with open("VERSION", "w") as f:
+            f.write(
+                "{}_{}-{}".format(
+                    self.console_args.lang, dump_version, int(round(time.time()))
+                )
+            )
 
 
 # hlavní část programu

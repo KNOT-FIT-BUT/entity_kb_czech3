@@ -5,8 +5,8 @@
 
 from libs.UniqueDict import *
 
-class DictOfUniqueDict(dict):
-	def __missing__(self, key):
-		self[key] = UniqueDict()
-		return self[key]
 
+class DictOfUniqueDict(dict):
+    def __missing__(self, key):
+        self[key] = UniqueDict()
+        return self[key]

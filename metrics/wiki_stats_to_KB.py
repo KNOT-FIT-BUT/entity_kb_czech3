@@ -34,7 +34,7 @@ kb_struct = metrics_knowledge_base.KnowledgeBase()
 
 for line in sys.stdin:
     columns = line.rstrip("\n").split("\t")
-    
+
     link = kb_struct.get_data_for(columns, "WIKIPEDIA LINK")
     if link and link in stats:
         columns[kb_struct.get_col_for(columns, "WIKI BACKLINKS")] = stats[link][0]

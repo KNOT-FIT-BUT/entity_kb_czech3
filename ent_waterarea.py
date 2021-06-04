@@ -51,7 +51,6 @@ class EntWaterArea(EntCore):
 
         self.get_wiki_api_location(title)
 
-
     @staticmethod
     def is_water_area(title, content):
         """
@@ -74,7 +73,9 @@ class EntWaterArea(EntCore):
 
         # kontrola kategorií
         for kw in ("Rybníky", "Jezera", "Říční jezera"):
-            if re.search(r"\[\[\s*Kategorie:\s*" + kw + r"\s+(?:na|ve?)\s+.+?\]\]", content, re.I):
+            if re.search(
+                r"\[\[\s*Kategorie:\s*" + kw + r"\s+(?:na|ve?)\s+.+?\]\]", content, re.I
+            ):
                 return 2, "Kategorie '" + kw + "'"
 
         # kontrola názvu
@@ -83,7 +84,6 @@ class EntWaterArea(EntCore):
             return 3, "Název '" + rexp.group(0) + "'"
 
         return 0, ""
-
 
     def data_preprocess(self, content):
         """
@@ -94,7 +94,6 @@ class EntWaterArea(EntCore):
         """
         content = content.replace("&nbsp;", " ")
         content = re.sub(r"m\sn\.\s*", "metrů nad ", content)
-
 
     def line_process_infobox(self, ln, is_infobox_block):
         # aliasy
@@ -134,8 +133,21 @@ class EntWaterArea(EntCore):
 
     def line_process_1st_sentence(self, ln):
         # první věta
-        abbrs = "".join((r"(?<!\s(?:tzv|at[pd]))", r"(?<!\s(?:apod|(?:ku|na|po)př|příp))", r"(?<!\s(?:[amt]j|fr))", r"(?<!\d)", r"(?<!nad m|ev\.\sč)"))
-        rexp = re.search(r".*?'''.+?'''.*?\s(?:byl[aiy]?|je|jsou|nacház(?:í|ejí)|patř(?:í|il)|stal|rozprostír|lež(?:í|el)).*?" + abbrs + "\.(?![^[]*?\]\])", ln)
+        abbrs = "".join(
+            (
+                r"(?<!\s(?:tzv|at[pd]))",
+                r"(?<!\s(?:apod|(?:ku|na|po)př|příp))",
+                r"(?<!\s(?:[amt]j|fr))",
+                r"(?<!\d)",
+                r"(?<!nad m|ev\.\sč)",
+            )
+        )
+        rexp = re.search(
+            r".*?'''.+?'''.*?\s(?:byl[aiy]?|je|jsou|nacház(?:í|ejí)|patř(?:í|il)|stal|rozprostír|lež(?:í|el)).*?"
+            + abbrs
+            + "\.(?![^[]*?\]\])",
+            ln,
+        )
         if rexp:
             if not self.description:
                 self.get_first_sentence(self.del_redundant_text(rexp.group(0), ", "))
@@ -143,18 +155,35 @@ class EntWaterArea(EntCore):
 
                 # extrakce alternativních pojmenování z první věty
                 fs_aliases_lang_links = []
-                for link_lang_alias in re.findall(r"\[\[(?:[^\[]* )?([^\[\] |]+)(?:\|(?:[^\]]* )?([^\] ]+))?\]\]\s*('{3}.+?'{3})", tmp_first_sentence, flags = re.I):
-                    for i_group in [0,1]:
-                        if link_lang_alias[i_group] and link_lang_alias[i_group] in self.langmap:
-                            fs_aliases_lang_links.append("{{{{Vjazyce|{}}}}} {}".format(self.langmap[link_lang_alias[i_group]], link_lang_alias[2]))
-                            tmp_first_sentence = tmp_first_sentence.replace(link_lang_alias[2], '')
+                for link_lang_alias in re.findall(
+                    r"\[\[(?:[^\[]* )?([^\[\] |]+)(?:\|(?:[^\]]* )?([^\] ]+))?\]\]\s*('{3}.+?'{3})",
+                    tmp_first_sentence,
+                    flags=re.I,
+                ):
+                    for i_group in [0, 1]:
+                        if (
+                            link_lang_alias[i_group]
+                            and link_lang_alias[i_group] in self.langmap
+                        ):
+                            fs_aliases_lang_links.append(
+                                "{{{{Vjazyce|{}}}}} {}".format(
+                                    self.langmap[link_lang_alias[i_group]],
+                                    link_lang_alias[2],
+                                )
+                            )
+                            tmp_first_sentence = tmp_first_sentence.replace(
+                                link_lang_alias[2], ""
+                            )
                             break
-                fs_aliases = re.findall(r"((?:{{(?:Cj|Cizojazyčně|Vjazyce2?)[^}]+}}\s+)?(?<!\]\]\s)'{3}.+?'{3})", tmp_first_sentence, flags = re.I)
+                fs_aliases = re.findall(
+                    r"((?:{{(?:Cj|Cizojazyčně|Vjazyce2?)[^}]+}}\s+)?(?<!\]\]\s)'{3}.+?'{3})",
+                    tmp_first_sentence,
+                    flags=re.I,
+                )
                 fs_aliases += fs_aliases_lang_links
                 if fs_aliases:
                     for fs_alias in fs_aliases:
                         self.get_aliases(self.del_redundant_text(fs_alias).strip("'"))
-
 
     def custom_transform_alias(self, alias):
         """
@@ -165,7 +194,6 @@ class EntWaterArea(EntCore):
         """
 
         return self.transform_geo_alias(alias)
-
 
     def get_area(self, area):
         """
@@ -186,7 +214,9 @@ class EntWaterArea(EntCore):
         area = re.sub(r"^(\d+(?:,\d+)?)[^\d,]+.*$", r"\1", area)
         area = "" if not re.search(r"\d", area) else area
 
-        if is_ha:  # je-li údaj uveden v hektarech, dojde k převodu na kilometry čtvereční
+        if (
+            is_ha
+        ):  # je-li údaj uveden v hektarech, dojde k převodu na kilometry čtvereční
             try:
                 area = str(float(area.replace(",", ".")) / 100).replace(".", ",")
             except ValueError:
@@ -217,16 +247,18 @@ class EntWaterArea(EntCore):
         Parametry:
         fs - první věta stránky (str)
         """
-        #TODO: refactorize
+        # TODO: refactorize
         fs = re.sub(r"\(.*?\)", "", fs)
         fs = re.sub(r"\[.*?\]", "", fs)
         fs = re.sub(r"<.*?>", "", fs)
-        fs = re.sub(r"{{(?:cj|cizojazyčně|vjazyce\d?)\|\w+\|(.*?)}}", r"\1", fs, flags=re.I)
+        fs = re.sub(
+            r"{{(?:cj|cizojazyčně|vjazyce\d?)\|\w+\|(.*?)}}", r"\1", fs, flags=re.I
+        )
         fs = re.sub(r"{{PAGENAME}}", self.title, fs, flags=re.I)
         fs = re.sub(r"{{.*?}}", "", fs).replace("{", "").replace("}", "")
         fs = re.sub(r"/.*?/", "", fs)
         fs = re.sub(r"\s+", " ", fs).strip()
-        fs = re.sub(r"^\s*}}", "", fs) # Eliminate the end of a template
+        fs = re.sub(r"^\s*}}", "", fs)  # Eliminate the end of a template
         fs = re.sub(r"[()<>\[\]{}/]", "", fs).replace(" ,", ",").replace(" .", ".")
 
         self.description = fs
@@ -235,18 +267,20 @@ class EntWaterArea(EntCore):
         """
         Serializuje údaje o vodní ploše.
         """
-        return "\t".join([
-                   self.eid,
-                   self.prefix,
-                   self.title,
-                   self.serialize_aliases(),
-                   '|'.join(self.redirects),
-                   self.description,
-                   self.original_title,
-                   self.images,
-                   self.link,
-                   self.continent,
-                   self.latitude,
-                   self.longitude,
-                   self.area
-               ])
+        return "\t".join(
+            [
+                self.eid,
+                self.prefix,
+                self.title,
+                self.serialize_aliases(),
+                "|".join(self.redirects),
+                self.description,
+                self.original_title,
+                self.images,
+                self.link,
+                self.continent,
+                self.latitude,
+                self.longitude,
+                self.area,
+            ]
+        )

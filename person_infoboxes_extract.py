@@ -20,7 +20,13 @@ ib_types = set()
 
 # parsuje argumenty zadané při spuštění
 console_args_parser = argparse.ArgumentParser()
-console_args_parser.add_argument("src_file", nargs="?", default="/mnt/minerva1/nlp/corpora_datasets/monolingual/czech/wikipedia/cswiki-latest-pages-articles.xml", type=str, help="zdrojový soubor")
+console_args_parser.add_argument(
+    "src_file",
+    nargs="?",
+    default="/mnt/minerva1/nlp/corpora_datasets/monolingual/czech/wikipedia/cswiki-latest-pages-articles.xml",
+    type=str,
+    help="zdrojový soubor",
+)
 console_args = console_args_parser.parse_args()
 
 # parsuje XML dump Wikipedie a prochází jednotlivé stránky
@@ -39,16 +45,29 @@ for event, elem in context:
                     if not child.text.startswith("Šablona:"):
                         continue
                     ib_title = child.text
-    
+
                 if ib_title:
                     if "revision" in child.tag:
                         for grandchild in child:
                             if "text" in grandchild.tag:
-                                if re.search(r"\[\[\s*Kategorie:\s*Infoboxy\s+lidí", grandchild.text):
-                                    ib_re = re.search(r"^Šablona:Infobox[\-–—−\s]+(.+)$", ib_title)
+                                if re.search(
+                                    r"\[\[\s*Kategorie:\s*Infoboxy\s+lidí",
+                                    grandchild.text,
+                                ):
+                                    ib_re = re.search(
+                                        r"^Šablona:Infobox[\-–—−\s]+(.+)$", ib_title
+                                    )
                                     if ib_re:
-                                        ib_type = ib_re.group(1).replace("/doc", "").strip().lower()
-                                        if "etnická skupina" in ib_type or "předkové" in ib_type:  # nesouvisí s osobami
+                                        ib_type = (
+                                            ib_re.group(1)
+                                            .replace("/doc", "")
+                                            .strip()
+                                            .lower()
+                                        )
+                                        if (
+                                            "etnická skupina" in ib_type
+                                            or "předkové" in ib_type
+                                        ):  # nesouvisí s osobami
                                             continue
                                         ib_types.add(ib_type)
         root.clear()

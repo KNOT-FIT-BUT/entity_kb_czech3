@@ -66,7 +66,6 @@ class EntGeo(EntCore):
 
         self.get_wiki_api_location(title)
 
-
     def set_entity_subtype(self, subtype):
         """
         Nastavuje podtyp geografické entity získaný z identifikace.
@@ -102,7 +101,11 @@ class EntGeo(EntCore):
         Dvojice hodnot (level, type); level určuje, zda stránka pojednává o geografické entitě, type určuje způsob, kterým byla stránka identifikována. (Tuple[int, str])
         """
         # kontrola šablon
-        rexp = re.search(r"{{\s*Infobox\s*-\s*(reliéf|hora|průsmyk|vodopád|ostrov(?!ní)|kontinent)", content, re.I)
+        rexp = re.search(
+            r"{{\s*Infobox\s*-\s*(reliéf|hora|průsmyk|vodopád|ostrov(?!ní)|kontinent)",
+            content,
+            re.I,
+        )
         if rexp:
             return 1, rexp.group(1).lower()
 
@@ -111,12 +114,15 @@ class EntGeo(EntCore):
             return 2, "poloostrov"
 
         # kontrola závorek v názvu
-        rexp = re.search(r"\((hora|pohoří|průsmyk|sedlo|vodopád|(?:polo)?ostrov|kontinent).*\)$", title, re.I)
+        rexp = re.search(
+            r"\((hora|pohoří|průsmyk|sedlo|vodopád|(?:polo)?ostrov|kontinent).*\)$",
+            title,
+            re.I,
+        )
         if rexp:
             return 3, rexp.group(1).lower()
 
         return 0, ""
-
 
     def data_preprocess(self, content):
         """
@@ -127,14 +133,16 @@ class EntGeo(EntCore):
         """
         content = content.replace("&nbsp;", " ")
         content = re.sub(r"m\sn\.\s*", "metrů nad ", content)
-# Šablona "světové dědictví" přináší do alternativních jmen spustu problémů - prozatím vyřešeno jinak v end_geo.del_redundant_text, protože jinak chybělo spoustu užitečných názvů
-#        content = re.sub(r"(?sm)({{\s*Infobox\s*-\s*světové dědictví.*?)(?:|\s*název(?:[\s_]místním[\s_]jazykem)?\s*=(?!=)\s*)?(?:[^\n]*?\[[^\n]*?)(.*?^\s*}})", r"\1\2", content, re.I)
-#        content = re.sub(r"(?sm)({{\s*Infobox\s*-\s*světové dědictví.*?)(?:|\s*jméno\s*=(?!=)\s*)?(?:[^\n]*?\[[^\n]*?)(.*?^\s*}})", r"\1\2", content, re.I)
 
+    # Šablona "světové dědictví" přináší do alternativních jmen spustu problémů - prozatím vyřešeno jinak v end_geo.del_redundant_text, protože jinak chybělo spoustu užitečných názvů
+    #        content = re.sub(r"(?sm)({{\s*Infobox\s*-\s*světové dědictví.*?)(?:|\s*název(?:[\s_]místním[\s_]jazykem)?\s*=(?!=)\s*)?(?:[^\n]*?\[[^\n]*?)(.*?^\s*}})", r"\1\2", content, re.I)
+    #        content = re.sub(r"(?sm)({{\s*Infobox\s*-\s*světové dědictví.*?)(?:|\s*jméno\s*=(?!=)\s*)?(?:[^\n]*?\[[^\n]*?)(.*?^\s*}})", r"\1\2", content, re.I)
 
     def line_process_infobox(self, ln, is_infobox_block):
         # aliasy
-        rexp = re.search(r"(?:název(?:[\s_]místním[\s_]jazykem)?|jméno)\s*=(?!=)\s*(.*)", ln, re.I)
+        rexp = re.search(
+            r"(?:název(?:[\s_]místním[\s_]jazykem)?|jméno)\s*=(?!=)\s*(.*)", ln, re.I
+        )
         if rexp and rexp.group(1):
             self.get_aliases(self.del_redundant_text(rexp.group(1)))
             if is_infobox_block == True:
@@ -183,10 +191,22 @@ class EntGeo(EntCore):
                 if is_infobox_block == True:
                     return
 
-
     def line_process_1st_sentence(self, ln):
-        abbrs = "".join((r"(?<!\s(?:tzv|at[pd]))", r"(?<!\s(?:apod|(?:ku|na|po)př|příp))", r"(?<!\s(?:[amt]j|fr))", r"(?<!\d)", r"(?<!nad m|ev\.\sč)"))
-        rexp = re.search(r".*?'''.+?'''.*?\s(?:byl[aiy]?|je|jsou|nacház(?:í|ejí)|patř(?:í|il)|stal|rozprostír|lež(?:í|el)).*?(?:" + abbrs + "\.(?!(?:[^[]*?\]\]|\s*[a-z]))|\.$)", ln)
+        abbrs = "".join(
+            (
+                r"(?<!\s(?:tzv|at[pd]))",
+                r"(?<!\s(?:apod|(?:ku|na|po)př|příp))",
+                r"(?<!\s(?:[amt]j|fr))",
+                r"(?<!\d)",
+                r"(?<!nad m|ev\.\sč)",
+            )
+        )
+        rexp = re.search(
+            r".*?'''.+?'''.*?\s(?:byl[aiy]?|je|jsou|nacház(?:í|ejí)|patř(?:í|il)|stal|rozprostír|lež(?:í|el)).*?(?:"
+            + abbrs
+            + "\.(?!(?:[^[]*?\]\]|\s*[a-z]))|\.$)",
+            ln,
+        )
         if rexp:
             if not self.description:
                 self.get_first_sentence(self.del_redundant_text(rexp.group(0), ", "))
@@ -194,18 +214,35 @@ class EntGeo(EntCore):
                 tmp_first_sentence = rexp.group(0)
                 fs_aliases_lang_links = []
                 # extrakce alternativních pojmenování z první věty
-                for link_lang_alias in re.findall(r"\[\[(?:[^\[]* )?([^\[\] |]+)(?:\|(?:[^\]]* )?([^\] ]+))?\]\]\s*('{3}.+?'{3})", tmp_first_sentence, flags = re.I):
-                    for i_group in [0,1]:
-                        if link_lang_alias[i_group] and link_lang_alias[i_group] in self.langmap:
-                            fs_aliases_lang_links.append("{{{{Vjazyce|{}}}}} {}".format(self.langmap[link_lang_alias[i_group]], link_lang_alias[2]))
-                            tmp_first_sentence = tmp_first_sentence.replace(link_lang_alias[2], '')
+                for link_lang_alias in re.findall(
+                    r"\[\[(?:[^\[]* )?([^\[\] |]+)(?:\|(?:[^\]]* )?([^\] ]+))?\]\]\s*('{3}.+?'{3})",
+                    tmp_first_sentence,
+                    flags=re.I,
+                ):
+                    for i_group in [0, 1]:
+                        if (
+                            link_lang_alias[i_group]
+                            and link_lang_alias[i_group] in self.langmap
+                        ):
+                            fs_aliases_lang_links.append(
+                                "{{{{Vjazyce|{}}}}} {}".format(
+                                    self.langmap[link_lang_alias[i_group]],
+                                    link_lang_alias[2],
+                                )
+                            )
+                            tmp_first_sentence = tmp_first_sentence.replace(
+                                link_lang_alias[2], ""
+                            )
                             break
-                fs_aliases = re.findall(r"((?:{{(?:Cj|Cizojazyčně|Vjazyce2?)[^}]+}}\s+)?(?<!\]\]\s)'{3}.+?'{3})", tmp_first_sentence, flags = re.I)
+                fs_aliases = re.findall(
+                    r"((?:{{(?:Cj|Cizojazyčně|Vjazyce2?)[^}]+}}\s+)?(?<!\]\]\s)'{3}.+?'{3})",
+                    tmp_first_sentence,
+                    flags=re.I,
+                )
                 fs_aliases += fs_aliases_lang_links
                 if fs_aliases:
                     for fs_alias in fs_aliases:
                         self.get_aliases(self.del_redundant_text(fs_alias).strip("'"))
-
 
     def custom_transform_alias(self, alias):
         """
@@ -216,7 +253,6 @@ class EntGeo(EntCore):
         """
 
         return self.transform_geo_alias(alias)
-
 
     def get_area(self, area):
         """
@@ -237,7 +273,9 @@ class EntGeo(EntCore):
         area = re.sub(r"^(\d+(?:,\d+)?)[^\d,]+.*$", r"\1", area)
         area = "" if not re.search(r"\d", area) else area
 
-        if is_ha:  # je-li údaj uveden v hektarech, dojde k převodu na kilometry čtvereční
+        if (
+            is_ha
+        ):  # je-li údaj uveden v hektarech, dojde k převodu na kilometry čtvereční
             try:
                 area = str(float(area.replace(",", ".")) / 100).replace(".", ",")
             except ValueError:
@@ -268,20 +306,21 @@ class EntGeo(EntCore):
         Parametry:
         fs - první věta stránky (str)
         """
-        #TODO: refactorize
+        # TODO: refactorize
         fs = re.sub(r"\(.*?\)", "", fs)
         fs = re.sub(r"\[.*?\]", "", fs)
         fs = re.sub(r"<.*?>", "", fs)
-        fs = re.sub(r"{{(?:cj|cizojazyčně|vjazyce\d?)\|\w+\|(.*?)}}", r"\1", fs, flags=re.I)
+        fs = re.sub(
+            r"{{(?:cj|cizojazyčně|vjazyce\d?)\|\w+\|(.*?)}}", r"\1", fs, flags=re.I
+        )
         fs = re.sub(r"{{PAGENAME}}", self.title, fs, flags=re.I)
         fs = re.sub(r"{{.*?}}", "", fs).replace("{", "").replace("}", "")
         fs = re.sub(r"/.*?/", "", fs)
         fs = re.sub(r"\s+", " ", fs).strip()
-        fs = re.sub(r"^\s*}}", "", fs) # Eliminate the end of a template
+        fs = re.sub(r"^\s*}}", "", fs)  # Eliminate the end of a template
         fs = re.sub(r"[()<>\[\]{}/]", "", fs).replace(" ,", ",").replace(" .", ".")
 
         self.description = fs
-
 
     def get_population(self, population):
         """
@@ -291,16 +330,28 @@ class EntGeo(EntCore):
         population - počet obyvatel, jenž žije na území geografické entity (str)
         """
 
-        coef = 1000000 if re.search(r"mil\.|mili[oó]n", population, re.I) else 1000 if re.search(r"tis\.|tis[ií]c", population, re.I) else 0
+        coef = (
+            1000000
+            if re.search(r"mil\.|mili[oó]n", population, re.I)
+            else 1000
+            if re.search(r"tis\.|tis[ií]c", population, re.I)
+            else 0
+        )
 
         population = re.sub(r"\(.*?\)", "", population)
         population = re.sub(r"\[.*?\]", "", population)
         population = re.sub(r"<.*?>", "", population)
-        population = re.sub(r"{{.*?}}", "", population).replace("{", "").replace("}", "")
+        population = (
+            re.sub(r"{{.*?}}", "", population).replace("{", "").replace("}", "")
+        )
         population = re.sub(r"(?<=\d)[,.\s](?=\d)", "", population).strip()
         population = re.sub(r"^\D*(?=\d)", "", population)
         population = re.sub(r"^(\d+)\D.*$", r"\1", population)
-        population = "0" if re.search(r"neobydlen|bez.+?obyvatel", population, re.I) else population  # pouze v tomto souboru
+        population = (
+            "0"
+            if re.search(r"neobydlen|bez.+?obyvatel", population, re.I)
+            else population
+        )  # pouze v tomto souboru
         population = "" if not re.search(r"\d", population) else population
 
         if coef and population:
@@ -336,32 +387,22 @@ class EntGeo(EntCore):
             self.prefix,
             self.title,
             self.serialize_aliases(),
-            '|'.join(self.redirects),
+            "|".join(self.redirects),
             self.description,
             self.original_title,
             self.images,
-            self.link
+            self.link,
         ]
 
         if self.subtype in ("relief", "waterfall", "island"):
-            cols.extend([
-                self.continent
-            ])
+            cols.extend([self.continent])
 
-        cols.extend([
-            self.latitude,
-            self.longitude
-        ])
+        cols.extend([self.latitude, self.longitude])
 
         if self.subtype == "waterfall":
-            cols.extend([
-                self.total_height
-            ])
+            cols.extend([self.total_height])
 
         if self.subtype in ("island", "continent"):
-            cols.extend([
-                self.area,
-                self.population
-            ])
+            cols.extend([self.area, self.population])
 
         return "\t".join(cols)

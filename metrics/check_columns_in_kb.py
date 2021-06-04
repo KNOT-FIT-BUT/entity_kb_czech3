@@ -22,17 +22,16 @@ import metrics_knowledge_base
 import argparse
 
 parser = argparse.ArgumentParser(
-	description = "Check number of columns in the knowledge base reading from standard input against HEAD-KB. Mismatch print to standard error output. Exit 1 when find one or more mismatch."
+    description="Check number of columns in the knowledge base reading from standard input against HEAD-KB. Mismatch print to standard error output. Exit 1 when find one or more mismatch."
 )
 parser.add_argument(
-	'-H', '--head-kb',
-	help='Header for the knowledge base, which specify its types and their atributes (default: %(default)s).',
-	default=metrics_knowledge_base.PATH_HEAD_KB
+    "-H",
+    "--head-kb",
+    help="Header for the knowledge base, which specify its types and their atributes (default: %(default)s).",
+    default=metrics_knowledge_base.PATH_HEAD_KB,
 )
 parser.add_argument(
-	'--cat',
-	action="store_true",
-	help='Print standard input to standard output.'
+    "--cat", action="store_true", help="Print standard input to standard output."
 )
 
 arguments = parser.parse_args()
@@ -42,16 +41,19 @@ kb_struct = metrics_knowledge_base.KnowledgeBase(path_to_headkb=arguments.head_k
 kb_is_ok = True
 line_num = 0
 for line in sys.stdin:
-	line_num += 1
-	columns = line.rstrip("\n").split("\t")
-	ent_head = kb_struct.get_ent_head(columns)
-	if len(columns) != len(ent_head):
-		sys.stderr.write('Bad line %s in KB: has %s columns, but its entity in HEAD-KB has %s columns.\n' % (line_num, len(columns), len(ent_head)))
-		kb_is_ok = False
-	if arguments.cat:
-		sys.stdout.write(line)
+    line_num += 1
+    columns = line.rstrip("\n").split("\t")
+    ent_head = kb_struct.get_ent_head(columns)
+    if len(columns) != len(ent_head):
+        sys.stderr.write(
+            "Bad line %s in KB: has %s columns, but its entity in HEAD-KB has %s columns.\n"
+            % (line_num, len(columns), len(ent_head))
+        )
+        kb_is_ok = False
+    if arguments.cat:
+        sys.stdout.write(line)
 
 if not kb_is_ok:
-	sys.exit(1)
+    sys.exit(1)
 
 # EOF

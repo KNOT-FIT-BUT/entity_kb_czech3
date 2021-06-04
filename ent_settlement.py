@@ -61,7 +61,6 @@ class EntSettlement(EntCore):
 
         self.get_wiki_api_location(title)
 
-
     @classmethod
     def is_settlement(cls, title, content):
         """
@@ -78,10 +77,14 @@ class EntSettlement(EntCore):
         id_type = ""
 
         # kontrola šablon
-        id_level, id_type = cls._contains_settlement_infoboxes(content, id_level, id_type)
+        id_level, id_type = cls._contains_settlement_infoboxes(
+            content, id_level, id_type
+        )
 
         # kontrola kategorií
-        id_level, id_type = cls._contains_settlement_categories(title, content, id_level, id_type)
+        id_level, id_type = cls._contains_settlement_categories(
+            title, content, id_level, id_type
+        )
 
         return id_level, id_type
 
@@ -105,7 +108,9 @@ class EntSettlement(EntCore):
         # kontrola probíhá dál
         ib_prefix = r"{{\s*Infobox\s+"
 
-        if re.search(ib_prefix + r"-\s+sídlo", content, re.I) or re.search(r"{\|.*?\|\s*sídlo.*?\|}", content, re.I | re.S):
+        if re.search(ib_prefix + r"-\s+sídlo", content, re.I) or re.search(
+            r"{\|.*?\|\s*sídlo.*?\|}", content, re.I | re.S
+        ):
             return 1, "Sídlo (světa)"
         if re.search(ib_prefix + r"-\s+česká\s+obec", content, re.I):
             return 1, "Česká obec"
@@ -144,11 +149,24 @@ class EntSettlement(EntCore):
         elif re.search(r"\[\[Kategorie:Obce\s+(?:na|ve?)\s+.+?\]\]", content, re.I):
             id_level, id_type = 2, "Kategorie Obce..."
 
-        if any(x in title.lower() for x in ("obec", "obc", "měst", "metro", "sídel", "sídl", "komun", "muze", "místo", "vesnic")):
+        if any(
+            x in title.lower()
+            for x in (
+                "obec",
+                "obc",
+                "měst",
+                "metro",
+                "sídel",
+                "sídl",
+                "komun",
+                "muze",
+                "místo",
+                "vesnic",
+            )
+        ):
             id_level, id_type = 0, ""
 
         return id_level, id_type
-
 
     def data_preprocess(self, content):
         """
@@ -159,7 +177,6 @@ class EntSettlement(EntCore):
         """
         content = content.replace("&nbsp;", " ")
         content = re.sub(r"m\sn\.\s*", "metrů nad ", content)
-
 
     def line_process_infobox(self, ln, is_infobox_block):
         # aliasy
@@ -173,12 +190,16 @@ class EntSettlement(EntCore):
         rexp_format = r"(?:název|(?:originální[\s_]+)?jméno)\s*=(?!=)\s*(.*)"
         rexp = re.search(rexp_format, ln, re.I)
         if rexp and rexp.group(1):
-            self.get_aliases(self.del_redundant_text(rexp.group(1), langmap = self.langmap))
+            self.get_aliases(
+                self.del_redundant_text(rexp.group(1), langmap=self.langmap)
+            )
             if is_infobox_block == True:
                 return
 
         # země
-        if not self.country and re.search(r"{{\s*Infobox\s+-\s+(?:česká\s+obec|statutární\s+město)", ln, re.I):
+        if not self.country and re.search(
+            r"{{\s*Infobox\s+-\s+(?:česká\s+obec|statutární\s+město)", ln, re.I
+        ):
             self.country = "Česká republika"
             if is_infobox_block == True:
                 return
@@ -209,10 +230,22 @@ class EntSettlement(EntCore):
             if is_infobox_block == True:
                 return
 
-
     def line_process_1st_sentence(self, ln):
-        abbrs = "".join((r"(?<!\s(?:tzv|at[pd]))", r"(?<!\s(?:apod|(?:ku|na|po)př|příp))", r"(?<!\s(?:[amt]j|fr))", r"(?<!\d)", r"(?<!nad m)"))
-        rexp = re.search(r".*?'''.+?'''.*?\s(?:byl[aiy]?|je|jsou|nacház(?:í|ejí)|patř(?:í|il)|stal|rozprostír|lež(?:í|el)).*?" + abbrs + "\.(?![^[]*?\]\])", ln)
+        abbrs = "".join(
+            (
+                r"(?<!\s(?:tzv|at[pd]))",
+                r"(?<!\s(?:apod|(?:ku|na|po)př|příp))",
+                r"(?<!\s(?:[amt]j|fr))",
+                r"(?<!\d)",
+                r"(?<!nad m)",
+            )
+        )
+        rexp = re.search(
+            r".*?'''.+?'''.*?\s(?:byl[aiy]?|je|jsou|nacház(?:í|ejí)|patř(?:í|il)|stal|rozprostír|lež(?:í|el)).*?"
+            + abbrs
+            + "\.(?![^[]*?\]\])",
+            ln,
+        )
         if rexp:
             if not self.description:
                 self.get_first_sentence(self.del_redundant_text(rexp.group(0), ", "))
@@ -220,18 +253,35 @@ class EntSettlement(EntCore):
 
                 # extrakce alternativních pojmenování z první věty
                 fs_aliases_lang_links = []
-                for link_lang_alias in re.findall(r"\[\[(?:[^\[]* )?([^\[\] |]+)(?:\|(?:[^\]]* )?([^\] ]+))?\]\]\s*('{3}.+?'{3})", tmp_first_sentence, flags = re.I):
-                    for i_group in [0,1]:
-                        if link_lang_alias[i_group] and link_lang_alias[i_group] in self.langmap:
-                            fs_aliases_lang_links.append("{{{{Vjazyce|{}}}}} {}".format(self.langmap[link_lang_alias[i_group]], link_lang_alias[2]))
-                            tmp_first_sentence = tmp_first_sentence.replace(link_lang_alias[2], '')
+                for link_lang_alias in re.findall(
+                    r"\[\[(?:[^\[]* )?([^\[\] |]+)(?:\|(?:[^\]]* )?([^\] ]+))?\]\]\s*('{3}.+?'{3})",
+                    tmp_first_sentence,
+                    flags=re.I,
+                ):
+                    for i_group in [0, 1]:
+                        if (
+                            link_lang_alias[i_group]
+                            and link_lang_alias[i_group] in self.langmap
+                        ):
+                            fs_aliases_lang_links.append(
+                                "{{{{Vjazyce|{}}}}} {}".format(
+                                    self.langmap[link_lang_alias[i_group]],
+                                    link_lang_alias[2],
+                                )
+                            )
+                            tmp_first_sentence = tmp_first_sentence.replace(
+                                link_lang_alias[2], ""
+                            )
                             break
-                fs_aliases = re.findall(r"((?:{{(?:Cj|Cizojazyčně|Vjazyce2?)[^}]+}}\s+)?(?<!\]\]\s)'{3}.+?'{3})", tmp_first_sentence, flags = re.I)
+                fs_aliases = re.findall(
+                    r"((?:{{(?:Cj|Cizojazyčně|Vjazyce2?)[^}]+}}\s+)?(?<!\]\]\s)'{3}.+?'{3})",
+                    tmp_first_sentence,
+                    flags=re.I,
+                )
                 fs_aliases += fs_aliases_lang_links
                 if fs_aliases:
                     for fs_alias in fs_aliases:
                         self.get_aliases(self.del_redundant_text(fs_alias).strip("'"))
-
 
     def custom_transform_alias(self, alias):
         """
@@ -242,7 +292,6 @@ class EntSettlement(EntCore):
         """
 
         return self.transform_geo_alias(alias)
-
 
     def get_area(self, area):
         """
@@ -272,7 +321,11 @@ class EntSettlement(EntCore):
         """
         country = re.sub(r"{{vlajka\s+a\s+název\|(.*?)}}", r"\1", country, flags=re.I)
         country = re.sub(r"{{.*?}}", "", country)
-        country = "Česká republika" if re.search(r"Čechy|Morava|Slezsko", country, re.I) else country
+        country = (
+            "Česká republika"
+            if re.search(r"Čechy|Morava|Slezsko", country, re.I)
+            else country
+        )
         country = re.sub(r",?\s*\(.*?\)", "", country)
         country = re.sub(r"\s+", " ", country).strip().replace("'", "")
 
@@ -285,16 +338,18 @@ class EntSettlement(EntCore):
         Parametry:
         fs - první věta stránky (str)
         """
-        #TODO: refactorize
+        # TODO: refactorize
         fs = re.sub(r"\(.*?\)", "", fs)
         fs = re.sub(r"\[.*?\]", "", fs)
         fs = re.sub(r"<.*?>", "", fs)
-        fs = re.sub(r"{{(?:cj|cizojazyčně|vjazyce\d?)\|\w+\|(.*?)}}", r"\1", fs, flags=re.I)
+        fs = re.sub(
+            r"{{(?:cj|cizojazyčně|vjazyce\d?)\|\w+\|(.*?)}}", r"\1", fs, flags=re.I
+        )
         fs = re.sub(r"{{PAGENAME}}", self.title, fs, flags=re.I)
         fs = re.sub(r"{{.*?}}", "", fs).replace("{", "").replace("}", "")
         fs = re.sub(r"/.*?/", "", fs)
         fs = re.sub(r"\s+", " ", fs).strip()
-        fs = re.sub(r"^\s*}}", "", fs) # Eliminate the end of a template
+        fs = re.sub(r"^\s*}}", "", fs)  # Eliminate the end of a template
         fs = re.sub(r"[()<>\[\]{}/]", "", fs).replace(" ,", ",")
 
         self.description = fs
@@ -306,12 +361,20 @@ class EntSettlement(EntCore):
         Parametry:
         population - počet obyvatel sídla (str)
         """
-        coef = 1000000 if re.search(r"mil\.|mili[oó]n", population, re.I) else 1000 if re.search(r"tis\.|tis[ií]c", population, re.I) else 0
+        coef = (
+            1000000
+            if re.search(r"mil\.|mili[oó]n", population, re.I)
+            else 1000
+            if re.search(r"tis\.|tis[ií]c", population, re.I)
+            else 0
+        )
 
         population = re.sub(r"\(.*?\)", "", population)
         population = re.sub(r"\[.*?\]", "", population)
         population = re.sub(r"<.*?>", "", population)
-        population = re.sub(r"{{.*?}}", "", population).replace("{", "").replace("}", "")
+        population = (
+            re.sub(r"{{.*?}}", "", population).replace("{", "").replace("}", "")
+        )
         population = re.sub(r"(?<=\d)[,.\s](?=\d)", "", population).strip()
         population = re.sub(r"^\D*(?=\d)", "", population)
         population = re.sub(r"^(\d+)\D.*$", r"\1", population)
@@ -326,19 +389,21 @@ class EntSettlement(EntCore):
         """
         Serializuje údaje o sídlu.
         """
-        return "\t".join([
-                   self.eid,
-                   self.prefix,
-                   self.title,
-                   self.serialize_aliases(),
-                   '|'.join(self.redirects),
-                   self.description,
-                   self.original_title,
-                   self.images,
-                   self.link,
-                   self.country,
-                   self.latitude,
-                   self.longitude,
-                   self.area,
-                   self.population
-               ])
+        return "\t".join(
+            [
+                self.eid,
+                self.prefix,
+                self.title,
+                self.serialize_aliases(),
+                "|".join(self.redirects),
+                self.description,
+                self.original_title,
+                self.images,
+                self.link,
+                self.country,
+                self.latitude,
+                self.longitude,
+                self.area,
+                self.population,
+            ]
+        )

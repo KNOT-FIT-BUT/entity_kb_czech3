@@ -13,6 +13,7 @@ languages.json
 **/start.sh.stdmix
 
 # outputs
+outputs
 **/HEAD-KB
 **/VERSION
 **/KBstatsMetrics.all
