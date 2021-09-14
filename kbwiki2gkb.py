@@ -384,18 +384,7 @@ parser.add_argument(
     default=OUTFILE_KB_DATA,
     help="Output KB (generic format) file name\n(default: %(default)s).",
 )
-parser.add_argument(
-    "--group-is-person",
-    "-g",
-    action="store_true",
-    help="Group is formed by people only.",
-)
 args = parser.parse_args()
-
-if args.group_is_person:
-    MAP_BASETYPES_COMPOSITE_TYPES[COLTYPE_GROUP] = [
-        COLTYPE_PERSON
-    ] + MAP_BASETYPES_COMPOSITE_TYPES[COLTYPE_GROUP]
 
 outkb = os.path.join(args.outdir, args.outkb)
 with open(outkb, "w") as fout_kb:
