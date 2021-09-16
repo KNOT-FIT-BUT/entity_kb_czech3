@@ -297,7 +297,7 @@ class EntPerson(EntCore):
             tmp_alias = re.sub(
                 r"^\s*(?:viz\s+)?\[\[[^\]]+\]\]", "", tmp_alias, flags=re.I
             )  # https://cs.wikipedia.org/wiki/T%C3%BArin =>   | přezdívka = viz [[Túrin#Jména, přezdívky a tituly|Jména, přezdívky a tituly]]
-            self.get_aliases(self.del_redundant_text(tmp_alias), nametype=nametype)
+            self.aliases_infobox.update(self.get_aliases(self.del_redundant_text(tmp_alias), nametype=nametype))
             if is_infobox_block:
                 return
 
@@ -458,7 +458,7 @@ class EntPerson(EntCore):
                 fs_aliases += fs_first_aliases
 
                 for fs_alias in fs_aliases:
-                    self.get_aliases(self.del_redundant_text(fs_alias).strip("'"))
+                    self.aliases.update(self.get_aliases(self.del_redundant_text(fs_alias).strip("'")))
 
     def get_birth_date(self, date):
         """

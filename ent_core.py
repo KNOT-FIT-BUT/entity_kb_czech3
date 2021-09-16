@@ -84,6 +84,8 @@ class EntCore(metaclass=ABCMeta):
         ]  # vygenerování hashe
         self.link = link
         self.aliases = DictOfUniqueDict()
+        self.aliases_infobox = DictOfUniqueDict()
+        self.aliases_infobox_cz = DictOfUniqueDict()
         self.description = ""
         self.images = ""
         self.n_marked_czech = 0
@@ -94,6 +96,7 @@ class EntCore(metaclass=ABCMeta):
         self.re_infobox_kw_img = r"obrázek"
         self.latitude = ""
         self.longitude = ""
+        self.lang_orig = "orig"
 
     def get_wiki_api_location(self, title):
         wiki_api_params = WIKI_API_PARAMS_BASE.copy()
@@ -316,6 +319,9 @@ class EntCore(metaclass=ABCMeta):
                         # If line belongs to infobox and infobox was already not present and is not UNESCO infobox, process it
                         if not is_infobox_unesco:
                             self.line_process_infobox(part_infobox, is_infobox_block)
+                            if len(self.aliases_infobox_cz):
+                                for alias in self.aliases_infobox:
+                                    self.aliases_infobox[alias][self.KEY_LANG] = self.lang_orig
                             if infobox_braces_depth == 0:
                                 was_infobox = True
                         is_infobox_block = None
@@ -484,20 +490,22 @@ class EntCore(metaclass=ABCMeta):
         alias = re.sub(r"<.*?>", "", alias)
         alias = re.sub(r"[„“”]", '"', alias)  # quotation unification
 
+        result = DictOfUniqueDict()
+
         for a in alias.split("|"):
             a = a.strip()
             for av in self.unfold_alias_variants(a):
                 if re.search(r"[^\W_/]", av):
                     if marked_czech:
-                        self.scrape_quoted_inside_and_store(
+                        result.update(self.scrape_quoted_inside(
                             av, nametype, self.LANG_CZECH
-                        )
+                        ))
                         self.n_marked_czech += 1
 
                     else:
                         if self.first_alias == None and nametype == None:
                             self.first_alias = av
-                        self.scrape_quoted_inside_and_store(av, nametype)
+                        result.update(self.scrape_quoted_inside(av, nametype))
 
         for lng, a in lang_aliases:
             a = a.strip()
@@ -506,11 +514,15 @@ class EntCore(metaclass=ABCMeta):
                 if re.search(r"[^\W_]", av):
                     if not len(self.aliases):
                         self.first_alias = av
-                    self.scrape_quoted_inside_and_store(av, nametype, lng)
+                    result.update(self.scrape_quoted_inside(av, nametype, lng))
 
-    def scrape_quoted_inside_and_store(self, alias, nametype, lang=None):
+        return result
+
+    def scrape_quoted_inside(self, alias, nametype, lang=None):
+        result = DictOfUniqueDict()
+
         if not alias.startswith('"') or not alias.endswith('"'):
-            self.store_alias(alias, nametype, lang)
+            result[alias] = self.get_alias_properties(nametype, lang)
 
         quotedNames = []
         while True:
@@ -527,13 +539,17 @@ class EntCore(metaclass=ABCMeta):
 
         if len(quotedNames):
             for qn in quotedNames:
-                self.store_alias(qn, self.NTYPE_QUOTED, lang)
+                result[qn] = self.get_alias_properties(self.NTYPE_QUOTED, lang)
 
-            self.store_alias(alias, nametype, lang)
+            result[alias] = self.get_alias_properties(nametype, lang)
 
-    def store_alias(self, a, nametype, lang=None):
-        self.aliases[a][self.KEY_LANG] = lang
-        self.aliases[a][self.KEY_NAMETYPE] = nametype
+        return result
+
+    def get_alias_properties(self, nametype, lang=None):
+        return {
+            self.KEY_LANG: lang,
+            self.KEY_NAMETYPE: nametype
+        }
 
     def custom_transform_alias(self, alias):
         """
@@ -564,6 +580,9 @@ class EntCore(metaclass=ABCMeta):
         """
         Serialized aliases to be written while creating KB
         """
+        self.aliases.update(self.aliases_infobox_cz)
+        self.aliases.update(self.aliases_infobox)
+
         if (
             self.n_marked_czech == 0
             and self.first_alias
