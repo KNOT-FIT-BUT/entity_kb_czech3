@@ -18,6 +18,7 @@ import sys
 from abc import ABCMeta, abstractmethod
 from hashlib import md5, sha224
 from libs.DictOfUniqueDict import *
+from libs.UniqueDict import KEY_LANG, LANG_ORIG, LANG_UNKNOWN
 
 
 TAG_BRACES_OPENING = "{{"
@@ -54,10 +55,8 @@ class EntCore(metaclass=ABCMeta):
     """
 
     counter = 0
-    KEY_LANG = "lang"
     KEY_NAMETYPE = "ntype"
     LANG_CZECH = "cs"
-    LANG_UNKNOWN = "???"
     NTYPE_QUOTED = "quoted"
 
     @abstractmethod
@@ -86,6 +85,7 @@ class EntCore(metaclass=ABCMeta):
         self.aliases = DictOfUniqueDict()
         self.aliases_infobox = DictOfUniqueDict()
         self.aliases_infobox_cz = DictOfUniqueDict()
+        self.aliases_infobox_orig = DictOfUniqueDict()
         self.description = ""
         self.images = ""
         self.n_marked_czech = 0
@@ -96,7 +96,6 @@ class EntCore(metaclass=ABCMeta):
         self.re_infobox_kw_img = r"obrázek"
         self.latitude = ""
         self.longitude = ""
-        self.lang_orig = "orig"
 
     def get_wiki_api_location(self, title):
         wiki_api_params = WIKI_API_PARAMS_BASE.copy()
@@ -319,11 +318,22 @@ class EntCore(metaclass=ABCMeta):
                         # If line belongs to infobox and infobox was already not present and is not UNESCO infobox, process it
                         if not is_infobox_unesco:
                             self.line_process_infobox(part_infobox, is_infobox_block)
-                            if len(self.aliases_infobox_cz):
-                                for alias in self.aliases_infobox:
-                                    self.aliases_infobox[alias][self.KEY_LANG] = self.lang_orig
                             if infobox_braces_depth == 0:
                                 was_infobox = True
+                                if len(self.aliases_infobox_cz):
+                                    for alias in self.aliases_infobox_orig:
+                                        self.aliases_infobox[alias][
+                                            KEY_LANG
+                                        ] = LANG_ORIG
+                                elif not len(self.aliases_infobox_orig):
+                                    if len(self.aliases_infobox):
+                                        self.aliases_infobox[
+                                            next(iter(self.aliases_infobox))
+                                        ][KEY_LANG] = self.LANG_CZECH
+                                        for alias in list(self.aliases_infobox)[1:]:
+                                            self.aliases_infobox[alias][
+                                                KEY_LANG
+                                            ] = LANG_ORIG
                         is_infobox_block = None
 
                 if part_text:
@@ -497,13 +507,13 @@ class EntCore(metaclass=ABCMeta):
             for av in self.unfold_alias_variants(a):
                 if re.search(r"[^\W_/]", av):
                     if marked_czech:
-                        result.update(self.scrape_quoted_inside(
-                            av, nametype, self.LANG_CZECH
-                        ))
+                        result.update(
+                            self.scrape_quoted_inside(av, nametype, self.LANG_CZECH)
+                        )
                         self.n_marked_czech += 1
 
                     else:
-                        if self.first_alias == None and nametype == None:
+                        if self.first_alias is None and nametype is None:
                             self.first_alias = av
                         result.update(self.scrape_quoted_inside(av, nametype))
 
@@ -546,10 +556,7 @@ class EntCore(metaclass=ABCMeta):
         return result
 
     def get_alias_properties(self, nametype, lang=None):
-        return {
-            self.KEY_LANG: lang,
-            self.KEY_NAMETYPE: nametype
-        }
+        return {KEY_LANG: lang, self.KEY_NAMETYPE: nametype}
 
     def custom_transform_alias(self, alias):
         """
@@ -588,7 +595,7 @@ class EntCore(metaclass=ABCMeta):
             and self.first_alias
             and len(self.aliases.keys()) > 0
         ):
-            self.aliases[self.first_alias][self.KEY_LANG] = self.LANG_CZECH
+            self.aliases[self.first_alias][KEY_LANG] = self.LANG_CZECH
 
         self.aliases.pop(self.title, None)
 
@@ -596,10 +603,10 @@ class EntCore(metaclass=ABCMeta):
         for alias, properties in self.aliases.items():
             tmp_flags = ""
             for key, value in properties.items():
-                #                preserialized.add(alias + "#lang=" + (self.LANG_CZECH if (possible_czech and lang in [None, self.LANG_CZECH]) else (lang if lang != None else self.LANG_UNKNOWN)))
-                if key == self.KEY_LANG and value == None:
-                    value = self.LANG_UNKNOWN
-                if key != self.KEY_NAMETYPE or value != None:
+                #                preserialized.add(alias + "#lang=" + (self.LANG_CZECH if (possible_czech and lang in [None, self.LANG_CZECH]) else (lang if lang != None else LANG_UNKNOWN)))
+                if key == KEY_LANG and value is None:
+                    value = LANG_UNKNOWN
+                if key != self.KEY_NAMETYPE or value is not None:
                     tmp_flags += "#" + key + "=" + value
             preserialized.add(alias + tmp_flags)
 

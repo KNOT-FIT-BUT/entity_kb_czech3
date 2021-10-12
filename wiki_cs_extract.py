@@ -293,7 +293,7 @@ class WikiExtract(object):
                         redirects[redirect_to] = set()
                     redirects[redirect_to].add(redirect_from)
         except OSError:
-            print(f"File \"{self.redirects_dump_fpath}\" was not found - skipping...")
+            print(f'File "{self.redirects_dump_fpath}" was not found - skipping...')
 
         langmap = dict()
         try:
@@ -393,7 +393,7 @@ class WikiExtract(object):
 
         ent_titles = []
         ent_pages = []
-        #context = CElTree.iterparse(self.pages_dump_fpath, events=("start", "end"))
+        # context = CElTree.iterparse(self.pages_dump_fpath, events=("start", "end"))
         event, root = next(it_context_pages)
         with open("kb_cs", "a", encoding="utf-8") as fl:
             for event, elem in it_context_pages:
