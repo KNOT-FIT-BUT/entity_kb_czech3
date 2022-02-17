@@ -427,13 +427,13 @@ class KnowledgeBase:
         return head
 
     def get_ent_type(self, line):
-        """ Returns a type of an entity at the line of the knowledge base. """
+        """Returns a type of an entity at the line of the knowledge base."""
 
         ent_type = self.get_field(line, self.ent_type_col)
         return ent_type
 
     def get_ent_subtype(self, line):
-        """ Returns a subtype of an entity at the line of the knowledge base. """
+        """Returns a subtype of an entity at the line of the knowledge base."""
 
         ent_type = self.get_ent_type(line)
         if "SUBTYPE" in self.headKB[ent_type][""]:
@@ -446,7 +446,7 @@ class KnowledgeBase:
         return self.get_data_for(line, "FEATURE CODE")[0:3]
 
     def get_field(self, line, column):
-        """ Returns a column of a line in the knowledge base. """
+        """Returns a column of a line in the knowledge base."""
 
         try:
             if isinstance(line, list):  # line jako sloupce dané entity
@@ -461,7 +461,7 @@ class KnowledgeBase:
             raise
 
     def get_col_for(self, line, col_name):
-        """ Line numbering from one. """
+        """Line numbering from one."""
 
         # getting the entity type
         ent_type = self.get_ent_type(line)
@@ -487,12 +487,12 @@ class KnowledgeBase:
         return col
 
     def get_data_for(self, line, col_name):
-        """ Line numbering from one. """
+        """Line numbering from one."""
 
         return self.get_field(line, self.get_col_for(line, col_name))
 
     def nonempty_columns(self, line):
-        """ Returns a number of columns at the specified line of the knowledge base which have a non-empty value. """
+        """Returns a number of columns at the specified line of the knowledge base which have a non-empty value."""
 
         if isinstance(line, list):  # line jako sloupce dané entity
             columns = line
@@ -521,7 +521,7 @@ class KnowledgeBase:
         return result
 
     def description_length(self, line):
-        """ Returns a length of a description of a specified line. """
+        """Returns a length of a description of a specified line."""
 
         description = self.get_data_for(line, "DESCRIPTION")
         if description is None:
@@ -532,7 +532,7 @@ class KnowledgeBase:
             return len(description)
 
     def metric_percentile(self, line, metric):
-        """ Computing a percentile score for a given metric and entity. """
+        """Computing a percentile score for a given metric and entity."""
 
         # getting the entity type
         ent_type = self.get_ent_type(line)
@@ -565,7 +565,7 @@ class KnowledgeBase:
             return self.get_data_for(line, column_rename[column_name])
 
     def insert_metrics(self):
-        """ Computing SCORE WIKI, SCORE METRICS and CONFIDENCE and adding them to the KB. """
+        """Computing SCORE WIKI, SCORE METRICS and CONFIDENCE and adding them to the KB."""
 
         self.check_or_load_kb()
 

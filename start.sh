@@ -183,7 +183,7 @@ fi
 
 
 # Convert Wikipedia KB format to Generic KB format
-python3 kbwiki2gkb.py --indir outputs --outdir outputs -g
+python3 kbwiki2gkb.py --indir outputs --outdir outputs
 
 
 if $DEPLOY

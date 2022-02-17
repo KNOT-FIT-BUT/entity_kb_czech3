@@ -16,6 +16,7 @@ import regex
 import sys
 from ent_core import EntCore
 from libs.natToKB import *
+from libs.UniqueDict import KEY_LANG, LANG_UNKNOWN
 
 
 class EntPerson(EntCore):
@@ -260,8 +261,8 @@ class EntPerson(EntCore):
                 self.title[:-3] if self.title[-3:] == "ová" else (self.title + "ová")
             )
             if self.redirects and female_variant in self.redirects:
-                self.aliases[female_variant][self.KEY_LANG] = (
-                    self.LANG_CZECH if self.title[-3:] == "ová" else self.LANG_UNKNOWN
+                self.aliases[female_variant][KEY_LANG] = (
+                    self.LANG_CZECH if self.title[-3:] == "ová" else LANG_UNKNOWN
                 )
 
     def line_process_infobox(self, ln, is_infobox_block):
@@ -297,7 +298,9 @@ class EntPerson(EntCore):
             tmp_alias = re.sub(
                 r"^\s*(?:viz\s+)?\[\[[^\]]+\]\]", "", tmp_alias, flags=re.I
             )  # https://cs.wikipedia.org/wiki/T%C3%BArin =>   | přezdívka = viz [[Túrin#Jména, přezdívky a tituly|Jména, přezdívky a tituly]]
-            self.get_aliases(self.del_redundant_text(tmp_alias), nametype=nametype)
+            self.aliases_infobox.update(
+                self.get_aliases(self.del_redundant_text(tmp_alias), nametype=nametype)
+            )
             if is_infobox_block:
                 return
 
@@ -458,7 +461,9 @@ class EntPerson(EntCore):
                 fs_aliases += fs_first_aliases
 
                 for fs_alias in fs_aliases:
-                    self.get_aliases(self.del_redundant_text(fs_alias).strip("'"))
+                    self.aliases.update(
+                        self.get_aliases(self.del_redundant_text(fs_alias).strip("'"))
+                    )
 
     def get_birth_date(self, date):
         """

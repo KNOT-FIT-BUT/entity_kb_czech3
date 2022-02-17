@@ -140,11 +140,22 @@ class EntGeo(EntCore):
 
     def line_process_infobox(self, ln, is_infobox_block):
         # aliasy
-        rexp = re.search(
-            r"(?:název(?:[\s_]místním[\s_]jazykem)?|jméno)\s*=(?!=)\s*(.*)", ln, re.I
-        )
+        rexp = re.search(r"(?:název|jméno)\s*=(?!=)\s*(.*)", ln, re.I)
         if rexp and rexp.group(1):
-            self.get_aliases(self.del_redundant_text(rexp.group(1)))
+            self.aliases_infobox.update(
+                self.get_aliases(self.del_redundant_text(rexp.group(1)))
+            )
+            if is_infobox_block == True:
+                return
+
+        rexp = re.search(r"(?:název[\s_]místním[\s_]jazykem)\s*=(?!=)\s*(.*)", ln, re.I)
+        if rexp and rexp.group(1):
+            self.aliases_infobox_orig.update(
+                self.get_aliases(self.del_redundant_text(rexp.group(1)))
+            )
+            if not len(self.aliases) and not len(self.aliases_infobox):
+                self.first_alias = None
+
             if is_infobox_block == True:
                 return
 
@@ -242,7 +253,11 @@ class EntGeo(EntCore):
                 fs_aliases += fs_aliases_lang_links
                 if fs_aliases:
                     for fs_alias in fs_aliases:
-                        self.get_aliases(self.del_redundant_text(fs_alias).strip("'"))
+                        self.aliases.update(
+                            self.get_aliases(
+                                self.del_redundant_text(fs_alias).strip("'")
+                            )
+                        )
 
     def custom_transform_alias(self, alias):
         """

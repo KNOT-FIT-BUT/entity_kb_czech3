@@ -114,14 +114,31 @@ class EntCountry(EntCore):
         # aliases - czech name is preferable
         rexp = re.search(r"název[\s_]česky\s*=(?!=)\s*(.*)", ln, re.I)
         if rexp and rexp.group(1):
-            self.get_aliases(self.del_redundant_text(rexp.group(1)), True)
+            self.aliases_infobox_cz.update(
+                self.get_aliases(
+                    self.del_redundant_text(rexp.group(1)), marked_czech=True
+                )
+            )
+            if len(self.aliases_infobox):
+                self.aliases_infobox_orig.update(self.aliases_infobox)
+                self.aliases_infobox.clear()
+                if not len(self.aliases):
+                    self.first_alias = None
             if is_infobox_block == True:
                 return
 
         # aliases - common name may contain name in local language
         rexp = re.search(r"název\s*=(?!=)\s*(.*)", ln, re.I)
         if rexp and rexp.group(1):
-            self.get_aliases(self.del_redundant_text(rexp.group(1)))
+            aliases = self.get_aliases(self.del_redundant_text(rexp.group(1)))
+            if len(self.aliases_infobox_cz):
+                var_aliases = self.aliases_infobox_orig
+                if not len(self.aliases):
+                    self.first_alias = None
+            else:
+                var_aliases = self.aliases_infobox
+            var_aliases.update(aliases)
+
             if is_infobox_block == True:
                 return
 
@@ -136,6 +153,13 @@ class EntCountry(EntCore):
         rexp = re.search(r"(?:rozloha|výměra)\s*=(?!=)\s*(.*)", ln, re.I)
         if rexp and rexp.group(1):
             self.get_area(self.del_redundant_text(rexp.group(1)))
+            if is_infobox_block == True:
+                return
+
+        # jazyk pro oficiální nečeský název
+        rexp = re.search(r"iso2\s*=(?!=)\s*(.*)", ln, re.I)
+        if rexp and rexp.group(1):
+            self.lang_orig = rexp.group(1).lower()
             if is_infobox_block == True:
                 return
 
@@ -191,29 +215,41 @@ class EntCountry(EntCore):
                 fs_aliases += fs_aliases_lang_links
                 if fs_aliases:
                     for fs_alias in fs_aliases:
-                        self.get_aliases(self.del_redundant_text(fs_alias).strip("'"))
+                        self.aliases.update(
+                            self.get_aliases(
+                                self.del_redundant_text(fs_alias).strip("'")
+                            )
+                        )
                 # extrakce z 1. věty: Česká republika (Czech Republic) je ...
                 fs_aliases = re.findall(
                     re.escape(self.title) + r"\s+\((.+?)\)", rexp.group(0)
                 )
                 if fs_aliases:
                     for fs_alias in fs_aliases:
-                        self.get_aliases(self.del_redundant_text(fs_alias))
+                        self.aliases.update(
+                            self.get_aliases(self.del_redundant_text(fs_alias))
+                        )
                 fs_aliases = re.search(
                     r"(?:\s+někdy)?\s+(?:označovan[áéý]|označován[ao]?|nazývan[áéý]|nazýván[ao]?)(?:\s+(?:(?:(?:i|také)\s+)?jako)|i|také)?\s+(''.+?''|{{.+?}})(.+)",
                     rexp.group(0),
                 )
                 if fs_aliases:
-                    self.get_aliases(
-                        self.del_redundant_text(fs_aliases.group(1)).strip("'")
+                    self.aliases.update(
+                        self.get_aliases(
+                            self.del_redundant_text(fs_aliases.group(1)).strip("'")
+                        )
                     )
                     fs_next_aliases = re.finditer(
                         r"(?:,|\s+nebo)(?:\s+(?:(?:(?:i|také)\s+)?jako)|i|také)?\s+(''.+?''|{{.+?}})",
                         fs_aliases.group(2),
                     )
                     for fs_next_alias in fs_next_aliases:
-                        self.get_aliases(
-                            self.del_redundant_text(fs_next_alias.group(1).strip("'"))
+                        self.aliases.update(
+                            self.get_aliases(
+                                self.del_redundant_text(
+                                    fs_next_alias.group(1).strip("'")
+                                )
+                            )
                         )
 
     def custom_transform_alias(self, alias):

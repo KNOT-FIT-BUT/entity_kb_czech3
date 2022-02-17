@@ -107,7 +107,9 @@ class EntWatercourse(EntCore):
         # aliasy
         rexp = re.search(r"řeka\s*=(?!=)\s*(.*)", ln, re.I)
         if rexp and rexp.group(1):
-            self.get_aliases(self.del_redundant_text(rexp.group(1)))
+            self.aliases_infobox.update(
+                self.get_aliases(self.del_redundant_text(rexp.group(1)))
+            )
             if is_infobox_block == True:
                 return
 
@@ -211,7 +213,11 @@ class EntWatercourse(EntCore):
                 fs_aliases += fs_aliases_lang_links
                 if fs_aliases:
                     for fs_alias in fs_aliases:
-                        self.get_aliases(self.del_redundant_text(fs_alias).strip("'"))
+                        self.aliases.update(
+                            self.get_aliases(
+                                self.del_redundant_text(fs_alias).strip("'")
+                            )
+                        )
 
     def custom_transform_alias(self, alias):
         """

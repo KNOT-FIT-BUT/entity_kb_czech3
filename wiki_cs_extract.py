@@ -24,7 +24,7 @@ import time
 import xml.etree.cElementTree as CElTree
 
 from multiprocessing import Pool
-from itertools import repeat
+from itertools import repeat, tee
 
 from ent_person import *
 from ent_country import *
@@ -301,12 +301,15 @@ class WikiExtract(object):
         # self._load_entities()
 
         redirects = dict()
-        with open(self.redirects_dump_fpath, "r") as f:
-            for line in f:
-                redirect_from, redirect_to = line.strip().split("\t")
-                if not redirect_to in redirects:
-                    redirects[redirect_to] = set()
-                redirects[redirect_to].add(redirect_from)
+        try:
+            with open(self.redirects_dump_fpath, "r") as f:
+                for line in f:
+                    redirect_from, redirect_to = line.strip().split("\t")
+                    if not redirect_to in redirects:
+                        redirects[redirect_to] = set()
+                    redirects[redirect_to].add(redirect_from)
+        except OSError:
+            print(f'File "{self.redirects_dump_fpath}" was not found - skipping...')
 
         langmap = dict()
         try:
@@ -321,13 +324,13 @@ class WikiExtract(object):
         # parsování XML souboru
         context = CElTree.iterparse(self.pages_dump_fpath, events=("start", "end"))
 
-        context = iter(context)
-        event, root = next(context)
+        it_context_langmap, it_context_pages = tee(context)
+        event, root = next(it_context_langmap)
 
         if len(langmap) == 0:
             pg_languages = None
             found_639_2 = False
-            for event, elem in context:
+            for event, elem in it_context_langmap:
                 if event == "end" and "page" in elem.tag:
                     for child in elem:
                         if (
@@ -406,8 +409,10 @@ class WikiExtract(object):
 
         ent_titles = []
         ent_pages = []
+        # context = CElTree.iterparse(self.pages_dump_fpath, events=("start", "end"))
+        event, root = next(it_context_pages)
         with open("kb_cs", "a", encoding="utf-8") as fl:
-            for event, elem in context:
+            for event, elem in it_context_pages:
                 if event == "end" and "page" in elem.tag:
                     is_entity = True
                     et_full_title = ""
