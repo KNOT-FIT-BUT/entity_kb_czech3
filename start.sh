@@ -40,6 +40,8 @@ usage()
     fi
     echo -e "  -u [<login>] upload (deploy) KB to webstorage via given login"
     echo -e "               (default current user)"
+    echo -e "  --dev        Development mode (upload to separate space to prevent forming a new production/stable version of KB)"
+    echo -e "  --test       Test mode (upload to separate space to prevent forming a new production/stable version of KB)"
     echo -e "  --log        log to start.sh.stdout, start.sh.stderr and start.sh.stdmix"
 #    echo ""
 #    echo -e "MULTIPLE DUMP PATHS CUSTOMIZATION:"
@@ -54,6 +56,8 @@ CUSTOM_REDIR_PATH=false
 REDIR_PATH=
 DEPLOY=false
 MULTIPROC_PARAMS="-m ${NPROC}"
+EXTRACTION_ARGS=()
+KB_STABILITY=
 
 while [ "$1" != "" ]; do
     PARAM=`echo $1 | awk -F= '{print $1}'`
@@ -96,8 +100,16 @@ while [ "$1" != "" ]; do
                 shift
             fi
             ;;
-        --log)
-            LOG=true
+        --dev)
+            KB_STABILITY="--dev"
+            ;;
+        --test)
+            if test -z "${KB_STABILITY}"
+            then
+              KB_STABILITY="--test"
+            fi
+            ;;
+        --log) LOG=true
             ;;
         *)
             >&2 echo "ERROR: unknown parameter \"$PARAM\""
@@ -154,8 +166,11 @@ fi
 #    exit 3
 #fi
 
+EXTRACTION_ARGS+=(${KB_STABILITY})
+EXTRACTION_ARGS+=(${MULTIPROC_PARAMS})
+
 # Run CS Wikipedia extractor to create new KB
-CMD="python3 wiki_cs_extract.py --lang ${LANG} --dump ${DUMP_VERSION} --indir \"${DUMP_PATH}\" ${MULTIPROC_PARAMS} 2>entities_processing.log"
+CMD="python3 wiki_cs_extract.py --lang ${LANG} --dump ${DUMP_VERSION} --indir \"${DUMP_PATH}\" ${EXTRACTION_ARGS[@]} 2>entities_processing.log"
 echo "RUNNING COMMAND: ${CMD}"
 eval $CMD
 

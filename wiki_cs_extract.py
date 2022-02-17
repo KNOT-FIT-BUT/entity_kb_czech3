@@ -255,6 +255,16 @@ class WikiExtract(object):
             type=str,
             help="Source file of wiki redirects dump.",
         )
+        parser.add_argument(
+            "--dev",
+            action="store_true",
+            help="Development version of KB",
+        )
+        parser.add_argument(
+            "--test",
+            action="store_true",
+            help="Test version of KB",
+        )
         self.console_args = parser.parse_args()
 
         if self.console_args.m < 1:
@@ -273,6 +283,12 @@ class WikiExtract(object):
         self.redirects_dump_fpath = self.get_dump_fpath(
             self.console_args.redirects, "redirects_from_{}wiki-{}-pages-articles.xml"
         )
+        if self.console_args.dev:
+            self.console_args._kb_stability = "dev"
+        elif self.console_args.test:
+            self.console_args._kb_stability = "test"
+        else:
+            self.console_args._kb_stability = ""
 
     def parse_xml_dump(self):
         """
@@ -589,6 +605,9 @@ class WikiExtract(object):
             return et_geo.get_data(et_cont)
 
     def assign_version(self):
+        str_kb_stability = ""
+        if self.console_args._kb_stability:
+            str_kb_stability = f"-{self.console_args._kb_stability}"
         try:
             target = os.readlink(self.pages_dump_fpath)
             matches = re.search(self.console_args.lang + r"wiki-([0-9]{8})-", target)
@@ -606,8 +625,11 @@ class WikiExtract(object):
                 dump_version = self.console_args.dump
         with open("VERSION", "w") as f:
             f.write(
-                "{}_{}-{}".format(
-                    self.console_args.lang, dump_version, int(round(time.time()))
+                "{}_{}-{}{}".format(
+                    self.console_args.lang,
+                    dump_version,
+                    int(round(time.time())),
+                    str_kb_stability,
                 )
             )
 

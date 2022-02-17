@@ -65,21 +65,14 @@ if $DEPLOY
 then
     DEPLOY_VERSION=`cat ./outputs/VERSION`
     DEPLOY_CONNECTION="${DEPLOY_USER}@minerva3.fit.vutbr.cz"
-    DEPLOY_FOLDER_OLD="/mnt/knot/www/NAKI_CPK/NER_CZ_inputs/kb/${DEPLOY_VERSION}"
-    DEPLOY_FOLDER_GKB="/mnt/knot/www/NAKI_CPK/NER_ML_inputs/KB/KB_`echo ${DEPLOY_VERSION} | cut -d'_' -f 1`/KB_${DEPLOY_VERSION}"
+    DEPLOY_LANG=`echo ${DEPLOY_VERSION} | cut -d'_' -f 1`
+    DEPLOY_STABILITY=`echo ${DEPLOY_VERSION} | awk -F '-' '{print (NF > 2 ? $NF : "stable")}'`
+    DEPLOY_FOLDER_GKB="/mnt/knot/www/NER/${DEPLOY_STABILITY}/${DEPLOY_LANG}/${DEPLOY_VERSION}"
 
-    echo "Creating new folder: ${DEPLOY_FOLDER_OLD}"
-    ssh "${DEPLOY_CONNECTION}" "mkdir -p \"${DEPLOY_FOLDER_OLD}\""
-    echo "Upload files to new folder: ${DEPLOY_FOLDER_OLD}"
-    scp outputs/VERSION outputs/HEAD-KB outputs/KBstatsMetrics.all "${DEPLOY_CONNECTION}:${DEPLOY_FOLDER_OLD}"
-    echo "Change symlink of new to this latest version of KB"
-    ssh "${DEPLOY_CONNECTION}" "cd \"`dirname "${DEPLOY_FOLDER_OLD}"`\"; ln -sfT \"${DEPLOY_VERSION}\" new"
-    echo
-    echo "### GENERIC KB ###"
     echo "Creating new folder: ${DEPLOY_FOLDER_GKB}"
     ssh "${DEPLOY_CONNECTION}" "mkdir -p \"${DEPLOY_FOLDER_GKB}\""
     echo "Upload files to new folder: ${DEPLOY_FOLDER_GKB}"
     scp outputs/*.tsv "${DEPLOY_CONNECTION}:${DEPLOY_FOLDER_GKB}"
     echo "Change symlink of new to this latest version of KB"
-    ssh "${DEPLOY_CONNECTION}" "cd \"`dirname "${DEPLOY_FOLDER_GKB}"`\"; ln -sfT \"KB_${DEPLOY_VERSION}\" new"
+    ssh "${DEPLOY_CONNECTION}" "cd \"`dirname "${DEPLOY_FOLDER_GKB}"`\"; ln -sfT \"${DEPLOY_VERSION}\" latest"
 fi
