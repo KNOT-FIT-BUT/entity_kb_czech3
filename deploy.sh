@@ -73,6 +73,6 @@ then
     ssh "${DEPLOY_CONNECTION}" "mkdir -p \"${DEPLOY_FOLDER_GKB}\""
     echo "Upload files to new folder: ${DEPLOY_FOLDER_GKB}"
     scp outputs/*.tsv "${DEPLOY_CONNECTION}:${DEPLOY_FOLDER_GKB}"
-    echo "Change symlink of new to this latest version of KB"
+    echo "Change symlink of \"latest\" to this latest version of KB"
     ssh "${DEPLOY_CONNECTION}" "cd \"`dirname "${DEPLOY_FOLDER_GKB}"`\"; ln -sfT \"${DEPLOY_VERSION}\" latest"
 fi
