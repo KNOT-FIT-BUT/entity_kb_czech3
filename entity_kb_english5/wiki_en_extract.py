@@ -9,10 +9,12 @@ Poznámky:
 """
 
 import re
+from turtle import title
 import xml.etree.cElementTree as CElTree
-from itertools import repeat, tee
+from itertools import count, repeat, tee
 
 from ent_person import *
+from ent_country import *
 
 TESTING_PATH = "./testing_data/people.xml"
 
@@ -69,9 +71,14 @@ class WikiExtract(object):
 
         if len(ent_titles):
             # TODO: multiprocessing
+            counter = 0
             with open("kb_en", "w", encoding="utf-8") as file:
-                for i in range(len(ent_titles)):        
-                    file.write(f"{self.process_entity(ent_titles[i], ent_pages[i])}\n")
+                for i in range(len(ent_titles)):
+                    entity = self.process_entity(ent_titles[i], ent_pages[i])
+                    if entity:
+                        file.write(f"{entity}\n")
+                        counter += 1
+            print(counter)
 
     # filters out wikipedia special pages and date pages
     @staticmethod
@@ -84,7 +91,8 @@ class WikiExtract(object):
                 "Category:",
                 "Help:",
                 "Template:",
-                "Module:"
+                "Module:",
+                "Portal:"
             )
         ):
             return False
@@ -112,6 +120,12 @@ class WikiExtract(object):
             return person.serialize()
 
         # TODO: country
+        if (EntCountry.is_country(page_content, page_title)):
+            country = EntCountry(page_title, "country", self._get_link(page_title))
+            country.get_data(page_content)
+            country.assign_values()
+            return country.serialize()
+
         # TODO: settlement
         # TODO: watercourse
         # TODO: waterarea

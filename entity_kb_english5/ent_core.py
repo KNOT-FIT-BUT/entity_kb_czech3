@@ -47,10 +47,15 @@ class EntCore(metaclass=ABCMeta):
         self.short_description = ""
     
     def get_data(self, content):
-                
+        
         lines = content.splitlines()
         
         infobox = False
+        indentation = 0
+        level = 0
+        key = ""
+        value = ""
+
         paragraph_bounds = False
         description_found = False
 
@@ -67,15 +72,35 @@ class EntCore(metaclass=ABCMeta):
             # extract infobox / infoboxes
             if line.startswith("{{Infobox"):
                 infobox = True
-                # TODO: infobox name could be useful
-            elif line.startswith("}}") and infobox == True:
-                infobox = False
             elif infobox == True:
-                # example: "| name = Edward Andrade"
-                pattern = r"\|\s*?(\w*)\s*?=\s*(.*)"
-                match = re.match(pattern, line)
-                if match:
-                    self.infobox_data[match.group(1)] = match.group(2)            
+                line = line.strip()
+                for i in range(len(line)):
+                    if level == 0:
+                        if line[i] == "|":
+                            level = 1
+                    elif level == 1:
+                        if line[i] == "=":
+                            level = 2
+                        else:
+                            key += line[i]
+                    elif level == 2:
+                        
+                        if line[i] == "{":
+                            indentation += 1
+                        elif line[i] == "}":
+                            indentation -= 1
+                            
+                        if line[i] == "|" and indentation == 0 and i == 0:
+                            self.infobox_data[key.strip()] = value.strip()
+                            key = ""
+                            value = ""
+                            level = 1
+                        elif indentation == -1:
+                            self.infobox_data[key.strip()] = value.strip()
+                            infobox == False
+                            break
+                        else:
+                            value += line[i]         
 
             # extract first paragraph
             if line.startswith("'''"):

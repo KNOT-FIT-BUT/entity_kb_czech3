@@ -243,7 +243,7 @@ class EntPerson(EntCore):
             #print("DEBUG: identified person " + str(score))
             return True
         else:
-            print("DEBUG: did not identify person")
+            #print("DEBUG: did not identify person")
             return False        
 
     @staticmethod
