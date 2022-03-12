@@ -11,12 +11,12 @@ Poznámky:
 import re
 from turtle import title
 import xml.etree.cElementTree as CElTree
-from itertools import count, repeat, tee
+from itertools import repeat, tee
 
 from ent_person import *
 from ent_country import *
 
-TESTING_PATH = "./testing_data/people.xml"
+TESTING_PATH = "./testing_data/countries.xml"
 
 class WikiExtract(object):
     def __init__(self):
