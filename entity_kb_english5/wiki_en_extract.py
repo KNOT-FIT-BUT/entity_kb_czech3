@@ -9,14 +9,15 @@ Poznámky:
 """
 
 import re
-from turtle import title
 import xml.etree.cElementTree as CElTree
 from itertools import repeat, tee
 
 from ent_person import *
 from ent_country import *
+from ent_settlement import *
+from ent_waterarea import *
 
-TESTING_PATH = "./testing_data/countries.xml"
+TESTING_PATH = "./testing_data/more_waterareas.xml"
 
 class WikiExtract(object):
     def __init__(self):
@@ -113,22 +114,34 @@ class WikiExtract(object):
 
         # TODO: person
         if (EntPerson.is_person(page_content)):
-            # TODO: get link
             person = EntPerson(page_title, "person", self._get_link(page_title))
             person.get_data(page_content)
             person.assign_values()
             return person.serialize()
 
         # TODO: country
-        if (EntCountry.is_country(page_content, page_title)):
+        if (EntCountry.is_country(page_content)):
             country = EntCountry(page_title, "country", self._get_link(page_title))
             country.get_data(page_content)
             country.assign_values()
             return country.serialize()
 
         # TODO: settlement
+        if (EntSettlement.is_settlement(page_content)):
+            settlement = EntSettlement(page_title, "settlement", self._get_link(page_title))
+            settlement.get_data(page_content)
+            settlement.assign_values()
+            return settlement.serialize()
+
         # TODO: watercourse
+
         # TODO: waterarea
+        if (EntWaterArea.is_water_area(page_content)):
+            water_area = EntWaterArea(page_title, "waterarea", self._get_link(page_title))
+            water_area.get_data(page_content)
+            water_area.assign_values()
+            return water_area.serialize()
+
         # TODO: geo
         pass
 
@@ -148,6 +161,9 @@ class WikiExtract(object):
         # maybe there is more tags not covered here though
         # but do I really need to do this for the whole page?
         # I'm only gonna use first paragraph and category part at the end
+
+        # remove comments
+        clean_content = re.sub(r"<!--.*?-->", "", clean_content, flags=re.DOTALL)
 
         # remove references        
         clean_content = re.sub(r"<ref.*?/(?:ref)?>", "", clean_content, flags=re.DOTALL)

@@ -42,6 +42,7 @@ class EntCore(metaclass=ABCMeta):
         # TODO: this should be dictionary of dictionaries for multiple infoboxes
         # that way I can also save the infobox name
         self.infobox_data = dict()
+        self.infobox_name = ""
         self.categories = []
         self.first_paragraph = ""
         self.short_description = ""
@@ -71,6 +72,7 @@ class EntCore(metaclass=ABCMeta):
 
             # extract infobox / infoboxes
             if line.startswith("{{Infobox"):
+                self.infobox_name = line[len("{{Infobox"):].strip()
                 infobox = True
             elif infobox == True:
                 line = line.strip()
