@@ -7,16 +7,15 @@ class EntWaterArea(EntCore):
 	def __init__(self, title, prefix, link):
 		super(EntWaterArea, self).__init__(title, prefix, link)
 
-		self.continents = []
+		self.continents = ""
 		self.latitude = ""
 		self.longitude = ""
 		self.area = ""
 
 	def assign_values(self):
-		print(self.title)
 		self.assign_area()
 		self.assign_lat_and_lon()
-		# self.assign_country()
+		self.assign_continents()
 
 	def assign_lat_and_lon(self):
 		possible_keys = ["coordinates", "coords"]
@@ -75,13 +74,35 @@ class EntWaterArea(EntCore):
 		if "area" in self.infobox_data:
 			area = self.infobox_data['area']
 			if area != "":
-				# TODO
-				print(area)
+				match = re.search(r"{{.*?\|([0-9]+)\|(\w+).*?}}", area)
+				if match:
+					if match.group(2) == "km2":
+						self.area = match.group(1)
+					elif match.group(2) == "sqmi":
+						self.area = round(int(match.group(1)) * 2.589988)
+				else:
+					print(f"{self.title}: did not match area ({area})")
 		else:
 			print(f"{self.title}: area not found")
 
+	def assign_continents(self):
+		if "location" in self.infobox_data:
+			location = self.infobox_data['location']
+			if location != "":
+				continents = ["Asia", "Africa", "Europe", "North America", "South America", "Australia", "Oceania", "Antarctica"]
+				patterns = [r"Asia", r"Africa", r"Europe", r"North[^,]+America", r"South[^,]+America", r"Australia", r"Oceania", r"Antarctica"]
+				curr_continents = []
+				for i in range(len(continents)):
+					match = re.search(patterns[i], location)
+					if match:					
+						curr_continents.append(continents[i])
+				self.continents  = " | ".join(curr_continents)
+				return
+
+		print(f"{self.title}: did not find location")
+
 	def serialize(self):
-		return f"{self.prefix}\t{self.title}\t{self.latitude}\t{self.longitude}\t{self.link}"
+		return f"{self.prefix}\t{self.title}\t{self.latitude}\t{self.longitude}\t{self.area}\t{self.continents}\t{self.link}"
 
 	@staticmethod
 	def is_water_area(content):
