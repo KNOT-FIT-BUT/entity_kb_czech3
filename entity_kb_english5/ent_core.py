@@ -97,9 +97,9 @@ class EntCore(metaclass=ABCMeta):
                             key = ""
                             value = ""
                             level = 1
-                        elif indentation == -1:
+                        elif indentation < 0:
                             self.infobox_data[key.strip()] = value.strip()
-                            infobox == False
+                            infobox = False
                             break
                         else:
                             value += line[i]         

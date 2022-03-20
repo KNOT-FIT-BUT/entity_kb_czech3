@@ -16,8 +16,9 @@ from ent_person import *
 from ent_country import *
 from ent_settlement import *
 from ent_waterarea import *
+from ent_watercourse import *
 
-TESTING_PATH = "./testing_data/more_waterareas.xml"
+TESTING_PATH = "./testing_data/watercourse.xml"
 
 class WikiExtract(object):
     def __init__(self):
@@ -134,6 +135,11 @@ class WikiExtract(object):
             return settlement.serialize()
 
         # TODO: watercourse
+        if (EntWaterCourse.is_water_course(page_content)):
+            water_course = EntWaterCourse(page_title, "watercourse", self._get_link(page_title))
+            water_course.get_data(page_content)
+            water_course.assign_values()
+            return water_course.serialize()
 
         # TODO: waterarea
         if (EntWaterArea.is_water_area(page_content)):
