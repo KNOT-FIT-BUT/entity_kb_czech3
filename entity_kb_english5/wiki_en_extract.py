@@ -18,7 +18,7 @@ from ent_settlement import *
 from ent_waterarea import *
 from ent_watercourse import *
 
-TESTING_PATH = "./testing_data/watercourse.xml"
+TESTING_PATH = "./testing_data/people.xml"
 
 class WikiExtract(object):
     def __init__(self):
