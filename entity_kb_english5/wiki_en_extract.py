@@ -17,8 +17,9 @@ from ent_country import *
 from ent_settlement import *
 from ent_waterarea import *
 from ent_watercourse import *
+from ent_geo import *
 
-TESTING_PATH = "./testing_data/people.xml"
+TESTING_PATH = "./testing_data/reliefs.xml"
 
 class WikiExtract(object):
     def __init__(self):
@@ -149,7 +150,12 @@ class WikiExtract(object):
             return water_area.serialize()
 
         # TODO: geo
-        pass
+        is_geo, prefix = EntGeo.is_geo(page_content)
+        if is_geo:
+            geo = EntGeo(page_title, f"geo:{prefix}", self._get_link(page_title))
+            geo.get_data(page_content)
+            geo.assign_values()
+            return geo.serialize()
 
     @staticmethod
     def _get_link(link):
