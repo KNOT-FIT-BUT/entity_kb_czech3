@@ -116,3 +116,41 @@ class EntCore(metaclass=ABCMeta):
             # extract categories
             if line.startswith("[[Category:"):
                 self.categories.append(line[11:-2].strip())
+
+    def serialize(self, ent_data):
+        return f"{self.prefix}\t{self.title}\t{ent_data}\t{self.link}"
+
+    # returns latitude, longtitude
+    @staticmethod
+    def get_coordinates(format):
+        # matching coords format with directions
+        # {{Coord|59|56|N|10|41|E|type:city}}
+        pattern = r"([0-9.]+)\|([0-9.]+)?\|?([0-9.]+)?\|?(N|S)\|([0-9.]+)\|([0-9.]+)?\|?([0-9.]+)?\|?(E|W)"
+        m = re.search(pattern, format)
+        if m:
+            data = [x for x in m.groups() if x != None]
+            data = [data[:int(len(data)/2)], data[int(len(data)/2):]]
+            
+            coords = [0, 0]
+            
+            # conversion calculation
+            for d in range(2):
+                for i in range(len(data[d])-1):
+                    coords[d] += float(data[d][i]) / 60*i if i != 0 else float(data[d][i])
+                coords[d] = round(coords[d], 5)
+                if data[d][-1] in ("S", "W"):
+                    coords[d] *= -1
+                
+            #print(f"latitude: {coords[0]}\nlongtitude: {coords[1]}\n")
+            return (str(coords[0]), str(coords[1]))
+        
+        # matching coords format without directions (direct latitude and longtitude)
+        # {{coord|41.23250|-80.46056|region:US-PA|display=inline,title}}
+        pattern = r"{{.*\|([0-9.-]+)\|\s*?([0-9.-]+).*}}"
+        m = re.search(pattern, format)
+        if m:
+            #print(f"latitude: {m.group(1)}\nlongtitude: {m.group(2)}\n")
+            return (m.group(1), m.group(2))
+            
+        print("Error: coords format error")
+        return (None, None)

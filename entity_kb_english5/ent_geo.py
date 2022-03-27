@@ -14,69 +14,33 @@ class EntGeo(EntCore):
 		self.population = ""
 		self.total_height = ""
 
-	def assign_values(self):
+	def __repr__(self):
 		if self.prefix == "geo:waterfall":
-			self.assign_lat_and_lon()
+			return self.serialize(f"{self.latitude}\t{self.longitude}\t{self.total_height}")
+		elif self.prefix == "geo:island":
+			return self.serialize(f"{self.latitude}\t{self.longitude}\t{self.area}\t{self.population}")
+		elif self.prefix == "geo:continent":
+			return self.serialize(f"{self.latitude}\t{self.longitude}\t{self.area}\t{self.population}")
+
+		return self.serialize(f"{self.latitude}\t{self.longitude}")
+
+	def assign_values(self):
+		self.assign_coordinates()
+		if self.prefix == "geo:waterfall":
 			# assign continent
 			self.assign_height()
 		elif self.prefix == "geo:island":
-			self.assign_lat_and_lon()
 			self.assign_area()
 			self.assign_population()		
-		elif self.prefix == "geo:mountain":
-			self.assign_lat_and_lon()
+		elif self.prefix == "geo:continent":
+			self.assign_area()
+			self.assign_population()
 
-	def assign_lat_and_lon(self):		
+	def assign_coordinates(self):		
 		if "coordinates" in self.infobox_data and self.infobox_data["coordinates"] != "":
-			#print(self.infobox_data["coordinates"])
-			pattern = r"([0-9.]+)\|([0-9.]+)?\|?([0-9.]+)?\|?(N|S)\|([0-9.]+)\|([0-9.]+)?\|?([0-9.]+)?\|?(E|W)"
-			match = re.search(pattern, self.infobox_data["coordinates"])
-			if match:
-				# converting to longtitude and latitude
-				groups = [x for x in match.groups() if x is not None]
-				lat_n = 0
-				lon_n = 0
-				lat_d = ""
-				lon_d = ""
-				lat = []
-				lon = []
-				switch = False
-				lon_d = groups[-1]
-				for group in groups[:-1]:
-					if switch == False:
-						if group == "N" or group == "S":
-							lat_d = group
-							switch = True
-						else:
-							lat.append(group)
-					else:
-						lon.append(group)
-
-				# calculation
-				for i in range(len(lat)):
-					if i == 0:
-						lat_n += float(lat[i])
-					else:
-						lat_n += float(lat[i]) / 60 * i
-				for i in range(len(lon)):
-					if i == 0:
-						lon_n += float(lon[i])
-					else:
-						lon_n += float(lon[i]) / 60 * i
-				
-				# * direction
-				if lat_d == "S":
-					lat_n = -lat_n
-				lat_n = round(lat_n, 5)
-				if lon_d == "W":
-					lon_n = -lon_n
-				lon_n = round(lon_n, 5)
-
-				self.latitude = lat_n
-				self.longitude = lon_n
-			else:
-				#print(f"{self.title}: did not match coords ({self.infobox_data['mouth_coordinates']})")
-				pass
+			coords = self.get_coordinates(self.infobox_data["coordinates"])
+			if all(coords):
+				self.latitude, self.longitude = coords
 
 	def assign_height(self):
 		if "height" in self.infobox_data and self.infobox_data["height"] != "":
@@ -106,29 +70,52 @@ class EntGeo(EntCore):
 							self.total_height = round(int(match.group(1)) / 3.2808, 2)
 	
 	def assign_area(self):
-		if "area_km2" in self.infobox_data and self.infobox_data["area_km2"]:
-			#print(f"{self.title}: {self.infobox_data['area_km2']}")
-			area = self.infobox_data["area_km2"]
-			self.area = self.infobox_data["area_km2"] 
+		area_infoboxes = ["area_km2", "area"]
+		for a in area_infoboxes:
+			if a in self.infobox_data and self.infobox_data[a]:
+				area = self.infobox_data[a]
+				area = re.sub(r",|\(.*\)", "", area).strip()
+				
+				# {{convert|[number]|[km2 / sqmi]}}
+				match = re.search(r"{{.*?\|([0-9]+)\|(\w+).*?}}", area)
+				if match:
+					if match.group(2) == "km2":
+						self.area = str(float(match.group(1)))
+					elif match.group(2) == "sqmi":
+						self.area = round(float(match.group(1)) * 2.589988)
+					break
+				
+				# [number] [km2 / sqmi]
+				split = area.split(" ")
+				if len(split) > 1:
+					if split[1] == "km2":
+						self.area = str(float(split[0]))
+					elif split[1] == "sqmi":
+						self.area = round(float(split[0]) * 2.589988)
+				else:
+					self.area = str(float(area))
+				break
 
 	def assign_population(self):
 		if "population" in self.infobox_data and self.infobox_data["population"]:
 			population = self.infobox_data["population"]
 			population = re.sub(r",|\(.*\)", "", population).strip()
+			
 			if population.lower() == "uninhabited":
-				population = 0
-			self.population = population
+				self.population = 0
+				return
+			
+			match = re.search(r"([0-9\.]+)\s+(\w+)", population)
+			if match:
+				print(match.groups())
+				if match.group(2) == "billion":
+					self.population = round(float(match.group(1)) * 1e9)
+				# add more if needed
+				return
 
-	def serialize(self):
-		if self.prefix == "geo:waterfall":
-			return f"{self.prefix}\t{self.title}\t{self.latitude}\t{self.longitude}\t{self.total_height}\t{self.link}"
-		elif self.prefix == "geo:island":
-			return f"{self.prefix}\t{self.title}\t{self.latitude}\t{self.longitude}\t{self.area}\t{self.population}\t{self.link}"
-		elif self.prefix == "geo:mountain":
-			return f"{self.prefix}\t{self.title}\t{self.latitude}\t{self.longitude}\t{self.link}"
-		
-		return f"{self.prefix}\t{self.title}\t{self.link}"
-
+			match = re.search(r"([0-9\.]+)", population)
+			if match:
+				self.population = match.group(1)			
 
 	@staticmethod
 	def is_geo(content):
@@ -138,7 +125,7 @@ class EntGeo(EntCore):
 
 		#pattern = r"{{[Ii]nfobox\s+(waterfall)"
 		# mountain | mountain pass
-		pattern = r"{{[Ii]nfobox\s+(waterfall|[Ii]slands?|[Mm]ountain)"
+		pattern = r"{{[Ii]nfobox\s+(waterfall|[Ii]slands?|[Mm]ountain|[Pp]eninsulas?|[Cc]ontinent)"
 		match = re.search(pattern, content)
 		if match:
 			prefix = match.group(1).lower()
@@ -146,5 +133,9 @@ class EntGeo(EntCore):
 
 		if prefix in ("island", "islands"):
 			prefix = "island"
+		if prefix == "mountain":
+			prefix = "relief"
+		if prefix == "peninsulas":
+			prefix = "peninsula"
 
 		return check, prefix

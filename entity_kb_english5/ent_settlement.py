@@ -13,63 +13,20 @@ class EntSettlement(EntCore):
 		self.longitude = ""
 		self.country = ""
 
+	def __repr__(self):
+		return self.serialize(f"{self.country}\t{self.latitude}\t{self.longitude}\t{self.area}\t{self.population}")
+
 	def assign_values(self):
 		self.assign_area()
 		self.assign_population()
-		self.assign_lat_and_lon()
+		self.assign_coordinates()
 		self.assign_country()
 
-	def assign_lat_and_lon(self):
-		if "coordinates" in self.infobox_data:
-			pattern = r"([0-9.]+)\|([0-9.]+)?\|?([0-9.]+)?\|?(N|S)\|([0-9.]+)\|([0-9.]+)?\|?([0-9.]+)?\|?(E|W)"
-			match = re.search(pattern, self.infobox_data['coordinates'])
-			if match:
-				# converting to longtitude and latitude
-				groups = [x for x in match.groups() if x is not None]
-				lat_n = 0
-				lon_n = 0
-				lat_d = ""
-				lon_d = ""
-				lat = []
-				lon = []
-				switch = False
-				lon_d = groups[-1]
-				for group in groups[:-1]:
-					if switch == False:
-						if group == "N" or group == "S":
-							lat_d = group
-							switch = True
-						else:
-							lat.append(group)
-					else:
-						lon.append(group)
-
-				# calculation
-				for i in range(len(lat)):
-					if i == 0:
-						lat_n += float(lat[i])
-					else:
-						lat_n += float(lat[i]) / 60 * i
-				for i in range(len(lon)):
-					if i == 0:
-						lon_n += float(lon[i])
-					else:
-						lon_n += float(lon[i]) / 60 * i
-				
-				# * direction
-				if lat_d == "S":
-					lat_n = -lat_n
-				lat_n = round(lat_n, 5)
-				if lon_d == "W":
-					lon_n = -lon_n
-				lon_n = round(lon_n, 5)
-
-				self.latitude = lat_n
-				self.longitude = lon_n
-			else:
-				print(f"{self.title}: did not match coords ({self.infobox_data['coordinates']})")
-		# else:
-		# 	print(f"{self.title}: coords not found")	
+	def assign_coordinates(self):
+		if "coordinates" in self.infobox_data and self.infobox_data["coordinates"] != "":
+			coords = self.get_coordinates(self.infobox_data["coordinates"])
+			if all(coords):
+				self.latitude, self.longitude = coords
 
 	def assign_area(self):
 		
@@ -105,10 +62,7 @@ class EntSettlement(EntCore):
 					country = split[-1]
 				self.country = country
 		# else: 
-		# 	print(f"{self.title}: country not found")
-
-	def serialize(self):
-		return f"{self.prefix}\t{self.title}\t{self.country}\t{self.latitude}\t{self.longitude}\t{self.area}\t{self.population}\t{self.link}"
+		# 	print(f"{self.title}: country not found")	
 
 	@staticmethod
 	def is_settlement(content):

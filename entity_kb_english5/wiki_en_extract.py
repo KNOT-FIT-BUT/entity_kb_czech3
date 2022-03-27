@@ -19,7 +19,7 @@ from ent_waterarea import *
 from ent_watercourse import *
 from ent_geo import *
 
-TESTING_PATH = "./testing_data/reliefs.xml"
+TESTING_PATH = "./testing_data/xml/more_waterfalls.xml"
 
 class WikiExtract(object):
     def __init__(self):
@@ -119,35 +119,35 @@ class WikiExtract(object):
             person = EntPerson(page_title, "person", self._get_link(page_title))
             person.get_data(page_content)
             person.assign_values()
-            return person.serialize()
+            return person
 
         # TODO: country
         if (EntCountry.is_country(page_content)):
             country = EntCountry(page_title, "country", self._get_link(page_title))
             country.get_data(page_content)
             country.assign_values()
-            return country.serialize()
+            return country
 
         # TODO: settlement
         if (EntSettlement.is_settlement(page_content)):
             settlement = EntSettlement(page_title, "settlement", self._get_link(page_title))
             settlement.get_data(page_content)
             settlement.assign_values()
-            return settlement.serialize()
+            return settlement
 
         # TODO: watercourse
         if (EntWaterCourse.is_water_course(page_content)):
             water_course = EntWaterCourse(page_title, "watercourse", self._get_link(page_title))
             water_course.get_data(page_content)
             water_course.assign_values()
-            return water_course.serialize()
+            return water_course
 
         # TODO: waterarea
         if (EntWaterArea.is_water_area(page_content)):
             water_area = EntWaterArea(page_title, "waterarea", self._get_link(page_title))
             water_area.get_data(page_content)
             water_area.assign_values()
-            return water_area.serialize()
+            return water_area
 
         # TODO: geo
         is_geo, prefix = EntGeo.is_geo(page_content)
@@ -155,7 +155,7 @@ class WikiExtract(object):
             geo = EntGeo(page_title, f"geo:{prefix}", self._get_link(page_title))
             geo.get_data(page_content)
             geo.assign_values()
-            return geo.serialize()
+            return geo
 
     @staticmethod
     def _get_link(link):

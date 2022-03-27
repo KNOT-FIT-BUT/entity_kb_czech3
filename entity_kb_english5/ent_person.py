@@ -51,9 +51,11 @@ class EntPerson(EntCore):
         self.gender = ""
         self.jobs = ""
         self.nationality = ""
+
+    def __repr__(self):
+        return self.serialize(f"{self.gender}\t{self.birth_date}\t{self.birth_place}\t{self.death_date}\t{self.death_place}\t{self.jobs}")
     
-    def assign_values(self):
-        
+    def assign_values(self):       
         # TODO: optimize and refactor this
         self.assign_dates()
         self.assign_places()
@@ -300,9 +302,6 @@ class EntPerson(EntCore):
         #         split.append(s.strip())
         # print(f"{self.title}: {split}")
         pass
-
-    def serialize(self):
-        return f"{self.prefix}\t{self.title}\t{self.gender}\t{self.birth_date}\t{self.birth_place}\t{self.death_date}\t{self.death_place}\t{self.jobs}\t{self.nationality}\t{self.link}"
 
     # TODO: classmethod?
     @classmethod
