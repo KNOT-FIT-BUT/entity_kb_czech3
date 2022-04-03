@@ -1,11 +1,32 @@
+"""
+Projekt: entity_kb_english5
+Autor: Jan Kapsa (xkapsa00)
+Popis souboru: Soubor obsahuje třídu 'EntCountry', která uchovává údaje o zemích.
+Poznámka: inspirováno projektem entity_kb_czech3
+"""
 
 import re
 
 from ent_core import EntCore
 
 class EntCountry(EntCore):
-	
+	"""
+    třída určená pro země
+    instanční atributy:
+        title       - jméno země
+        prefix      - prefix entity
+        eid         - ID entity
+        link        - odkaz na Wikipedii
+        area		- rozloha
+		population	- populace	
+		latitude	- zeměpisná šířka
+		longtitude	- zeměpisná délka
+    """
 	def __init__(self, title, prefix, link):
+		"""
+        inicializuje třídu EntCountry
+        """
+
 		super(EntCountry, self).__init__(title, prefix, link)
 
 		self.area = ""
@@ -14,21 +35,34 @@ class EntCountry(EntCore):
 		self.longitude = ""
 
 	def __repr__(self):
+		"""
+        serializuje parametry třídy EntCounry
+        """
 		return self.serialize(f"{self.latitude}\t{self.longitude}\t{self.area}\t{self.population}")
 
 	def assign_values(self):
+		"""
+        pokusí se extrahovat parametry z infoboxů
+        """
 		self.assign_area()
 		self.assign_population()
 		self.assign_coordinates()
 
 	def assign_coordinates(self):
+		"""
+        pokusí se extrahovat souřadnice z infoboxu coordinates
+		využívá funkci get_coordinates třídy EntCore
+        """
 		if "coordinates" in self.infobox_data and self.infobox_data["coordinates"] != "":
 			coords = self.get_coordinates(self.infobox_data["coordinates"])
 			if all(coords):
 				self.latitude, self.longitude = coords	
 
 	def assign_area(self):
-		
+		"""
+        pokusí se extrahovat rozlohu z infoboxu area_km2
+		TODO (TEST): přidat více infoboxů? (země využívající imperiální jednotky)
+        """
 		if "area_km2" in self.infobox_data:
 			area = self.infobox_data['area_km2']
 			area = area.replace(",", "")
@@ -36,10 +70,12 @@ class EntCountry(EntCore):
 			self.area = area
 
 	def assign_population(self):
-		
-		# population_census
-		# population_estimate
+		"""
+        pokusí se extrahovat populaci z infoboxů population_estimate a population_census 
+		(pokud není nalezen estimate)
+        """
 
+		# population_estimate
 		if "population_estimate" in self.infobox_data:
 			if self.infobox_data["population_estimate"] != "":
 				#print(f"{self.title}: estimate {self.infobox_data['population_estimate']}")				
@@ -47,21 +83,28 @@ class EntCountry(EntCore):
 				if match:
 					self.population = match[0].replace(',','')
 					return
-
+		
+		# population_census
 		if "population_census" in self.infobox_data:
 			if self.infobox_data["population_census"] != "":
 				#print(f"{self.title}: census {self.infobox_data['population_census']}")
 				match = re.findall(r"[0-9,]+", self.infobox_data["population_census"])
 				if match:
 					self.population = match[0].replace(',','')
-					return				
-		
-		else: 
-			print(f"{self.title}: population not found")
+					return	
+
+		#print(f"{self.title}: population not found")
+		pass
 
 	@staticmethod
 	def is_country(content):
-		
+		"""
+        na základě obsahu stránky určuje, zda stránka pojednává o zemi, či nikoliv
+        parametry:
+        content - obsah stránky
+        návratové hodnoty: 1 / 0
+		TODO: True / False
+        """
 		# check
 		pattern = r"\[\[Category:Countries\s+in\s+(?:Europe|Africa|Asia|Australia|Oceania|(?:South|North)\s+America)\]\]"
 		match = re.search(pattern, content)

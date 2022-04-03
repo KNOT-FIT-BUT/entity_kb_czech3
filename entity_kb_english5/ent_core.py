@@ -7,37 +7,50 @@ Poznámka: inspirováno projektem entity_kb_czech3
 
 from abc import ABCMeta, abstractmethod
 import re
+from hashlib import md5, sha224
 
 class EntCore(metaclass=ABCMeta):
     """
-    Abstraktní rodičovská třída, ze které dědí všechny entity.
-    Instanční atributy:
-    title       - název entity (str)
-    prefix      - prefix entity (str)
-    eid         - ID entity (str)
-    link        - odkaz na Wikipedii (str)
-    aliases     - alternativní pojmenování entity (str)
-    description - stručný popis entity (str)
-    images      - absolutní cesty k obrázkům Wikimedia Commons (str)
-    Třídní atributy:
-    counter     - počítadlo instanciovaných objektů z odvozených tříd
-    Metody:
-    del_redundant_text(text)    - odstraňuje přebytečné části textu, ale pouze ty, které jsou společné pro všechny získávané údaje
-    get_image(image)            - převádí název obrázku na absolutní cestu Wikimedia Commons
+    abstraktní rodičovská třída, ze které dědí všechny entity
+    instanční atributy:
+        title       - název entity
+        prefix      - prefix entity
+        eid         - ID entity
+        link        - odkaz na Wikipedii
+        aliases     - alternativní pojmenování entity
+        description - stručný popis entity
+        images      - absolutní cesty k obrázkům Wikimedia Commons
+    třídní atributy:
+        counter     - počítadlo instanciovaných objektů z odvozených tříd
+    metody:
+        get_data            - extrahuje infobox, paragraf a další hodnoty ze stránky
+        get_first_sentence  - extrahuje první větu
+        extract_image       - extrahuje obrázky
+        get_image_path      - vrátí cesty k obrázkům Wikimedia Commons
+        get_coordinates     - pokusí se vrátit zeměpisnou šířku a výšku 
+        convert_units       - konverze jednotek
     """
+
+    counter = 0
+
     @abstractmethod
     def __init__(self, title, prefix, link):
         """
-        Inicializuje třídu 'EntCore'.
+        Inicializuje třídu EntCore
         Parametry:
-        title   - název stránky (str)
-        prefix  - prefix entity (str)
-        link    - odkaz na Wikipedii (str)
+        title   - název stránky
+        prefix  - prefix entity
+        link    - odkaz na Wikipedii
         """
-        self.title = " ".join(title.split())
+        EntCore.counter += 1
+
+        # vygenerování hashe
+        self.eid = sha224(str(EntCore.counter).encode("utf-8")).hexdigest()[:10]
+        self.original_title = title
+        self.title = re.sub(r"\s+\(.+?\)\s*$", "", title)
         self.prefix = prefix
-        # TODO: eid
         self.link = link
+        self.images = ""
 
         # TODO: this should be dictionary of dictionaries for multiple infoboxes
         # that way I can also save the infobox name
@@ -45,10 +58,30 @@ class EntCore(metaclass=ABCMeta):
         self.infobox_name = ""
         self.categories = []
         self.first_paragraph = ""
+        self.first_sentence = ""
         self.short_description = ""
     
+    def serialize(self, ent_data):
+        """
+        serializuj entitu pro výstup
+        """
+        return "\t".join([
+            self.eid,
+            self.prefix,
+            self.title,
+            "",
+            "",
+            "",
+            self.original_title,
+            "",
+            self.link,
+            ent_data
+        ])
+
     def get_data(self, content):
-        
+        """
+        extrahuje infobox, paragraf a další hodnoty ze stránky
+        """
         lines = content.splitlines()
         
         infobox = False
@@ -116,13 +149,73 @@ class EntCore(metaclass=ABCMeta):
             # extract categories
             if line.startswith("[[Category:"):
                 self.categories.append(line[11:-2].strip())
+        
+        if (self.first_paragraph):
+            self.first_sentence = self.get_first_sentence(self.first_paragraph)
 
-    def serialize(self, ent_data):
-        return f"{self.prefix}\t{self.title}\t{ent_data}\t{self.link}"
+        self.extract_image()
+
+    # WIP first sentence / description extraction
+    #@staticmethod
+    def get_first_sentence(self, paragraph):
+        """
+        extrahuje první větu
+        """
+        pattern = r"('''.*?\.)(?:\s?[A-Z][a-z]+|\n|$)"
+        m = re.match(pattern, paragraph)
+        if m:            
+            # maybe use this for extraction
+            first_sentence = m.group(1)
+
+            # # and this for description
+            
+            # # sub '''
+            # description = re.sub(r"'{2,3}|&.+;", "", first_sentence)
+
+            # # match things inside [[]] and {{}}
+            # description = re.sub(r"\[\[[^\[\]]+?\|([^\[\]\|]+?)\]\]", r"\1", description)            
+            # description = re.sub(r"\[|\]", r"", description)
+
+            # description = re.sub(r"\{\{[^\{\}]+?\|([^\{\}\|]+?)\}\}", r"\1", description)            
+            # description = re.sub(r"\{|\}", r"", description)            
+            
+            # print(f"{self.original_title}: {description}\n")
+            self.first_sentence = first_sentence
+
+    # WIP image extraction
+    def extract_image(self):
+        """
+        extrahuje obrázky
+        """
+        if "image" in self.infobox_data and self.infobox_data["image"] != "":
+            image = self.infobox_data["image"]
+            image = self.get_image_path(image)
+            #print(image)
+            self.images += image if not self.images else "|" + image
+
+    @staticmethod
+    def get_image_path(image):
+        """
+        Převádí název obrázku na absolutní cestu Wikimedia Commons.
+
+        Parametry:
+        image - název obrázku (str)
+        """
+
+        # remove templates with descriptions from image path
+        image = re.sub(r"{{.*$", "", image)
+        image = re.sub(r"\s*\|.*$", "", image).replace("}", "").strip().replace(" ", "_")
+        image_hash = md5(image.encode("utf-8")).hexdigest()[:2]
+        image = "wikimedia/commons/" + image_hash[0] + "/" + image_hash + "/" + image
+
+        return image
 
     # returns latitude, longtitude
     @staticmethod
     def get_coordinates(format):
+        """
+        pokusí se vrátit zeměpisnou šířku a výšku 
+        """
         # matching coords format with directions
         # {{Coord|59|56|N|10|41|E|type:city}}
         pattern = r"([0-9.]+)\|([0-9.]+)?\|?([0-9.]+)?\|?(N|S)\|([0-9.]+)\|([0-9.]+)?\|?([0-9.]+)?\|?(E|W)"
@@ -152,5 +245,39 @@ class EntCore(metaclass=ABCMeta):
             #print(f"latitude: {m.group(1)}\nlongtitude: {m.group(2)}\n")
             return (m.group(1), m.group(2))
             
-        print("Error: coords format error")
+        #print(f"Error: coords format error ({format})")
         return (None, None)
+
+    # converts units
+    # TODO: add more units
+    @staticmethod
+    def convert_units(number, unit, round_to=2):
+        """
+        konverze jednotek
+        """
+        
+        number = float(number)
+        unit = unit.lower()
+
+        SQMI_TO_KM2 = 2.589988
+        FT_TO_M = 3.2808
+        MI_TO_KM = 1.609344
+        CUFT_TO_M3 = 0.028317
+
+        accepted_untis = ["km2", "km", "m", "meters", "m3", "m3/s"]
+        if unit in accepted_untis:
+            return str(number if number % 1 != 0 else int(number))
+
+        if (unit == "sqmi"):
+            number = round(number * SQMI_TO_KM2, round_to)
+        elif (unit == "mi"):
+            number = round(number * MI_TO_KM,round_to)
+        elif (unit in ["ft", "feet"]):
+            number = round(number / FT_TO_M, round_to)
+        elif(unit in ["cuft/s", "cuft"]):
+            number = round(number * CUFT_TO_M3,round_to)
+        else:
+            #print(f"Error: unit conversion error ({unit})")
+            return ""
+
+        return str(number if number % 1 != 0 else int(number))

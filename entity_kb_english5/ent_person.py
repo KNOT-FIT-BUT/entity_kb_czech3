@@ -1,7 +1,7 @@
 """
 Projekt: entity_kb_english5
 Autor: Jan Kapsa (xkapsa00)
-Popis souboru: Soubor obsahuje třídu 'EntPerson', která uchovává údaje o lidech.
+Popis souboru: Soubor obsahuje třídu 'EntPerson', která uchovává údaje o osobách.
 Poznámka: inspirováno projektem entity_kb_czech3
 """
 
@@ -11,34 +11,23 @@ from ent_core import EntCore
 
 class EntPerson(EntCore):
     """
-    Třída určená pro lidi.
-    Instanční atributy:
-    title       - jméno osoby (str)
-    prefix      - prefix entity (str)
-    eid         - ID entity (str)
-    link        - odkaz na Wikipedii (str)
-    aliases     - alternativní jména osoby (str)
-    description - stručný popis osoby (str)
-    images      - absolutní cesty k obrázkům Wikimedia Commons (str)
-    birth_date  - datum narození osoby (str)
-    birth_place - místo narození osoby (str)
-    death_date  - datum úmrtí osoby (str)
-    death_place - místo úmrtí osoby (str)
-    gender      - pohlaví osoby (str)
-    jobs        - zaměstnání osoby (str)
-    nationality - národnost osoby (str)
-    Třídní atributy:
-    ib_types    - typy infoboxů, které se týkají osob (set)
-    TODO
+    třída určená pro osoby
+    instanční atributy:
+        title       - jméno osoby
+        prefix      - prefix entity
+        eid         - ID entity
+        link        - odkaz na Wikipedii
+        birth_date  - datum narození osoby
+        birth_place - místo narození osoby
+        death_date  - datum úmrtí osoby
+        death_place - místo úmrtí osoby
+        gender      - pohlaví osoby
+        jobs        - zaměstnání osoby
+        nationality - národnost osoby
     """
     def __init__(self, title, prefix, link):
         """
-        Inicializuje třídu 'EntPerson'.
-        Parametry:
-        title - název stránky (str)
-        prefix - prefix entity (str)
-        link - odkaz na Wikipedii (str)
-        TODO
+        inicializuje třídu EntPerson
         """
         # vyvolání inicializátoru nadřazené třídy
         super(EntPerson, self).__init__(title, prefix, link)
@@ -53,9 +42,15 @@ class EntPerson(EntCore):
         self.nationality = ""
 
     def __repr__(self):
-        return self.serialize(f"{self.gender}\t{self.birth_date}\t{self.birth_place}\t{self.death_date}\t{self.death_place}\t{self.jobs}")
+        """
+        serializuje parametry třídy EntPerson
+        """
+        return self.serialize(f"{self.gender}\t{self.birth_date}\t{self.birth_place}\t{self.death_date}\t{self.death_place}\t{self.jobs}\t{self.nationality}")
     
-    def assign_values(self):       
+    def assign_values(self):
+        """
+        pokusí se extrahovat parametry z infoboxů
+        """
         # TODO: optimize and refactor this
         self.assign_dates()
         self.assign_places()
@@ -63,18 +58,47 @@ class EntPerson(EntCore):
         self.assign_gender()
         self.assign_jobs()
         
-
     def assign_dates(self):
+        """
+        pokusí se extrahovat datumy úmrtí a narození z infoboxů death_date a birth_date
+        TODO: refactor
+        TODO: extrakce z první věty
+        """
         months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
         
-        if "death_date" in self.infobox_data:
+        # death date extraction (death_date sometimes includes birth date, if found it is also extracted)
+        if "death_date" in self.infobox_data and self.infobox_data["death_date"]:
             dates = ["", ""]
             string = self.infobox_data["death_date"]
             
-            # bc in date
+            # BC and AD
             if "BC" in string:
-                string = string.replace("&nbsp;", " ")
-                dates[0] = string
+                string = re.sub("&nbsp;|{{nbsp}}", " ", string)
+                string = re.sub(r"\(.*?\)", "", string)
+                string = re.sub(r"{{.*?([0-9]+).*?}}", r"\1", string)
+                string = re.sub(r"{{.*}}", "", string).strip()
+                string = re.sub(r"([0-9]+)/([0-9]+)", r"\1", string)
+                if (string.startswith("c.")):
+                    string = string[2:].strip()
+                string = re.sub(r"\[\[.*\|(.*)\]\]", r"\1", string)
+                string = re.sub(r"BCE|BC", "", string).strip()
+                f = self.format_date(string)
+                if (f != -1):
+                    dates[0] = f"-{f}"
+                else:
+                    dates[0] = -1
+
+            if "AD" in string:
+                string = re.sub("&nbsp;|{{nbsp}}", " ", string)
+                string = re.sub(r"\(.*?\)", "", string)
+                string = re.sub(r"{{.*?([0-9]+).*?}}", r"\1", string)
+                string = re.sub(r"{{.*}}", "", string).strip()
+                string = re.sub(r"(.*?)\|.+", r"\1", string).strip()
+                if (string.startswith("c.")):
+                    string = string[2:].strip()
+                string = string.replace(" AD", "")
+                f = self.format_date(string)
+                dates[0] = f
             
             # month name in date
             if dates[0] == "":
@@ -93,7 +117,7 @@ class EntPerson(EntCore):
                             dates[i] = "-".join(date)
                             break
             
-            # normal format
+            # normal format (e.g.: ...|2000|01|01|2001|01|01... )
             if dates[0] == "":
                 #YYYY|MM|DD|YYYY|MM|DD or YYYY|MM|DD
                 pattern = "{{.*?([0-9]{1,4})\|([0-9]{1,2})\|([0-9]{1,2})\s?\|([0-9]{1,4})\|([0-9]{1,2})\|([0-9]{1,2}).*?}}|{{.*?([0-9]{1,4})\|([0-9]{1,2})\|([0-9]{1,2})[^0-9].*?"
@@ -104,27 +128,60 @@ class EntPerson(EntCore):
                         month = groups[i*3+1] if len(groups[i*3+1]) == 2 else "0"+groups[i*3+1]
                         day = groups[i*3+2] if len(groups[i*3+2]) == 2 else "0"+groups[i*3+2]
                         dates[i] = "-".join([groups[i*3+0], month, day])
-
+            
+            # other formats     
             if dates[0] == "":
-                #print(f"{self.title}: {self.infobox_data['death_date']}")
-                pass
+                string = re.sub(r"{{.*[dD]eath.*?([0-9]+).*}}", r"\1", string).strip()
+                string = re.sub(r"\(.*\)|{{.*}}", "", string).strip()
+                if (string.startswith("c.")):
+                    string = string[2:].strip()
+                f = self.format_date(string)
+                if f != -1:
+                    dates[0] = f
 
-            self.death_date = dates[0]
-            self.birth_date = dates[1]
+            if dates[0] != "" and dates[0] != -1:
+                self.death_date = dates[0]
+                self.birth_date = dates[1]
         else:
             #print(f"{self.title}: did not find a death date inside the infobox...")
             pass
 
-        # search infobox
+        # birth date extraction
         if self.birth_date == "" and "birth_date" in self.infobox_data:
             #print(self.infobox_data['birth_date'])
             date = ""
             string = self.infobox_data["birth_date"]
 
+            # BC and AD
             if "BC" in string:
-                string = string.replace("&nbsp;", " ")
-                date = string
+                string = re.sub("&nbsp;|{{nbsp}}", " ", string)
+                string = re.sub(r"\(.*?\)", "", string)
+                string = re.sub(r"{{.*?([0-9]+).*?}}", r"\1", string)
+                string = re.sub(r"{{.*}}", "", string).strip()
+                string = re.sub(r"([0-9]+)/([0-9]+)", r"\1", string)
+                if (string.startswith("c.")):
+                    string = string[2:].strip()
+                string = re.sub(r"\[\[.*\|(.*)\]\]", r"\1", string)
+                string = re.sub(r"BCE|BC", "", string).strip()
+                f = self.format_date(string)
+                if (f != -1):
+                    date = f"-{f}"
+                else:
+                    date = -1
+
+            if "AD" in string:
+                string = re.sub("&nbsp;|{{nbsp}}", " ", string)
+                string = re.sub(r"\(.*?\)", "", string)
+                string = re.sub(r"{{.*?([0-9]+).*?}}", r"\1", string)
+                string = re.sub(r"{{.*}}", "", string).strip()
+                string = re.sub(r"(.*?)\|.+", r"\1", string).strip()
+                if (string.startswith("c.")):
+                    string = string[2:].strip()
+                string = string.replace(" AD", "")
+                f = self.format_date(string)
+                date = f
             
+            # month name in date
             if date == "":
                 patterns = [r"(\w+)\s+([0-9]{1,2}),?\s+([0-9]{1,4})", r"([0-9]{1,2})\s+(\w+)\s+([0-9]{1,4})"]
                 pos = [[0, 1], [1, 0]]
@@ -139,6 +196,7 @@ class EntPerson(EntCore):
                         arr[2] = match.group(pos[j][1]+1) if len(match.group(pos[j][1]+1)) == 2 else "0"+match.group(pos[j][1]+1)
                         date = "-".join(arr)
             
+            # normal date format
             if date == "":
                 #YYYY|MM|DD|YYYY|MM|DD or YYYY|MM|DD
                 pattern = "{{.*?([0-9]{1,4})\|([0-9]{1,2})\|([0-9]{1,2}).*?}}"
@@ -150,25 +208,87 @@ class EntPerson(EntCore):
                         day = groups[i*3+2] if len(groups[i*3+2]) == 2 else "0"+groups[i*3+2]
                         date = "-".join([groups[i*3+0], month, day])
 
+            # other formats     
             if date == "":
-                #print(f"{self.title}: {self.infobox_data['birth_date']}")
-                pass
+                string = re.sub(r"{{.*[dD]eath.*?([0-9]+).*}}", r"\1", string).strip()
+                string = re.sub(r"\(.*\)|{{.*}}", "", string).strip()
+                if (string.startswith("c.")):
+                    string = string[2:].strip()
+                f = self.format_date(string)
+                if f != -1:
+                    date = f
 
-            self.birth_date = date            
+            if date != "" and date != -1:
+                self.birth_date = date            
         else:
             #print(f"{self.title}: did not find a birth date inside the infobox...")
             pass
 
+    @staticmethod
+    def format_date(string):
+        """
+        upraví datumy do vyhovujícího tvaru
+        """
+        months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+        
+        # month in the middle (DD month YYYY)
+        m = re.search(r"([0-9]+)\s(\w+)\s([0-9]+)", string)
+        if m:
+            month = ""
+            day = int(m.group(1))
+            if m.group(2) in months:
+                month = months.index(m.group(2))+1 
+                month = str(month) if month > 9 else f"0{month}"
+            else:
+                return -1
+            day = str(day) if day > 9 else f"0{day}"
+            return f"{m.group(3)}-{month}-{day}"
+            
+        # month first (month DD YYYY)
+        m = re.search(r"(\w+)\s([0-9]+)\s([0-9]+)", string)
+        if m:
+            month = ""
+            day = int(m.group(2))
+            if m.group(1) in months:
+                month = months.index(m.group(1))+1 
+                month = str(month) if month > 9 else f"0{month}"
+            else:
+                return "date format error"
+            day = str(day) if day > 9 else f"0{day}"
+            return f"{m.group(3)}-{month}-{day}"
+        
+        # month and year (month YYYY)
+        m = re.search(r"(\w+)\s([0-9]+)", string)
+        if m:
+            month = ""
+            if m.group(1) in months:
+                month = months.index(m.group(1))+1 
+                month = str(month) if month > 9 else f"0{month}"
+            else:
+                return -1
+            return f"{m.group(2)}-{month}-??"
+        
+        if (re.search(r"[^0-9]+", string) or string == ""):
+            return -1
+        
+        # year only (YYYY)
+        return f"{string}-??-??"
+
     def assign_places(self):
-        # birth_place        
+        """
+        pokusí se extrahovat místo narození a úmrtí z infoboxů birth_place a death_place
+        """       
         if "birth_place" in self.infobox_data:
-            self.birth_place = self._fix_place(self.infobox_data["birth_place"])
+            self.birth_place = self.fix_place(self.infobox_data["birth_place"])
 
         if "death_place" in self.infobox_data:
-            self.death_place = self._fix_place(self.infobox_data["death_place"])
+            self.death_place = self.fix_place(self.infobox_data["death_place"])
     
     @staticmethod
-    def _fix_place(place):
+    def fix_place(place):
+        """
+        upraví místa do vyhovujícího tvaru
+        """
         p = place
 
         if p == "":
@@ -185,12 +305,20 @@ class EntPerson(EntCore):
         return p
         
     def assign_nationality(self):
+        """
+        extrakce národnosti z infoboxu nationality
+        TODO: extrakce z první věty
+        """
         if "nationality" in self.infobox_data and self.infobox_data["nationality"] != "":
             nationalities = []
             string = self.infobox_data["nationality"]
+
+            # removing stuff in () and [] brackets 
+            # (e.g.: [[Belgium|Belgian]] (1949—2003), [[Chile]]an[[Mexico|Mexican]])
             string = re.sub(r"\(.*\)|\[|\]", "", string).strip()
             
-            # case splitting
+            # case splitting 
+            # (e.g.: GermanAmerican)
             indexes = [m.start(0) for m in re.finditer(r"[a-z][A-Z]", string)]
             x = 0
             for i in indexes:
@@ -198,7 +326,8 @@ class EntPerson(EntCore):
                 x = i+1
             nationalities.append(string[x:])
             
-            # other splitting
+            # other splitting 
+            # (e.g.: French-Moroccan)
             splitters = ["/", "-", "–", ","]
             for splitter in splitters:
                 tmp = []
@@ -208,6 +337,8 @@ class EntPerson(EntCore):
                 
                 nationalities = tmp
             
+            # splitting redirects 
+            # (e.g.: [[Germans|German]]) -> German
             for i in range(len(nationalities)):
                 bar_split = nationalities[i].split("|")
                 nationalities[i] = bar_split[-1].strip()
@@ -215,6 +346,10 @@ class EntPerson(EntCore):
             self.nationality = " | ".join(nationalities)
 
     def assign_gender(self):
+        """
+        extrakce pohlaví z infoboxu gender
+        TODO (TEST): extrakce z druhé věty
+        """
         if "gender" in self.infobox_data and self.infobox_data["gender"] != "":
             gender = self.infobox_data["gender"].lower()
             self.gender = gender
@@ -236,9 +371,11 @@ class EntPerson(EntCore):
                 #     print(f"{self.title}: undefined")
                     self.gender = "female"
     
-    # TODO: WIP
     def assign_jobs(self):
-        
+        """
+        extrakce prací z infoboxu occupation
+        TODO (WIP): extrakce z první věty          
+        """
         if "occupation" in self.infobox_data and self.infobox_data["occupation"] != "":
             string = self.infobox_data["occupation"]
             string = re.sub("\[|\]|\{|\}", "", string)
@@ -303,19 +440,17 @@ class EntPerson(EntCore):
         # print(f"{self.title}: {split}")
         pass
 
-    # TODO: classmethod?
     @classmethod
     def is_person(cls, content):
         """
-        Na základě obsahu stránky určuje, zda stránka pojednává o osobě, či nikoliv.
-        Parametry:
-        content - obsah stránky (str)
-        Návratové hodnoty:
-        TODO
+        na základě obsahu stránky určuje, zda stránka pojednává o osobě, či nikoliv
+        parametry:
+        content - obsah stránky
+        návratové hodnoty: True / False
         """
 
         # TODO: person categories
-        score = cls._check_categories(content)
+        score = cls.check_categories(content)
 
         # TODO: more checks if necessery
 
@@ -328,13 +463,12 @@ class EntPerson(EntCore):
             return False        
 
     @staticmethod
-    def _check_categories(content):
+    def check_categories(content):
         """
-        Kontroluje, zda obsah stránky obsahuje některou z kategorií, které identifikují stránky o osobách.
-        Parametry:
-        content - obsah stránky (str)
-        Návratové hodnoty:
-        TODO: Pravděpodobnost, že je stránka o osobě. (int)
+        kontroluje, zda obsah stránky obsahuje některou z kategorií, které identifikují stránky o osobách
+        parametry:
+        content - obsah stránky
+        návratové hodnoty: score - pravděpodobnost, že je stránka o osobě
         """
         # TODO
         score = 0

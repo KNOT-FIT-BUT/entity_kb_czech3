@@ -9,8 +9,11 @@ Poznámky:
 """
 
 import re
+import os
 import xml.etree.cElementTree as CElTree
 from itertools import repeat, tee
+import argparse
+import time
 
 from ent_person import *
 from ent_country import *
@@ -19,7 +22,8 @@ from ent_waterarea import *
 from ent_watercourse import *
 from ent_geo import *
 
-TESTING_PATH = "./testing_data/xml/more_waterfalls.xml"
+TESTING_PATH = "./testing_data/xml/people.xml"
+LANG_MAP = {"cz": "cs"}
 
 class WikiExtract(object):
     def __init__(self):
@@ -27,7 +31,166 @@ class WikiExtract(object):
         inicializace třídy
         """
         # TODO: inicializace
+        self.console_args = None
         pass
+
+    @staticmethod
+    def create_head_kb():
+        """
+        Vytváří hlavičkový soubor HEAD-KB, který upřesňuje množinu záznamů znalostní báze.
+        """
+        entities = [
+            "<person>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tGENDER\t{e}DATE OF BIRTH\tPLACE OF BIRTH\t{e}DATE OF DEATH\tPLACE OF DEATH\t{m}JOBS\t{m}NATIONALITY\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+            #"<person>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tGENDER\t{e}DATE OF BIRTH\tPLACE OF BIRTH\t{e}DATE OF DEATH\tPLACE OF DEATH\t{m}JOBS\t{m}NATIONALITY\n",
+            "<person:fictional>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tGENDER\t{e}DATE OF BIRTH\tPLACE OF BIRTH\t{e}DATE OF DEATH\tPLACE OF DEATH\t{m}JOBS\t{m}NATIONALITY\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+            "<person:group>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tGENDER\t{e}DATE OF BIRTH\tPLACE OF BIRTH\t{e}DATE OF DEATH\tPLACE OF DEATH\t{m}JOBS\t{m}NATIONALITY\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+            "<country>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tLATITUDE\tLONGITUDE\tAREA\tPOPULATION\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+            "<country:former>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tLATITUDE\tLONGITUDE\tAREA\tPOPULATION\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+            "<settlement>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tCOUNTRY\tLATITUDE\tLONGITUDE\tAREA\tPOPULATION\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+            "<watercourse>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\t{m}CONTINENT\tLATITUDE\tLONGITUDE\tLENGTH\tAREA\tSTREAMFLOW\tSOURCE_LOC\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+            "<waterarea>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\t{m}CONTINENT\tLATITUDE\tLONGITUDE\tAREA\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+            "<geo:relief>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\t{m}CONTINENT\tLATITUDE\tLONGITUDE\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+            "<geo:waterfall>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\t{m}CONTINENT\tLATITUDE\tLONGITUDE\tTOTAL HEIGHT\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+            "<geo:island>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\t{m}CONTINENT\tLATITUDE\tLONGITUDE\tAREA\tPOPULATION\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+            "<geo:peninsula>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tLATITUDE\tLONGITUDE\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+            "<geo:continent>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tLATITUDE\tLONGITUDE\tAREA\tPOPULATION\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+            # <organisation>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tFOUNDED\tCANCELLED\tORGANIZATION TYPE\tLOCATION\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+            # "<event>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tSTART\tEND\tLOCATION\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n"
+        ]
+
+        with open("../HEAD-KB", "w", encoding="utf-8") as file:
+            for entity in entities:
+                file.write(entity)
+
+    def parse_args(self):
+        """
+        Parsuje argumenty zadané při spuštění skriptu.
+        """
+        parser = argparse.ArgumentParser()
+        parser.add_argument(
+            "-I",
+            "--indir",
+            # default="/mnt/minerva1/nlp/corpora_datasets/monolingual/czech/wikipedia/",
+            default="./testing_data/xml/",
+            type=str,
+            help="Directory, where input files are located (applied for files withoud directory location only).",
+        )
+        parser.add_argument(
+            "-l",
+            "--lang",
+            default="en",
+            type=str,
+            help="Language of processing also used for input files, when defined by version (by default) and not by files (default: %(default)s).",
+        )
+        parser.add_argument(
+            "-d",
+            "--dump",
+            default="latest",
+            type=str,
+            help='Dump version to process (in format "yyyymmdd"; default: %(default)s).',
+        )
+        parser.add_argument(
+            "-m",
+            default=2,
+            type=int,
+            help="Number of processors of multiprocessing.Pool() for entity processing.",
+        )
+        parser.add_argument(
+            "-g",
+            "--geotags",
+            action="store",
+            type=str,
+            help="Source file of wiki geo tags (with GPS locations) dump.",
+        )
+        parser.add_argument(
+            "-p",
+            "--pages",
+            action="store",
+            type=str,
+            help="Source file of wiki pages dump.",
+        )
+        parser.add_argument(
+            "-r",
+            "--redirects",
+            action="store",
+            type=str,
+            help="Source file of wiki redirects dump.",
+        )
+        parser.add_argument(
+            "--dev",
+            action="store_true",
+            help="Development version of KB",
+        )
+        parser.add_argument(
+            "--test",
+            action="store_true",
+            help="Test version of KB",
+        )
+        self.console_args = parser.parse_args()
+
+        if self.console_args.m < 1:
+            self.console_args.m = 1
+
+        self.console_args.lang = self.console_args.lang.lower()
+        if self.console_args.lang in LANG_MAP:
+            self.console_args.lang = LANG_MAP[self.console_args.lang]
+
+        self.pages_dump_fpath = self.get_dump_fpath(
+            self.console_args.pages, "{}wiki-{}-pages-articles.xml"
+        )
+        self.geotags_dump_fpath = self.get_dump_fpath(
+            self.console_args.geotags, "{}wiki-{}-geo_tags.sql"
+        )
+        self.redirects_dump_fpath = self.get_dump_fpath(
+            self.console_args.redirects, "redirects_from_{}wiki-{}-pages-articles.xml"
+        )
+        if self.console_args.dev:
+            self.console_args._kb_stability = "dev"
+        elif self.console_args.test:
+            self.console_args._kb_stability = "test"
+        else:
+            self.console_args._kb_stability = ""
+
+    def get_dump_fpath(self, dump_file, dump_file_mask):
+        if dump_file is None:
+            dump_file = dump_file_mask.format(
+                self.console_args.lang, self.console_args.dump
+            )
+        elif dump_file[0] == "/":
+            return dump_file
+        elif dump_file[0] == "." and (dump_file[1] == "/" or dump_file[1:3] == "./"):
+            return os.path.join(os.getcwd(), dump_file)
+
+        return os.path.join(self.console_args.indir, dump_file)
+
+    def assign_version(self):
+        str_kb_stability = ""
+        if self.console_args._kb_stability:
+            str_kb_stability = f"-{self.console_args._kb_stability}"
+        try:
+            target = os.readlink(self.pages_dump_fpath)
+            matches = re.search(self.console_args.lang + r"wiki-([0-9]{8})-", target)
+            if matches:
+                dump_version = matches[1]
+        except OSError:
+            try:
+                target = os.readlink(self.redirects_dump_fpath)
+                matches = re.search(
+                    self.console_args.lang + r"wiki-([0-9]{8})-", target
+                )
+                if matches:
+                    dump_version = matches[1]
+            except OSError:
+                dump_version = self.console_args.dump
+        with open("../VERSION", "w") as f:
+            f.write(
+                "{}_{}-{}{}".format(
+                    self.console_args.lang,
+                    dump_version,
+                    int(round(time.time())),
+                    str_kb_stability,
+                )
+            )
 
     def parse_xml_dump(self):
         """
@@ -36,7 +199,7 @@ class WikiExtract(object):
         - založeno na: http://effbot.org/zone/element-iterparse.htm
         """
         # TODO: xml parser
-        context = CElTree.iterparse(TESTING_PATH, events=("start", "end"))
+        context = CElTree.iterparse(self.pages_dump_fpath, events=("start", "end"))
 
         # langmap?
         it_context_langmap, it_context_pages = tee(context)
@@ -75,7 +238,7 @@ class WikiExtract(object):
         if len(ent_titles):
             # TODO: multiprocessing
             counter = 0
-            with open("kb_en", "w", encoding="utf-8") as file:
+            with open("../kb_en", "w", encoding="utf-8") as file:
                 for i in range(len(ent_titles)):
                     entity = self.process_entity(ent_titles[i], ent_pages[i])
                     if entity:
@@ -190,7 +353,11 @@ class WikiExtract(object):
         return clean_content
 
 
+
 if __name__ == "__main__":
     wiki_extract = WikiExtract()
     
+    wiki_extract.parse_args()
+    wiki_extract.create_head_kb()
     wiki_extract.parse_xml_dump()
+    wiki_extract.assign_version()
