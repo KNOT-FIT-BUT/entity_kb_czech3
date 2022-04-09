@@ -52,6 +52,10 @@ class EntPerson(EntCore):
         pokusí se extrahovat parametry z infoboxů
         """
         # TODO: optimize and refactor this
+
+        if "character" in self.infobox_name:
+            self.prefix += ":fictional"
+
         self.assign_dates()
         self.assign_places()
         self.assign_nationality()
@@ -440,8 +444,8 @@ class EntPerson(EntCore):
         # print(f"{self.title}: {split}")
         pass
 
-    @classmethod
-    def is_person(cls, content):
+    @staticmethod
+    def is_person(content):
         """
         na základě obsahu stránky určuje, zda stránka pojednává o osobě, či nikoliv
         parametry:
@@ -449,48 +453,22 @@ class EntPerson(EntCore):
         návratové hodnoty: True / False
         """
 
-        # TODO: person categories
-        score = cls.check_categories(content)
-
-        # TODO: more checks if necessery
-
-        # TODO: change number?
-        if score >= 1:
-            #print("DEBUG: identified person " + str(score))
-            return True
-        else:
-            #print("DEBUG: did not identify person")
-            return False        
-
-    @staticmethod
-    def check_categories(content):
-        """
-        kontroluje, zda obsah stránky obsahuje některou z kategorií, které identifikují stránky o osobách
-        parametry:
-        content - obsah stránky
-        návratové hodnoty: score - pravděpodobnost, že je stránka o osobě
-        """
-        # TODO
-        score = 0
-
-        #paragraphs = content.split("\n\n")        
-        #print(paragraphs[-1])
-
         # TODO: další možné problematické skupiny, které zatím nejsou řešeny
-        # gods and heroes (mythology)
         # transgender
-        # book characters
 
-        # "birth or births" in categories
-        if (re.search(r"\[\[Category:.*?\bbirths?\b\]\]", content, re.I)):
-            score += 1
-        # "death or deaths" in categories
-        if (re.search(r"\[\[Category:.*?\bdeaths?\b\]\]", content, re.I)):
-            score += 1
-        # "men or women" in categories
+        # birth or births
+        if (re.search(r"\[\[Category:.*?\bbirths?\b.*?\]\]", content, re.I)):
+            return True
+        # death or deaths
+        if (re.search(r"\[\[Category:.*?\bdeaths?\b.*?\]\]", content, re.I)):
+            return True
+        # men or women
         if (re.search(r"\[\[Category:.*?\b(wo)?men\b.*?\]\]", content, re.I)):
-            score += 1
-        # "people" in categories
-        if (re.search(r"\[\[Category:.*?\bpeople\b.*?\]\]", content, re.I)):
-            score += 1
-        return score
+            return True
+        # characters
+        if (re.search(r"\[\[Category:.*?\bcharacters\b.*?\]\]", content, re.I)):
+            return True
+
+        return False
+
+        

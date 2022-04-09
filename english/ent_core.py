@@ -59,6 +59,7 @@ class EntCore(metaclass=ABCMeta):
         self.categories = []
         self.first_paragraph = ""
         self.first_sentence = ""
+        self.description = ""
         self.short_description = ""
     
     def serialize(self, ent_data):
@@ -71,9 +72,9 @@ class EntCore(metaclass=ABCMeta):
             self.title,
             "",
             "",
-            "",
+            self.description,
             self.original_title,
-            "",
+            self.images,
             self.link,
             ent_data
         ])
@@ -161,26 +162,41 @@ class EntCore(metaclass=ABCMeta):
         """
         extrahuje první větu
         """
-        pattern = r"('''.*?\.)(?:\s?[A-Z][a-z]+|\n|$)"
+        # ('''.*?'''.*?\.)(?:\s*[A-Z][a-z]+|\n|\]|$)
+        # ('''.*?'''.*?[^A-Z]\.)(?:\s*[A-Z][a-z]+|\n|$)
+        # ('''.*?'''.*?\.)(?:\s*[A-Z][a-z]+\s[a-z]|\n|$)
+        pattern = r"('''.*?'''.*?\.)(?:\s*[A-Z][a-z,]+\s[a-z]|\n|$)"
         m = re.match(pattern, paragraph)
         if m:            
             # maybe use this for extraction
             first_sentence = m.group(1)
+            langs = []
 
-            # # and this for description
+            # and this for description
             
-            # # sub '''
-            # description = re.sub(r"'{2,3}|&.+;", "", first_sentence)
+            # sub '''
+            description = re.sub(r"'{2,3}|&.+;", "", first_sentence)
 
             # # match things inside [[]] and {{}}
-            # description = re.sub(r"\[\[[^\[\]]+?\|([^\[\]\|]+?)\]\]", r"\1", description)            
-            # description = re.sub(r"\[|\]", r"", description)
+            description = re.sub(r"\[\[[^\[\]]+?\|([^\[\]\|]+?)\]\]", r"\1", description)            
+            description = re.sub(r"\[|\]", r"", description)
 
-            # description = re.sub(r"\{\{[^\{\}]+?\|([^\{\}\|]+?)\}\}", r"\1", description)            
-            # description = re.sub(r"\{|\}", r"", description)            
+            for lang in re.finditer(r"{{lang.*?\|(.*?)}};?", description):
+                langs.append(lang.group(1))
+
+            # TODO: convert dates 
             
-            # print(f"{self.original_title}: {description}\n")
+            description = re.sub(r"{{.*?}};?", r"", description)
+            
+            description = re.sub(r"\(\s+", "", description)
+            description = re.sub(r"\s+", " ", description)
+            description = re.sub(r"\s\(\)\s?", " ", description)
+
+            #print(f"{description}\n")
+            self.description = description
             self.first_sentence = first_sentence
+        else:
+            print(f"{self.original_title}: error\n")
 
     # WIP image extraction
     def extract_image(self):
@@ -190,8 +206,7 @@ class EntCore(metaclass=ABCMeta):
         if "image" in self.infobox_data and self.infobox_data["image"] != "":
             image = self.infobox_data["image"]
             image = self.get_image_path(image)
-            #print(image)
-            self.images += image if not self.images else "|" + image
+            self.images += image if not self.images else " | " + image
 
     @staticmethod
     def get_image_path(image):
@@ -199,7 +214,7 @@ class EntCore(metaclass=ABCMeta):
         Převádí název obrázku na absolutní cestu Wikimedia Commons.
 
         Parametry:
-        image - název obrázku (str)
+        image - název obrázku
         """
 
         # remove templates with descriptions from image path

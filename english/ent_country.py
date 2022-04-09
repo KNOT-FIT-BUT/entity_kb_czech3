@@ -44,6 +44,15 @@ class EntCountry(EntCore):
 		"""
         pokusí se extrahovat parametry z infoboxů
         """
+
+		for category in self.categories:
+			# TODO: "developed" is too specific
+			if "developed" in category:
+				continue
+			if re.search(r"former.*?countries", category.lower(), re.I):
+				self.prefix += ":former"
+				break
+
 		self.assign_area()
 		self.assign_population()
 		self.assign_coordinates()
@@ -97,28 +106,46 @@ class EntCountry(EntCore):
 		pass
 
 	@staticmethod
-	def is_country(content):
+	def is_country(content, title):
 		"""
         na základě obsahu stránky určuje, zda stránka pojednává o zemi, či nikoliv
         parametry:
         content - obsah stránky
-        návratové hodnoty: 1 / 0
-		TODO: True / False
+        návratové hodnoty: True / False
         """
-		# check
+
+		# check title
+		bad_pages = ["history", "geography", "list"]
+		for page in bad_pages:
+			if page in title.lower():
+				return False
+
+		# check categories
 		pattern = r"\[\[Category:Countries\s+in\s+(?:Europe|Africa|Asia|Australia|Oceania|(?:South|North)\s+America)\]\]"
 		match = re.search(pattern, content)
 		if match:
-			return 1
+			return True
 		
 		pattern = r"\[\[Category:Member\s+states\s+of\s+(?:the\sUnited\sNations|the\sCommonwealth\sof\sNations|the\sEuropean\sUnion|NATO)\]\]"
 		match = re.search(pattern, content)
 		if match:
-			return 1
+			return True
 
 		pattern = r"\[\[Category:States\s+(?:of\sthe\sUnited\sStates|with\slimited\srecognition)\]\]"
 		match = re.search(pattern, content)
 		if match:
-			return 1
+			return True
+
+		pattern = r"\[\[Category:States\s+(?:of\sthe\sUnited\sStates|with\slimited\srecognition)\]\]"
+		match = re.search(pattern, content)
+		if match:
+			return True
+
+		# TODO: categories or infobox?
+		pattern = r"\[\[Category:.*?former.*?countries.*?\]\]"
+		#pattern = r"{{Infobox former country"
+		match = re.search(pattern, content, re.I)
+		if match:
+			return True
 			
-		return 0
+		return False

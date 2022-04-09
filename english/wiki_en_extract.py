@@ -14,6 +14,7 @@ import xml.etree.cElementTree as CElTree
 from itertools import repeat, tee
 import argparse
 import time
+from multiprocessing import Pool
 
 from ent_person import *
 from ent_country import *
@@ -32,7 +33,6 @@ class WikiExtract(object):
         """
         # TODO: inicializace
         self.console_args = None
-        pass
 
     @staticmethod
     def create_head_kb():
@@ -205,6 +205,8 @@ class WikiExtract(object):
         it_context_langmap, it_context_pages = tee(context)
         #event, root = next(it_context_langmap)
 
+        # TODO: make json file out of https://en.wikipedia.org/wiki/List_of_ISO_639-2_codes
+
         ent_titles = []
         ent_pages = []
         event, root = next(it_context_pages)
@@ -236,15 +238,16 @@ class WikiExtract(object):
                 root.clear()
 
         if len(ent_titles):
-            # TODO: multiprocessing
-            counter = 0
             with open("../kb_en", "w", encoding="utf-8") as file:
-                for i in range(len(ent_titles)):
-                    entity = self.process_entity(ent_titles[i], ent_pages[i])
-                    if entity:
-                        file.write(f"{entity}\n")
-                        counter += 1
-            print(counter)
+                pool = Pool(processes=self.console_args.m)
+                serialized_entities = pool.starmap(
+                    self.process_entity,
+                    zip(ent_titles, ent_pages),
+                )
+                file.write("\n".join(filter(None, serialized_entities)))
+                pool.close()
+                pool.join()
+            print(len(list(filter(None, serialized_entities))))
 
     # filters out wikipedia special pages and date pages
     @staticmethod
@@ -282,43 +285,43 @@ class WikiExtract(object):
             person = EntPerson(page_title, "person", self._get_link(page_title))
             person.get_data(page_content)
             person.assign_values()
-            return person
+            return person.__repr__()
 
         # TODO: country
-        if (EntCountry.is_country(page_content)):
+        if (EntCountry.is_country(page_content, page_title)):
             country = EntCountry(page_title, "country", self._get_link(page_title))
             country.get_data(page_content)
             country.assign_values()
-            return country
+            return country.__repr__()
 
         # TODO: settlement
         if (EntSettlement.is_settlement(page_content)):
             settlement = EntSettlement(page_title, "settlement", self._get_link(page_title))
             settlement.get_data(page_content)
             settlement.assign_values()
-            return settlement
+            return settlement.__repr__()
 
         # TODO: watercourse
         if (EntWaterCourse.is_water_course(page_content)):
             water_course = EntWaterCourse(page_title, "watercourse", self._get_link(page_title))
             water_course.get_data(page_content)
             water_course.assign_values()
-            return water_course
+            return water_course.__repr__()
 
         # TODO: waterarea
         if (EntWaterArea.is_water_area(page_content)):
             water_area = EntWaterArea(page_title, "waterarea", self._get_link(page_title))
             water_area.get_data(page_content)
             water_area.assign_values()
-            return water_area
+            return water_area.__repr__()
 
         # TODO: geo
-        is_geo, prefix = EntGeo.is_geo(page_content)
+        is_geo, prefix = EntGeo.is_geo(page_content, page_title)
         if is_geo:
             geo = EntGeo(page_title, f"geo:{prefix}", self._get_link(page_title))
             geo.get_data(page_content)
             geo.assign_values()
-            return geo
+            return geo.__repr__()
 
     @staticmethod
     def _get_link(link):
@@ -343,6 +346,22 @@ class WikiExtract(object):
         # remove references        
         clean_content = re.sub(r"<ref.*?/(?:ref)?>", "", clean_content, flags=re.DOTALL)
 
+        # remove {{efn ... }}
+        arr = []
+        for m in re.finditer(r"{{efn", clean_content):
+            index = m.start()+1
+            indentation = 1            
+            while (indentation != 0):
+                if clean_content[index] == "{":
+                    indentation += 1
+                elif clean_content[index] == "}":
+                    indentation -= 1
+                index += 1
+            arr.append((m.start(), index))
+        arr = sorted(arr, reverse=True)
+        for i in arr:
+            clean_content = clean_content[:i[0]] + clean_content[i[1]:]
+        
         # remove break lines
         clean_content = re.sub(r"<.*?/?>", "", clean_content, flags=re.DOTALL)
 

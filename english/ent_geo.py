@@ -151,7 +151,7 @@ class EntGeo(EntCore):
 				self.population = match.group(1)			
 
 	@staticmethod
-	def is_geo(content):
+	def is_geo(content, title):
 		"""
         na základě obsahu stránky určuje, zda stránka pojednává o vodním toku, či nikoliv, přidává prefix
         parametry:
@@ -165,8 +165,12 @@ class EntGeo(EntCore):
 		check = False
 		prefix = ""
 
-		#pattern = r"{{[Ii]nfobox\s+(waterfall)"
-		# mountain | mountain pass
+		# check title
+		bad_pages = ["history", "geography", "list"]
+		for page in bad_pages:
+			if page in title.lower():
+				return False, None
+		
 		pattern = r"{{[Ii]nfobox\s+(waterfall|[Ii]slands?|[Mm]ountain|[Pp]eninsulas?|[Cc]ontinent)"
 		match = re.search(pattern, content)
 		if match:

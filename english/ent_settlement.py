@@ -117,20 +117,17 @@ class EntSettlement(EntCore):
         návratové hodnoty: True / False
 		TODO: přidat lepší poznávání sídel
         """
-
-		# check
-		check = False
-
+		
 		# infobox name = settlement
-		pattern = r"{{[Ii]nfobox settlement"
-		match = re.search(pattern, content)
-		if match:
-			check = True
+		pattern = r"{{infobox settlement"
+		match = re.search(pattern, content, re.I)
+		if not match:
+			return False
 
 		# categories
-		# pattern = r"\[\[Category:\s?(?:[cC]ities|[tT]owns|[vV]illages|.*?[pP]opulated\splaces).*?\]\]"
-		# match = re.search(pattern, content)
-		# if match:
-		# 	return 1
+		pattern = r"\[\[Category:\s?(?:cities|towns|villages|.*?populated\splaces).*?\]\]"
+		match = re.search(pattern, content, re.I)
+		if match:
+			return True
 			
-		return check
+		return False
