@@ -25,12 +25,12 @@ class EntPerson(EntCore):
         jobs        - zaměstnání osoby
         nationality - národnost osoby
     """
-    def __init__(self, title, prefix, link):
+    def __init__(self, title, prefix, link, langmap):
         """
         inicializuje třídu EntPerson
         """
         # vyvolání inicializátoru nadřazené třídy
-        super(EntPerson, self).__init__(title, prefix, link)
+        super(EntPerson, self).__init__(title, prefix, link, langmap)
 
         # inicializace údajů specifických pro entitu
         self.birth_date = ""

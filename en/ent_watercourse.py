@@ -25,12 +25,12 @@ class EntWaterCourse(EntCore):
 		source_loc 	- lokace pramene
 		streamflow 	- proudění
     """
-	def __init__(self, title, prefix, link):
+	def __init__(self, title, prefix, link, langmap):
 		"""
         inicializuje třídu EntWaterCourse
         """
 
-		super(EntWaterCourse, self).__init__(title, prefix, link)
+		super(EntWaterCourse, self).__init__(title, prefix, link, langmap)
 
 		self.continents = ""
 		self.latitude = ""

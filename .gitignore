@@ -17,6 +17,5 @@ outputs
 **/HEAD-KB
 **/VERSION
 **/KBstatsMetrics.all
-**/kb_cs
-**/kb_en
+**/kb
 

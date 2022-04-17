@@ -8,7 +8,7 @@ export LC_ALL="C.UTF-8"
 # default values
 SAVE_PARAMS=$*
 LOG=false
-LANG=cs
+LANG=en
 DUMP_PATH=/mnt/minerva1/nlp/corpora/monolingual/czech/wikipedia/
 DUMP_VERSION=latest
 
@@ -170,7 +170,10 @@ EXTRACTION_ARGS+=(${KB_STABILITY})
 EXTRACTION_ARGS+=(${MULTIPROC_PARAMS})
 
 # Run CS Wikipedia extractor to create new KB
-CMD="python3 wiki_cs_extract.py --lang ${LANG} --dump ${DUMP_VERSION} --indir \"${DUMP_PATH}\" ${EXTRACTION_ARGS[@]} 2>entities_processing.log"
+# old code:
+# CMD="python3 wiki_cs_extract.py --lang ${LANG} --dump ${DUMP_VERSION} --indir \"${DUMP_PATH}\" ${EXTRACTION_ARGS[@]} 2>entities_processing.log"
+
+CMD="python3 ${LANG}/wiki_${LANG}_extract.py --lang ${LANG} --dump ${DUMP_VERSION} --indir \"${DUMP_PATH}\" ${EXTRACTION_ARGS[@]} 2>entities_processing.log"
 echo "RUNNING COMMAND: ${CMD}"
 eval $CMD
 
@@ -179,12 +182,12 @@ if $LOG
 then
     metrics_params="--log"
 fi
+
 ./metrics/start.sh ${metrics_params}
 
 
 # Convert Wikipedia KB format to Generic KB format
 python3 kbwiki2gkb.py --indir outputs --outdir outputs
-
 
 if $DEPLOY
 then

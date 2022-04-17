@@ -15,6 +15,7 @@ from itertools import repeat, tee
 import argparse
 import time
 from multiprocessing import Pool
+import json
 
 from ent_person import *
 from ent_country import *
@@ -31,7 +32,6 @@ class WikiExtract(object):
         """
         inicializace třídy
         """
-        # TODO: inicializace
         self.console_args = None
 
     @staticmethod
@@ -58,7 +58,7 @@ class WikiExtract(object):
             # "<event>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tSTART\tEND\tLOCATION\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n"
         ]
 
-        with open("../HEAD-KB", "w", encoding="utf-8") as file:
+        with open("HEAD-KB", "w", encoding="utf-8") as file:
             for entity in entities:
                 file.write(entity)
 
@@ -182,7 +182,7 @@ class WikiExtract(object):
                     dump_version = matches[1]
             except OSError:
                 dump_version = self.console_args.dump
-        with open("../VERSION", "w") as f:
+        with open("VERSION", "w") as f:
             f.write(
                 "{}_{}-{}{}".format(
                     self.console_args.lang,
@@ -206,6 +206,8 @@ class WikiExtract(object):
         #event, root = next(it_context_langmap)
 
         # TODO: make json file out of https://en.wikipedia.org/wiki/List_of_ISO_639-2_codes
+        with open("langmap", "r") as file:
+            langmap = json.load(file)
 
         ent_titles = []
         ent_pages = []
@@ -238,16 +240,16 @@ class WikiExtract(object):
                 root.clear()
 
         if len(ent_titles):
-            with open("../kb_en", "w", encoding="utf-8") as file:
+            with open("kb", "w", encoding="utf-8") as file:
                 pool = Pool(processes=self.console_args.m)
                 serialized_entities = pool.starmap(
                     self.process_entity,
-                    zip(ent_titles, ent_pages),
+                    zip(ent_titles, ent_pages, repeat(langmap))                    
                 )
                 file.write("\n".join(filter(None, serialized_entities)))
                 pool.close()
                 pool.join()
-            print(len(list(filter(None, serialized_entities))))
+            print(f"processed {len(list(filter(None, serialized_entities)))} entities")
 
     # filters out wikipedia special pages and date pages
     @staticmethod
@@ -274,7 +276,7 @@ class WikiExtract(object):
 
         return True
 
-    def process_entity(self, page_title, page_content):
+    def process_entity(self, page_title, page_content, langmap):
         # TODO:
         page_content = self._remove_not_improtant(page_content)
 
@@ -282,35 +284,35 @@ class WikiExtract(object):
 
         # TODO: person
         if (EntPerson.is_person(page_content)):
-            person = EntPerson(page_title, "person", self._get_link(page_title))
+            person = EntPerson(page_title, "person", self._get_link(page_title), langmap)
             person.get_data(page_content)
             person.assign_values()
             return person.__repr__()
 
         # TODO: country
         if (EntCountry.is_country(page_content, page_title)):
-            country = EntCountry(page_title, "country", self._get_link(page_title))
+            country = EntCountry(page_title, "country", self._get_link(page_title), langmap)
             country.get_data(page_content)
             country.assign_values()
             return country.__repr__()
 
         # TODO: settlement
         if (EntSettlement.is_settlement(page_content)):
-            settlement = EntSettlement(page_title, "settlement", self._get_link(page_title))
+            settlement = EntSettlement(page_title, "settlement", self._get_link(page_title), langmap)
             settlement.get_data(page_content)
             settlement.assign_values()
             return settlement.__repr__()
 
         # TODO: watercourse
         if (EntWaterCourse.is_water_course(page_content)):
-            water_course = EntWaterCourse(page_title, "watercourse", self._get_link(page_title))
+            water_course = EntWaterCourse(page_title, "watercourse", self._get_link(page_title), langmap)
             water_course.get_data(page_content)
             water_course.assign_values()
             return water_course.__repr__()
 
         # TODO: waterarea
         if (EntWaterArea.is_water_area(page_content)):
-            water_area = EntWaterArea(page_title, "waterarea", self._get_link(page_title))
+            water_area = EntWaterArea(page_title, "waterarea", self._get_link(page_title), langmap)
             water_area.get_data(page_content)
             water_area.assign_values()
             return water_area.__repr__()
@@ -318,7 +320,7 @@ class WikiExtract(object):
         # TODO: geo
         is_geo, prefix = EntGeo.is_geo(page_content, page_title)
         if is_geo:
-            geo = EntGeo(page_title, f"geo:{prefix}", self._get_link(page_title))
+            geo = EntGeo(page_title, f"geo:{prefix}", self._get_link(page_title), langmap)
             geo.get_data(page_content)
             geo.assign_values()
             return geo.__repr__()

@@ -34,7 +34,7 @@ class EntCore(metaclass=ABCMeta):
     counter = 0
 
     @abstractmethod
-    def __init__(self, title, prefix, link):
+    def __init__(self, title, prefix, link, langmap):
         """
         Inicializuje třídu EntCore
         Parametry:
@@ -51,6 +51,7 @@ class EntCore(metaclass=ABCMeta):
         self.prefix = prefix
         self.link = link
         self.images = ""
+        self.langmap = langmap
 
         # TODO: this should be dictionary of dictionaries for multiple infoboxes
         # that way I can also save the infobox name
@@ -61,6 +62,7 @@ class EntCore(metaclass=ABCMeta):
         self.first_sentence = ""
         self.description = ""
         self.short_description = ""
+        self.aliases = []
     
     def serialize(self, ent_data):
         """
@@ -70,7 +72,7 @@ class EntCore(metaclass=ABCMeta):
             self.eid,
             self.prefix,
             self.title,
-            "",
+            "|".join(self.aliases),
             "",
             self.description,
             self.original_title,
@@ -139,7 +141,7 @@ class EntCore(metaclass=ABCMeta):
                             value += line[i]         
 
             # extract first paragraph
-            if line.startswith("'''"):
+            if line.startswith("'''") and not self.first_paragraph:
                 paragraph_bounds = True
                 self.first_paragraph += line
             elif line.startswith("==") and paragraph_bounds == True:
@@ -152,7 +154,8 @@ class EntCore(metaclass=ABCMeta):
                 self.categories.append(line[11:-2].strip())
         
         if (self.first_paragraph):
-            self.first_sentence = self.get_first_sentence(self.first_paragraph)
+            self.get_first_sentence(self.first_paragraph)
+            self.get_aliases()
 
         self.extract_image()
 
@@ -162,10 +165,10 @@ class EntCore(metaclass=ABCMeta):
         """
         extrahuje první větu
         """
-        # ('''.*?'''.*?\.)(?:\s*[A-Z][a-z]+|\n|\]|$)
-        # ('''.*?'''.*?[^A-Z]\.)(?:\s*[A-Z][a-z]+|\n|$)
-        # ('''.*?'''.*?\.)(?:\s*[A-Z][a-z]+\s[a-z]|\n|$)
-        pattern = r"('''.*?'''.*?\.)(?:\s*[A-Z][a-z,]+\s[a-z]|\n|$)"
+        paragraph = paragraph.strip()
+        paragraph = re.sub(r"\.({{.*?}})", ".", paragraph)
+
+        pattern = r"('''.*?'''.*?\.)(?:\s*[A-Z][a-z,]+\s[a-z0-9]|\n|$|\]\])"
         m = re.match(pattern, paragraph)
         if m:            
             # maybe use this for extraction
@@ -177,26 +180,103 @@ class EntCore(metaclass=ABCMeta):
             # sub '''
             description = re.sub(r"'{2,3}|&.+;", "", first_sentence)
 
-            # # match things inside [[]] and {{}}
+            # match things inside [[]]
             description = re.sub(r"\[\[[^\[\]]+?\|([^\[\]\|]+?)\]\]", r"\1", description)            
             description = re.sub(r"\[|\]", r"", description)
 
-            for lang in re.finditer(r"{{lang.*?\|(.*?)}};?", description):
+            for lang in re.finditer(r"({{lang.*?}});?", description):
                 langs.append(lang.group(1))
 
-            # TODO: convert dates 
+            self.get_lang_aliases(langs)
+
+            # TODO: convert dates
             
-            description = re.sub(r"{{.*?}};?", r"", description)
-            
-            description = re.sub(r"\(\s+", "", description)
+            description = re.sub(r"{{.*?}};?", "", description)
+
+            description = re.sub(r"\(\s+", "(", description)
             description = re.sub(r"\s+", " ", description)
             description = re.sub(r"\s\(\)\s?", " ", description)
 
-            #print(f"{description}\n")
+            #print(f"{description}\n{langs}")
             self.description = description
             self.first_sentence = first_sentence
-        else:
-            print(f"{self.original_title}: error\n")
+        else: 
+            #print(self.first_paragraph)           
+            #print(f"{self.original_title}: error\n")
+            pass
+
+    def get_lang_aliases(self, langs):
+        if len(langs) > 0:
+            for lang in langs:
+                lang = re.sub(r"{{lang(?:-|\|)(.*?)}}", r"\1", lang)
+                split = lang.split("|")
+                code = split[0].split("-")[0]
+                if len(code) != 2:
+                    if code in self.langmap:
+                        code = self.langmap[code].split("|")[0]
+                    else:
+                        code = "??"
+
+                for s in split[1:]:
+                    if "=" in s:
+                        split.remove(s)
+                alias = split[1]
+                if len(split) > 2:
+                    if "{" not in alias:
+                        self.aliases.append(f"{alias}#lang={code}")
+                
+
+    def get_aliases(self):
+        if self.first_sentence:
+            string = self.first_sentence
+            name = ""
+            aliases = []
+            
+            string = re.sub(r"\[\[[^\[\]]*?\|([^\[\]]*?)\]\]", r"\1", string)
+            string = re.sub(r"\[|\]", "", string)
+
+            # "alias" in the name
+            m = re.search(r"'''(.*\"(.*)\"\s+[\w'\.\s]+?)'''", string)
+            if m:
+                alias = m.group(2)
+                alias = re.sub(r"\'", "", alias)
+                name = m.group(1)
+                name = re.sub(r"\".*?\"|'", "", name)
+                name = re.sub(r"\s+", " ", name)
+                split = name.split(" ")
+                i = -1
+                surname = split[i]
+                while "." in surname or abs(i) == len(split):
+                    i -= 1
+                    surname = split[i]
+                alias += f" {surname}"
+                aliases.append(alias)
+                string = string[m.end():]
+            
+            # normal name
+            if not name:
+                m = re.search(r"'''(.*?)'''", string)
+                if m:
+                    name = m.group(1)
+                    string = string[m.end():]
+            
+            # all other aliases in the sentence
+            string = string.strip()
+            if len(string) > 0:
+                arr = re.findall(r"'''(.*?)'''", string)
+                for s in arr:
+                    aliases.append(s)
+            
+            if name != self.title:
+                aliases.append(name)
+
+            for a in aliases:
+                if a == self.title:
+                    aliases.remove(a)
+                self.aliases.append(a)
+
+            #print(f"{self.aliases}")
+            pass
 
     # WIP image extraction
     def extract_image(self):

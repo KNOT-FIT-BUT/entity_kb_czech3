@@ -22,12 +22,12 @@ class EntCountry(EntCore):
 		latitude	- zeměpisná šířka
 		longtitude	- zeměpisná délka
     """
-	def __init__(self, title, prefix, link):
+	def __init__(self, title, prefix, link, langmap):
 		"""
         inicializuje třídu EntCountry
         """
 
-		super(EntCountry, self).__init__(title, prefix, link)
+		super(EntCountry, self).__init__(title, prefix, link, langmap)
 
 		self.area = ""
 		self.population = ""
