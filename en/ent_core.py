@@ -141,7 +141,7 @@ class EntCore(metaclass=ABCMeta):
                             value += line[i]         
 
             # extract first paragraph
-            if line.startswith("'''") and not self.first_paragraph:
+            if (line.startswith("'''") or line.startswith("The '''")) and not self.first_paragraph and not infobox:
                 paragraph_bounds = True
                 self.first_paragraph += line
             elif line.startswith("==") and paragraph_bounds == True:
@@ -169,7 +169,7 @@ class EntCore(metaclass=ABCMeta):
         paragraph = re.sub(r"\.({{.*?}})", ".", paragraph)
 
         pattern = r"('''.*?'''.*?\.)(?:\s*[A-Z][a-z,]+\s[a-z0-9]|\n|$|\]\])"
-        m = re.match(pattern, paragraph)
+        m = re.search(pattern, paragraph)
         if m:            
             # maybe use this for extraction
             first_sentence = m.group(1)
@@ -189,20 +189,25 @@ class EntCore(metaclass=ABCMeta):
 
             self.get_lang_aliases(langs)
 
-            # TODO: convert dates
+            # TODO: convert, dates
             
             description = re.sub(r"{{.*?}};?", "", description)
+            description = re.sub(r"{|}", "", description)
+            description = re.sub(r"\)\)", ")", description)
 
             description = re.sub(r"\(\s+", "(", description)
             description = re.sub(r"\s+", " ", description)
             description = re.sub(r"\s\(\)\s?", " ", description)
 
-            #print(f"{description}\n{langs}")
+            description = re.sub(r"\s?\(,.*?\)|\s?\(.*?\s+\)", "", description)
+            description = re.sub(r"\s+,", ",", description)
+
+            # print(f"{description}\n")
             self.description = description
             self.first_sentence = first_sentence
         else: 
-            #print(self.first_paragraph)           
-            #print(f"{self.original_title}: error\n")
+            # print(self.first_paragraph)           
+            # print(f"{self.original_title}: error\n")
             pass
 
     def get_lang_aliases(self, langs):

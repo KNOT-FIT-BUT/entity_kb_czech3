@@ -19,3 +19,5 @@ outputs
 **/KBstatsMetrics.all
 **/kb
 
+lang_gen.py
+

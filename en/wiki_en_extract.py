@@ -206,7 +206,7 @@ class WikiExtract(object):
         #event, root = next(it_context_langmap)
 
         # TODO: make json file out of https://en.wikipedia.org/wiki/List_of_ISO_639-2_codes
-        with open("langmap", "r") as file:
+        with open("langmap.json", "r") as file:
             langmap = json.load(file)
 
         ent_titles = []
@@ -278,41 +278,41 @@ class WikiExtract(object):
 
     def process_entity(self, page_title, page_content, langmap):
         # TODO:
-        page_content = self._remove_not_improtant(page_content)
+        page_content = self.remove_not_improtant(page_content)
 
         #print("DEBUG: processing: " + page_title)
 
         # TODO: person
         if (EntPerson.is_person(page_content)):
-            person = EntPerson(page_title, "person", self._get_link(page_title), langmap)
+            person = EntPerson(page_title, "person", self.get_link(page_title), langmap)
             person.get_data(page_content)
             person.assign_values()
             return person.__repr__()
 
         # TODO: country
         if (EntCountry.is_country(page_content, page_title)):
-            country = EntCountry(page_title, "country", self._get_link(page_title), langmap)
+            country = EntCountry(page_title, "country", self.get_link(page_title), langmap)
             country.get_data(page_content)
             country.assign_values()
             return country.__repr__()
 
         # TODO: settlement
         if (EntSettlement.is_settlement(page_content)):
-            settlement = EntSettlement(page_title, "settlement", self._get_link(page_title), langmap)
+            settlement = EntSettlement(page_title, "settlement", self.get_link(page_title), langmap)
             settlement.get_data(page_content)
             settlement.assign_values()
             return settlement.__repr__()
 
         # TODO: watercourse
         if (EntWaterCourse.is_water_course(page_content)):
-            water_course = EntWaterCourse(page_title, "watercourse", self._get_link(page_title), langmap)
+            water_course = EntWaterCourse(page_title, "watercourse", self.get_link(page_title), langmap)
             water_course.get_data(page_content)
             water_course.assign_values()
             return water_course.__repr__()
 
         # TODO: waterarea
         if (EntWaterArea.is_water_area(page_content)):
-            water_area = EntWaterArea(page_title, "waterarea", self._get_link(page_title), langmap)
+            water_area = EntWaterArea(page_title, "waterarea", self.get_link(page_title), langmap)
             water_area.get_data(page_content)
             water_area.assign_values()
             return water_area.__repr__()
@@ -320,19 +320,17 @@ class WikiExtract(object):
         # TODO: geo
         is_geo, prefix = EntGeo.is_geo(page_content, page_title)
         if is_geo:
-            geo = EntGeo(page_title, f"geo:{prefix}", self._get_link(page_title), langmap)
+            geo = EntGeo(page_title, f"geo:{prefix}", self.get_link(page_title), langmap)
             geo.get_data(page_content)
             geo.assign_values()
             return geo.__repr__()
 
     @staticmethod
-    def _get_link(link):
+    def get_link(link):
         wiki_link = link.replace(" ", "_")
         return f"https://en.wikipedia.org/wiki/{wiki_link}"
 
-    # TODO: change name later?
-    @staticmethod
-    def _remove_not_improtant(page_content):
+    def remove_not_improtant(self, page_content):
         # odstraní referencí a HTML komentáře
         clean_content = page_content
 
@@ -348,9 +346,24 @@ class WikiExtract(object):
         # remove references        
         clean_content = re.sub(r"<ref.*?/(?:ref)?>", "", clean_content, flags=re.DOTALL)
 
-        # remove {{efn ... }}
+        # remove {{efn ... }} and {{refn ...}}
+        clean_content = self.remove_references(clean_content, r"{{efn")
+        clean_content = self.remove_references(clean_content, r"{{refn")
+        
+        # remove break lines
+        clean_content = re.sub(r"<.*?/?>", "", clean_content, flags=re.DOTALL)
+
+        # TODO: clean this up
+        # remove comments
+        #clean_content = re.sub(r"<!--.+?-->", "", clean_content, flags=re.DOTALL)
+
+        return clean_content
+
+    @staticmethod
+    def remove_references(string, ref_pattern):
+        clean_content = string
         arr = []
-        for m in re.finditer(r"{{efn", clean_content):
+        for m in re.finditer(ref_pattern, clean_content):
             index = m.start()+1
             indentation = 1            
             while (indentation != 0):
@@ -363,17 +376,7 @@ class WikiExtract(object):
         arr = sorted(arr, reverse=True)
         for i in arr:
             clean_content = clean_content[:i[0]] + clean_content[i[1]:]
-        
-        # remove break lines
-        clean_content = re.sub(r"<.*?/?>", "", clean_content, flags=re.DOTALL)
-
-        # TODO: clean this up
-        # remove comments
-        #clean_content = re.sub(r"<!--.+?-->", "", clean_content, flags=re.DOTALL)
-
         return clean_content
-
-
 
 if __name__ == "__main__":
     wiki_extract = WikiExtract()
