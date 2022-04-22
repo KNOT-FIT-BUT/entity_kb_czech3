@@ -198,16 +198,32 @@ class WikiExtract(object):
         Poznámky:
         - založeno na: http://effbot.org/zone/element-iterparse.htm
         """
-        # TODO: xml parser
+
+        redirects = dict()
+        try:
+            with open(self.redirects_dump_fpath, "r") as f:
+                for line in f:
+                    redirect_from, redirect_to = line.strip().split("\t")
+                    if not redirect_to in redirects:
+                        redirects[redirect_to] = set()
+                    redirects[redirect_to].add(redirect_from)
+        except OSError:
+            print(f'redirect file "{self.redirects_dump_fpath}" was not found - skipping...')
+
+        # xml parser
         context = CElTree.iterparse(self.pages_dump_fpath, events=("start", "end"))
 
         # langmap?
         it_context_langmap, it_context_pages = tee(context)
         #event, root = next(it_context_langmap)
 
-        # TODO: make json file out of https://en.wikipedia.org/wiki/List_of_ISO_639-2_codes
-        with open("langmap.json", "r") as file:
-            langmap = json.load(file)
+        # https://en.wikipedia.org/wiki/List_of_ISO_639-2_codes
+        langmap = dict()
+        try:
+            with open("langmap.json", "r") as file:
+                langmap = json.load(file)
+        except OSError:
+            print(f'langmap file "langmap.json" was not found - skipping...')
 
         ent_titles = []
         ent_pages = []
@@ -239,17 +255,19 @@ class WikiExtract(object):
                         break
                 root.clear()
 
+        print(f"parsed xml dump (number of pages: {len(ent_pages)})")
+
         if len(ent_titles):
             with open("kb", "w", encoding="utf-8") as file:
                 pool = Pool(processes=self.console_args.m)
                 serialized_entities = pool.starmap(
                     self.process_entity,
-                    zip(ent_titles, ent_pages, repeat(langmap))                    
+                    zip(ent_titles, ent_pages, repeat(langmap), repeat(redirects))                    
                 )
                 file.write("\n".join(filter(None, serialized_entities)))
                 pool.close()
                 pool.join()
-            print(f"processed {len(list(filter(None, serialized_entities)))} entities")
+            print(f"\rprocessed {len(list(filter(None, serialized_entities)))} entities\033[K")
 
     # filters out wikipedia special pages and date pages
     @staticmethod
@@ -276,51 +294,47 @@ class WikiExtract(object):
 
         return True
 
-    def process_entity(self, page_title, page_content, langmap):
-        # TODO:
+    def process_entity(self, page_title, page_content, langmap, redirects):
+
+        print(f"\rprocessing: {page_title}\033[K", end="", flush=True)
+
         page_content = self.remove_not_improtant(page_content)
 
-        #print("DEBUG: processing: " + page_title)
+        ent_redirects = redirects[page_title] if page_title in redirects else []
 
-        # TODO: person
         if (EntPerson.is_person(page_content)):
-            person = EntPerson(page_title, "person", self.get_link(page_title), langmap)
+            person = EntPerson(page_title, "person", self.get_link(page_title), langmap, ent_redirects)
             person.get_data(page_content)
             person.assign_values()
             return person.__repr__()
 
-        # TODO: country
         if (EntCountry.is_country(page_content, page_title)):
-            country = EntCountry(page_title, "country", self.get_link(page_title), langmap)
+            country = EntCountry(page_title, "country", self.get_link(page_title), langmap, ent_redirects)
             country.get_data(page_content)
             country.assign_values()
             return country.__repr__()
 
-        # TODO: settlement
         if (EntSettlement.is_settlement(page_content)):
-            settlement = EntSettlement(page_title, "settlement", self.get_link(page_title), langmap)
+            settlement = EntSettlement(page_title, "settlement", self.get_link(page_title), langmap, ent_redirects)
             settlement.get_data(page_content)
             settlement.assign_values()
             return settlement.__repr__()
 
-        # TODO: watercourse
         if (EntWaterCourse.is_water_course(page_content)):
-            water_course = EntWaterCourse(page_title, "watercourse", self.get_link(page_title), langmap)
+            water_course = EntWaterCourse(page_title, "watercourse", self.get_link(page_title), langmap, ent_redirects)
             water_course.get_data(page_content)
             water_course.assign_values()
             return water_course.__repr__()
 
-        # TODO: waterarea
         if (EntWaterArea.is_water_area(page_content)):
-            water_area = EntWaterArea(page_title, "waterarea", self.get_link(page_title), langmap)
+            water_area = EntWaterArea(page_title, "waterarea", self.get_link(page_title), langmap, ent_redirects)
             water_area.get_data(page_content)
             water_area.assign_values()
             return water_area.__repr__()
 
-        # TODO: geo
         is_geo, prefix = EntGeo.is_geo(page_content, page_title)
         if is_geo:
-            geo = EntGeo(page_title, f"geo:{prefix}", self.get_link(page_title), langmap)
+            geo = EntGeo(page_title, f"geo:{prefix}", self.get_link(page_title), langmap, ent_redirects)
             geo.get_data(page_content)
             geo.assign_values()
             return geo.__repr__()

@@ -25,12 +25,12 @@ class EntPerson(EntCore):
         jobs        - zaměstnání osoby
         nationality - národnost osoby
     """
-    def __init__(self, title, prefix, link, langmap):
+    def __init__(self, title, prefix, link, langmap, redirects):
         """
         inicializuje třídu EntPerson
         """
         # vyvolání inicializátoru nadřazené třídy
-        super(EntPerson, self).__init__(title, prefix, link, langmap)
+        super(EntPerson, self).__init__(title, prefix, link, langmap, redirects)
 
         # inicializace údajů specifických pro entitu
         self.birth_date = ""
@@ -345,8 +345,9 @@ class EntPerson(EntCore):
             # (e.g.: [[Germans|German]]) -> German
             for i in range(len(nationalities)):
                 bar_split = nationalities[i].split("|")
-                nationalities[i] = bar_split[-1].strip()
-                
+                bar_split[-1] = re.sub(r"{|}", "", bar_split[-1]).strip()
+                nationalities[i] = bar_split[-1]
+            
             self.nationality = " | ".join(nationalities)
 
     def assign_gender(self):

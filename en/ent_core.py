@@ -5,6 +5,7 @@ Popis souboru: Soubor obsahuje třídu 'EntCore', jež je rodičovskou třídou 
 Poznámka: inspirováno projektem entity_kb_czech3
 """
 
+import sys
 from abc import ABCMeta, abstractmethod
 import re
 from hashlib import md5, sha224
@@ -34,7 +35,7 @@ class EntCore(metaclass=ABCMeta):
     counter = 0
 
     @abstractmethod
-    def __init__(self, title, prefix, link, langmap):
+    def __init__(self, title, prefix, link, langmap, redirects):
         """
         Inicializuje třídu EntCore
         Parametry:
@@ -52,6 +53,7 @@ class EntCore(metaclass=ABCMeta):
         self.link = link
         self.images = ""
         self.langmap = langmap
+        self.redirects = redirects
 
         # TODO: this should be dictionary of dictionaries for multiple infoboxes
         # that way I can also save the infobox name
@@ -73,7 +75,7 @@ class EntCore(metaclass=ABCMeta):
             self.prefix,
             self.title,
             "|".join(self.aliases),
-            "",
+            "|".join(self.redirects),
             self.description,
             self.original_title,
             self.images,
@@ -230,7 +232,6 @@ class EntCore(metaclass=ABCMeta):
                     if "{" not in alias:
                         self.aliases.append(f"{alias}#lang={code}")
                 
-
     def get_aliases(self):
         if self.first_sentence:
             string = self.first_sentence
@@ -350,8 +351,8 @@ class EntCore(metaclass=ABCMeta):
 
     # converts units
     # TODO: add more units
-    @staticmethod
-    def convert_units(number, unit, round_to=2):
+    # @staticmethod
+    def convert_units(self, number, unit, round_to=2):
         """
         konverze jednotek
         """
@@ -360,6 +361,10 @@ class EntCore(metaclass=ABCMeta):
         unit = unit.lower()
 
         SQMI_TO_KM2 = 2.589988
+        HA_TO_KM2 = 0.01
+        ACRE_TO_KM2 = 0.00404685642
+        M2_TO_KM2 = 0.000001
+        MI2_TO_KM2 = 2.589988
         FT_TO_M = 3.2808
         MI_TO_KM = 1.609344
         CUFT_TO_M3 = 0.028317
@@ -368,16 +373,24 @@ class EntCore(metaclass=ABCMeta):
         if unit in accepted_untis:
             return str(number if number % 1 != 0 else int(number))
 
-        if (unit == "sqmi"):
+        if unit == "sqmi":
             number = round(number * SQMI_TO_KM2, round_to)
-        elif (unit == "mi"):
+        elif unit == "mi":
             number = round(number * MI_TO_KM,round_to)
-        elif (unit in ["ft", "feet"]):
+        elif unit in ("ft", "feet"):
             number = round(number / FT_TO_M, round_to)
-        elif(unit in ["cuft/s", "cuft"]):
+        elif unit in ("cuft/s", "cuft"):
             number = round(number * CUFT_TO_M3,round_to)
+        elif unit == "ha":
+            number = round(number * HA_TO_KM2, round_to)
+        elif unit in ("acres", "acre"):
+            number = round(number * ACRE_TO_KM2, round_to)
+        elif unit == "m2":
+            number = round(number * M2_TO_KM2, round_to)
+        elif unit == "mi2":
+            number = round(number * MI2_TO_KM2, round_to)
         else:
-            #print(f"Error: unit conversion error ({unit})")
+            print(f"Error: unit conversion error ({unit} - {self.link})")
             return ""
 
         return str(number if number % 1 != 0 else int(number))

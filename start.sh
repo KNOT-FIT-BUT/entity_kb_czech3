@@ -9,7 +9,7 @@ export LC_ALL="C.UTF-8"
 SAVE_PARAMS=$*
 LOG=false
 LANG=en
-DUMP_PATH=/mnt/minerva1/nlp/corpora/monolingual/czech/wikipedia/
+DUMP_PATH=/mnt/minerva1/nlp/corpora/monolingual/english/wikipedia/
 DUMP_VERSION=latest
 
 # saved values

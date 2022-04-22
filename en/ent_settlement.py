@@ -23,11 +23,11 @@ class EntSettlement(EntCore):
 		longtitude	- zeměpisná délka
 		country 	- země
     """
-	def __init__(self, title, prefix, link, langmap):
+	def __init__(self, title, prefix, link, langmap, redirects):
 		"""
         inicializuje třídu EntSettlement
         """
-		super(EntSettlement, self).__init__(title, prefix, link, langmap)
+		super(EntSettlement, self).__init__(title, prefix, link, langmap, redirects)
 
 		self.area = ""
 		self.population = ""

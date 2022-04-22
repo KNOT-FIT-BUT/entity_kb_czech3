@@ -22,12 +22,12 @@ class EntWaterArea(EntCore):
 		longtitude	- zeměpisná délka
 		continents 	- kontinenty
     """
-	def __init__(self, title, prefix, link, langmap):
+	def __init__(self, title, prefix, link, langmap, redirects):
 		"""
         inicializuje třídu EntWaterArea
         """
 
-		super(EntWaterArea, self).__init__(title, prefix, link, langmap)
+		super(EntWaterArea, self).__init__(title, prefix, link, langmap, redirects)
 
 		self.continents = ""
 		self.latitude = ""
@@ -68,7 +68,7 @@ class EntWaterArea(EntCore):
 		if "area" in self.infobox_data:
 			area = self.infobox_data['area']
 			if area != "":
-				match = re.search(r"{{.*?\|([0-9]+)\|(\w+).*?}}", area)
+				match = re.search(r"{{.*?\|([0-9\.]+)\|(\w+).*?}}", area)
 				if match:
 					self.area = self.convert_units(match.group(1), match.group(2))
 				else:

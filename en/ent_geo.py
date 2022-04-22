@@ -24,12 +24,12 @@ class EntGeo(EntCore):
 		continent 		- kontinenty
 		total_height 	- výška 
 	"""
-	def __init__(self, title, prefix, link, langmap):
+	def __init__(self, title, prefix, link, langmap, redirects):
 		"""
         inicializuje třídu EntGeo
         """
 
-		super(EntGeo, self).__init__(title, prefix, link, langmap)
+		super(EntGeo, self).__init__(title, prefix, link, langmap, redirects)
 
 		self.continent = ""
 		self.latitude = ""
