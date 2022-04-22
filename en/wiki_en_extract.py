@@ -16,6 +16,7 @@ import argparse
 import time
 from multiprocessing import Pool
 import json
+import datetime
 
 from ent_person import *
 from ent_country import *
@@ -207,8 +208,9 @@ class WikiExtract(object):
                     if not redirect_to in redirects:
                         redirects[redirect_to] = set()
                     redirects[redirect_to].add(redirect_from)
+                self.debug("loaded redirects")
         except OSError:
-            print(f'redirect file "{self.redirects_dump_fpath}" was not found - skipping...')
+            self.debug(f'redirect file "{self.redirects_dump_fpath}" was not found - skipping...')
 
         # xml parser
         context = CElTree.iterparse(self.pages_dump_fpath, events=("start", "end"))
@@ -222,56 +224,85 @@ class WikiExtract(object):
         try:
             with open("langmap.json", "r") as file:
                 langmap = json.load(file)
+                self.debug("loaded langmap")
         except OSError:
-            print(f'langmap file "langmap.json" was not found - skipping...')
+            self.debug(f'langmap file "langmap.json" was not found - skipping...')
 
         ent_titles = []
         ent_pages = []
-        page_counter = 0 
-        event, root = next(it_context_pages)
-        for event, elem in it_context_pages:
-            # hledá <page> element
-            if event == "end" and "page" in elem.tag:
-                # xml -> <page> -> <title>
-                # xml -> <page> -> <revision>
-                is_entity = False
-                title = ""
+        
+        curr_page_cnt = 0
+        all_page_cnt = 0
+        ent_count = 0
 
-                for child in elem:
-                    # získá title stránky
-                    if "title" in child.tag:
-                        is_entity = self.is_entity(child.text)
-                        if is_entity:
-                            title = child.text
-                    # získá text stránky
-                    elif "revision" in child.tag:
-                        for grandchild in child:
-                            if "text" in grandchild.tag:
-                                if is_entity and grandchild.text:                        
-                                    # TODO: přeskoč redirecty a rozcestníky
-                                    #print(grandchild.text)
-                                    ent_titles.append(title)
-                                    ent_pages.append(grandchild.text)
-                                    page_counter += 1
-                                    print(f"\rfound new page ({page_counter})\033[K", end="", flush=True)
-                    elif "redirect" in child.tag:
-                        break
-                root.clear()
+        LIMIT = 2400
 
-        print(f"\rparsed xml dump (number of pages: {len(ent_pages)})\033[K")
+        with open("kb", "a+", encoding="utf-8") as file:
+            file.truncate()
+            event, root = next(it_context_pages)
+            for event, elem in it_context_pages:
+                # hledá <page> element
+                if event == "end" and "page" in elem.tag:
+                    # xml -> <page> -> <title>
+                    # xml -> <page> -> <revision>
+                    is_entity = False
+                    title = ""
 
+                    for child in elem:
+                        # získá title stránky
+                        if "title" in child.tag:
+                            is_entity = self.is_entity(child.text)
+                            if is_entity:
+                                title = child.text
+                        # získá text stránky
+                        elif "revision" in child.tag:
+                            for grandchild in child:
+                                if "text" in grandchild.tag:
+                                    if is_entity and grandchild.text:                        
+                                        # TODO: přeskoč redirecty a rozcestníky
+                                        #print(grandchild.text)
+                                        ent_titles.append(title)
+                                        ent_pages.append(grandchild.text)
+                                        curr_page_cnt += 1
+                                        all_page_cnt += 1
+                                        self.debug(f"found new page ({all_page_cnt})\033[K", start="\r", end="", flush=True)
+                                        if curr_page_cnt >= LIMIT:
+                                            ent_count += self.output(file, ent_titles, ent_pages, langmap, redirects)
+                                            ent_titles.clear()
+                                            ent_pages.clear()
+                                            curr_page_cnt = 0    
+                        elif "redirect" in child.tag:
+                            break
+                    root.clear()
+
+            if len(ent_titles):
+                self.output(file, ent_titles, ent_pages, langmap, redirects)
+
+        self.debug(f"----------------------------", False)
+        self.debug(f"parsed xml dump (number of pages: {all_page_cnt})")
+        self.debug(f"processed {ent_count} entities")
+
+    def output(self, file, ent_titles, ent_pages, langmap, redirects):
         if len(ent_titles):
-            with open("kb", "w", encoding="utf-8") as file:
-                pool = Pool(processes=self.console_args.m)
-                serialized_entities = pool.starmap(
-                    self.process_entity,
-                    zip(ent_titles, ent_pages, repeat(langmap), repeat(redirects))                    
-                )
-                file.write("\n".join(filter(None, serialized_entities)))
-                pool.close()
-                pool.join()
-            print(f"\rprocessed {len(list(filter(None, serialized_entities)))} entities\033[K")
+            pool = Pool(processes=self.console_args.m)
+            serialized_entities = pool.starmap(
+                self.process_entity,
+                zip(ent_titles, ent_pages, repeat(langmap), repeat(redirects))                    
+            )
+            file.write("\n".join(filter(None, serialized_entities)))
+            pool.close()
+            pool.join()
+            count = len(list(filter(None, serialized_entities)))
+            self.debug(f"processed {count} entities\033[K", start="\r")
+            return count
 
+    @staticmethod
+    def debug(string, print_time=True, end="\n", flush=False, start=""):
+        if print_time:
+            print(f"{start}[{datetime.datetime.now().strftime('%H:%M:%S')}] {string}", end=end, flush=flush)
+        else:
+            print(f"{start}{string}", end=end, flush=flush)
+    
     # filters out wikipedia special pages and date pages
     @staticmethod
     def is_entity(title):
@@ -280,11 +311,16 @@ class WikiExtract(object):
         if title.startswith(
             (
                 "Wikipedia:",
-                "Category:",
-                "Help:",
+                "File",
+                "MediaWiki:",
                 "Template:",
+                "Help:",
+                "Category:",
+                "Special:",
+                "Portal:",
                 "Module:",
-                "Portal:"
+                "List",
+                "Geography"
             )
         ):
             return False
@@ -299,7 +335,7 @@ class WikiExtract(object):
 
     def process_entity(self, page_title, page_content, langmap, redirects):
 
-        print(f"\rprocessing: {page_title}\033[K", end="", flush=True)
+        self.debug(f"processing: {page_title}\033[K", start="\r", end="", flush=True)
 
         page_content = self.remove_not_improtant(page_content)
 
