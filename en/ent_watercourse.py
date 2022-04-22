@@ -58,18 +58,17 @@ class EntWaterCourse(EntCore):
 		self.assign_streamflow()
 		self.assign_source_loc()	
 
-	def assign_continents(self):
-		# cant match from infobox
-		pass
+	# def assign_continents(self):
+	# 	# cant match from infobox
+	# 	pass
 
 	def assign_coordinates(self):
 		"""
         pokusí se extrahovat souřadnice z infoboxů coords a coordinates
 		využívá funkci get_coordinates třídy EntCore
         """
-		# TODO: edit extraction - extract source coords
-		if "mouth_coordinates" in self.infobox_data and self.infobox_data["mouth_coordinates"] != "":
-			coords = self.get_coordinates(self.infobox_data["mouth_coordinates"])
+		if "source1_coordinates" in self.infobox_data and self.infobox_data["source1_coordinates"] != "":
+			coords = self.get_coordinates(self.infobox_data["source1_coordinates"])
 			if all(coords):
 				self.latitude, self.longitude = coords
 
@@ -104,9 +103,9 @@ class EntWaterCourse(EntCore):
 					self.area = self.convert_units(match.group(1), match.group(2))
 					return
 				else:
-					print(f"{self.title}: did not match area ({area})")
+					print(f"\ndid not match area ({area})")
 		
-		#print(f"{self.title}: area empty or not found")
+		#print(f"\narea empty or not found ({self.link})")
 		pass
 
 	def assign_streamflow(self):
@@ -146,7 +145,7 @@ class EntWaterCourse(EntCore):
 		pass
 
 	@staticmethod
-	def is_water_course(content):
+	def is_water_course(content, title):
 		"""
         na základě obsahu stránky určuje, zda stránka pojednává o vodním toku, či nikoliv
         parametry:
@@ -154,12 +153,16 @@ class EntWaterCourse(EntCore):
         návratové hodnoty: True / False
 		TODO: přidat lepší poznávání vodních toků
         """
-		# check
-		check = False
-
 		pattern = r"{{[Ii]nfobox river"
 		match = re.search(pattern, content)
 		if match:
-			check = True
-			
-		return check
+			return True
+
+		# cannot match categories because of pages like "American Heritage Rivers Protection Program"
+		# category .*river*. would get matched
+
+		# river, brook, creek, stream
+		names = ("river", "brook", "creek", "stream")
+		for name in names:
+			if name in title.lower() and not f"{name}s" in title.lower():
+				return True

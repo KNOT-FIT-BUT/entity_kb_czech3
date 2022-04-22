@@ -379,7 +379,6 @@ class EntPerson(EntCore):
     def assign_jobs(self):
         """
         extrakce prací z infoboxu occupation
-        TODO (WIP): extrakce z první věty          
         """
         if "occupation" in self.infobox_data and self.infobox_data["occupation"] != "":
             string = self.infobox_data["occupation"]
@@ -399,51 +398,7 @@ class EntPerson(EntCore):
             
             occupation = tmp
             
-            self.jobs = " | ".join(occupation)
-
-        # first_sentence = self.first_paragraph        
-        # # match the firsst sentence
-        # match = re.search(r"(?:[a-z]|\])\.(?:\s|\n)", first_sentence)
-        # if match:
-        #     first_sentence = first_sentence[:match.span()[0]+2]
-        
-        # match = re.search(r"(?:\bwas\b|\bis\b)\s(?:\ban\b|\ba|b)\s(.*)\.", first_sentence)
-        # if match:
-        #     if match.group(1):
-        #         first_sentence = match.group(1)
-        #     else:
-        #         return
-        # else:
-        #     return
-        
-        # # get rid of ... was a {data} who ...
-        # # get the second word
-        # match = re.search(r"\[\[([^\[]*\|).*?]]", first_sentence)
-        # if match:
-        #     for item in match.groups():
-        #         first_sentence = first_sentence.replace(item, "")
-        # first_sentence = re.sub(r"\[|\]", "", first_sentence)
-        
-        # first_lowercase = first_sentence.split()
-        # for i in range(len(first_lowercase)):
-        #     match = re.search(r"^[a-z]", first_lowercase[i])
-        #     if match:
-        #         first_sentence = " ".join(first_lowercase[i:])
-        #         break
-            
-        # first_sentence = first_sentence.strip()
-        # split = first_sentence.split(",")
-        # for s in split:
-        #     if len(s)>40:
-        #         print(f"{self.title}: unidentifiable")
-        #         return
-        # last = split.pop()
-        # last_split = last.split("and", 1)
-        # for s in last_split:
-        #     if s != " ":
-        #         split.append(s.strip())
-        # print(f"{self.title}: {split}")
-        pass
+            self.jobs = "|".join(occupation)
 
     @staticmethod
     def is_person(content):

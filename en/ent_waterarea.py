@@ -99,7 +99,7 @@ class EntWaterArea(EntCore):
 		pass
 
 	@staticmethod
-	def is_water_area(content):
+	def is_water_area(content, title):
 		"""
         na základě obsahu stránky určuje, zda stránka pojednává o vodní ploše, či nikoliv
         parametry:
@@ -108,12 +108,12 @@ class EntWaterArea(EntCore):
 		TODO: přidat lepší poznávání vodních ploch
         """
 
-		# check
-		check = False
-
 		pattern = r"{{[Ii]nfobox (?:body\sof\swater|sea)"
-		match = re.search(pattern, content)
-		if match:
-			check = True
+		if re.search(pattern, content):
+			return True
+
+		# lake in name but no infobox
+		if "lake" in title.lower() and not "lakes" in title.lower():
+			return True
 			
-		return check
+		return False

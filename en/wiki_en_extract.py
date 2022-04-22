@@ -17,6 +17,7 @@ import time
 from multiprocessing import Pool
 import json
 import datetime
+import sys
 
 from ent_person import *
 from ent_country import *
@@ -238,7 +239,7 @@ class WikiExtract(object):
         LIMIT = 2400
 
         with open("kb", "a+", encoding="utf-8") as file:
-            file.truncate()
+            file.truncate(0)
             event, root = next(it_context_pages)
             for event, elem in it_context_pages:
                 # hledá <page> element
@@ -266,7 +267,7 @@ class WikiExtract(object):
                                         curr_page_cnt += 1
                                         all_page_cnt += 1
                                         self.debug(f"found new page ({all_page_cnt})\033[K", start="\r", end="", flush=True)
-                                        if curr_page_cnt >= LIMIT:
+                                        if curr_page_cnt == LIMIT:
                                             ent_count += self.output(file, ent_titles, ent_pages, langmap, redirects)
                                             ent_titles.clear()
                                             ent_pages.clear()
@@ -276,7 +277,7 @@ class WikiExtract(object):
                     root.clear()
 
             if len(ent_titles):
-                self.output(file, ent_titles, ent_pages, langmap, redirects)
+                ent_count += self.output(file, ent_titles, ent_pages, langmap, redirects)
 
         self.debug(f"----------------------------", False)
         self.debug(f"parsed xml dump (number of pages: {all_page_cnt})")
@@ -289,19 +290,20 @@ class WikiExtract(object):
                 self.process_entity,
                 zip(ent_titles, ent_pages, repeat(langmap), repeat(redirects))                    
             )
-            file.write("\n".join(filter(None, serialized_entities)))
+            l = list(filter(None, serialized_entities))
+            file.write("\n".join(l) + "\n")
             pool.close()
             pool.join()
-            count = len(list(filter(None, serialized_entities)))
+            count = len(l)
             self.debug(f"processed {count} entities\033[K", start="\r")
             return count
 
     @staticmethod
     def debug(string, print_time=True, end="\n", flush=False, start=""):
         if print_time:
-            print(f"{start}[{datetime.datetime.now().strftime('%H:%M:%S')}] {string}", end=end, flush=flush)
+            print(f"{start}[{datetime.datetime.now().strftime('%H:%M:%S')}] {string}", end=end, flush=flush, file=sys.stderr)
         else:
-            print(f"{start}{string}", end=end, flush=flush)
+            print(f"{start}{string}", end=end, flush=flush, file=sys.stderr)
     
     # filters out wikipedia special pages and date pages
     @staticmethod
@@ -359,13 +361,13 @@ class WikiExtract(object):
             settlement.assign_values()
             return settlement.__repr__()
 
-        if (EntWaterCourse.is_water_course(page_content)):
+        if (EntWaterCourse.is_water_course(page_content, page_title)):
             water_course = EntWaterCourse(page_title, "watercourse", self.get_link(page_title), langmap, ent_redirects)
             water_course.get_data(page_content)
             water_course.assign_values()
             return water_course.__repr__()
 
-        if (EntWaterArea.is_water_area(page_content)):
+        if (EntWaterArea.is_water_area(page_content, page_title)):
             water_area = EntWaterArea(page_title, "waterarea", self.get_link(page_title), langmap, ent_redirects)
             water_area.get_data(page_content)
             water_area.assign_values()
@@ -404,6 +406,7 @@ class WikiExtract(object):
         clean_content = self.remove_references(clean_content, r"{{refn")
         
         # remove break lines
+        clean_content = re.sub(r"<br />", " ", clean_content, flags=re.DOTALL)
         clean_content = re.sub(r"<.*?/?>", "", clean_content, flags=re.DOTALL)
 
         # TODO: clean this up

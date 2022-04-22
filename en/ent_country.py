@@ -72,11 +72,27 @@ class EntCountry(EntCore):
         pokusí se extrahovat rozlohu z infoboxu area_km2
 		TODO (TEST): přidat více infoboxů? (země využívající imperiální jednotky)
         """
-		if "area_km2" in self.infobox_data:
-			area = self.infobox_data['area_km2']
-			area = area.replace(",", "")
-			area = re.sub(r"\{\{.+\}\}", "", area)
-			self.area = area
+		names = ("area_km2", "area_total_km2")
+		for name in names:
+			if name in self.infobox_data and self.infobox_data[name] != "":
+				area = self.infobox_data[name]
+				area = area.replace(",", "")
+				area = re.sub(r"\{\{.+\}\}", "", area)
+				self.area = area
+				return
+
+		names = ("area_sq_mi", "area_total_sq_mi")
+		for name in names:
+			if name in self.infobox_data and self.infobox_data[name] != "":
+				area = self.infobox_data[name]
+				area = area.replace(",", "")
+				area = re.sub(r"\{\{.+\}\}", "", area)
+				self.area = self.convert_units(area, "sqmi")
+				return
+
+		if self.prefix != "country:former":
+			#print(f"\n{self.link}")
+			pass
 
 	def assign_population(self):
 		"""
@@ -84,25 +100,17 @@ class EntCountry(EntCore):
 		(pokud není nalezen estimate)
         """
 
-		# population_estimate
-		if "population_estimate" in self.infobox_data:
-			if self.infobox_data["population_estimate"] != "":
+		names = ("population_estimate", "population_census")
+		for name in names:
+			if name in self.infobox_data and self.infobox_data[name] != "":
 				#print(f"{self.title}: estimate {self.infobox_data['population_estimate']}")				
-				match = re.findall(r"[0-9,]+", self.infobox_data["population_estimate"])
+				match = re.findall(r"[0-9,]+", self.infobox_data[name])
 				if match:
 					self.population = match[0].replace(',','')
 					return
 		
-		# population_census
-		if "population_census" in self.infobox_data:
-			if self.infobox_data["population_census"] != "":
-				#print(f"{self.title}: census {self.infobox_data['population_census']}")
-				match = re.findall(r"[0-9,]+", self.infobox_data["population_census"])
-				if match:
-					self.population = match[0].replace(',','')
-					return	
-
-		#print(f"{self.title}: population not found")
+		# if self.prefix != "country:former":
+		# 	print(f"\n{self.title}: population not found ({self.link})")
 		pass
 
 	@staticmethod
@@ -122,30 +130,25 @@ class EntCountry(EntCore):
 
 		# check categories
 		pattern = r"\[\[Category:Countries\s+in\s+(?:Europe|Africa|Asia|Australia|Oceania|(?:South|North)\s+America)\]\]"
-		match = re.search(pattern, content)
-		if match:
+		if re.search(pattern, content):
 			return True
 		
 		pattern = r"\[\[Category:Member\s+states\s+of\s+(?:the\sUnited\sNations|the\sCommonwealth\sof\sNations|the\sEuropean\sUnion|NATO)\]\]"
-		match = re.search(pattern, content)
-		if match:
+		if re.search(pattern, content):
+			return True
+
+		pattern = r"\[\[Category:States\s+(?:of\sthe\sUnited\sStates|with\slimited\srecognition)\]\]"	
+		if re.search(pattern, content):
 			return True
 
 		pattern = r"\[\[Category:States\s+(?:of\sthe\sUnited\sStates|with\slimited\srecognition)\]\]"
-		match = re.search(pattern, content)
-		if match:
-			return True
-
-		pattern = r"\[\[Category:States\s+(?:of\sthe\sUnited\sStates|with\slimited\srecognition)\]\]"
-		match = re.search(pattern, content)
-		if match:
+		if re.search(pattern, content):
 			return True
 
 		# TODO: categories or infobox?
-		pattern = r"\[\[Category:.*?former.*?countries.*?\]\]"
 		#pattern = r"{{Infobox former country"
-		match = re.search(pattern, content, re.I)
-		if match:
+		pattern = r"\[\[Category:.*?former.*?countries.*?\]\]"
+		if re.search(pattern, content, re.I):
 			return True
 			
 		return False

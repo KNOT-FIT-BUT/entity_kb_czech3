@@ -5,7 +5,6 @@ Popis souboru: Soubor obsahuje třídu 'EntCore', jež je rodičovskou třídou 
 Poznámka: inspirováno projektem entity_kb_czech3
 """
 
-import sys
 from abc import ABCMeta, abstractmethod
 import re
 from hashlib import md5, sha224
@@ -319,6 +318,7 @@ class EntCore(metaclass=ABCMeta):
         """
         # matching coords format with directions
         # {{Coord|59|56|N|10|41|E|type:city}}
+        format = re.sub(r"\s", "", format)
         pattern = r"([0-9.]+)\|([0-9.]+)?\|?([0-9.]+)?\|?(N|S)\|([0-9.]+)\|([0-9.]+)?\|?([0-9.]+)?\|?(E|W)"
         m = re.search(pattern, format)
         if m:
@@ -340,19 +340,18 @@ class EntCore(metaclass=ABCMeta):
         
         # matching coords format without directions (direct latitude and longtitude)
         # {{coord|41.23250|-80.46056|region:US-PA|display=inline,title}}
-        pattern = r"{{.*\|([0-9.-]+)\|\s*?([0-9.-]+).*}}"
+        pattern = r"{{.*\|([0-9.-]+)\|([0-9.-]+).*}}"
         m = re.search(pattern, format)
         if m:
             #print(f"latitude: {m.group(1)}\nlongtitude: {m.group(2)}\n")
             return (m.group(1), m.group(2))
             
-        #print(f"Error: coords format error ({format})")
+        print(f"\nError: coords format error ({format})")
         return (None, None)
 
     # converts units
-    # TODO: add more units
-    # @staticmethod
-    def convert_units(self, number, unit, round_to=2):
+    @staticmethod
+    def convert_units(number, unit, round_to=2):
         """
         konverze jednotek
         """
@@ -390,7 +389,7 @@ class EntCore(metaclass=ABCMeta):
         elif unit == "mi2":
             number = round(number * MI2_TO_KM2, round_to)
         else:
-            print(f"Error: unit conversion error ({unit} - {self.link})")
+            print(f"\nError: unit conversion error ({unit})")
             return ""
 
         return str(number if number % 1 != 0 else int(number))
