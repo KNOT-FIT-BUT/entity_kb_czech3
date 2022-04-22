@@ -142,7 +142,7 @@ class WikiExtract(object):
             self.console_args.geotags, "{}wiki-{}-geo_tags.sql"
         )
         self.redirects_dump_fpath = self.get_dump_fpath(
-            self.console_args.redirects, "redirects_from_{}wiki-{}-pages-articles.xml"
+            self.console_args.redirects, "redirects_from_{}wiki-{}-pages-articles.tsv"
         )
         if self.console_args.dev:
             self.console_args._kb_stability = "dev"
@@ -227,6 +227,7 @@ class WikiExtract(object):
 
         ent_titles = []
         ent_pages = []
+        page_counter = 0 
         event, root = next(it_context_pages)
         for event, elem in it_context_pages:
             # hledá <page> element
@@ -251,11 +252,13 @@ class WikiExtract(object):
                                     #print(grandchild.text)
                                     ent_titles.append(title)
                                     ent_pages.append(grandchild.text)
+                                    page_counter += 1
+                                    print(f"\rfound new page ({page_counter})\033[K", end="", flush=True)
                     elif "redirect" in child.tag:
                         break
                 root.clear()
 
-        print(f"parsed xml dump (number of pages: {len(ent_pages)})")
+        print(f"\rparsed xml dump (number of pages: {len(ent_pages)})\033[K")
 
         if len(ent_titles):
             with open("kb", "w", encoding="utf-8") as file:
