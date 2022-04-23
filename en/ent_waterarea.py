@@ -59,7 +59,12 @@ class EntWaterArea(EntCore):
 				coords = self.get_coordinates(self.infobox_data[key])
 				if all(coords):
 					self.latitude, self.longitude = coords
-				break
+				return
+		
+		if self.coords != "":
+			coords = self.get_coordinates(self.coords)
+			if all(coords):
+				self.latitude, self.longitude = coords
 
 	def assign_area(self):
 		"""

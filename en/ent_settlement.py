@@ -59,6 +59,12 @@ class EntSettlement(EntCore):
 			coords = self.get_coordinates(self.infobox_data["coordinates"])
 			if all(coords):
 				self.latitude, self.longitude = coords
+				return
+		
+		if self.coords != "":
+			coords = self.get_coordinates(self.coords)
+			if all(coords):
+				self.latitude, self.longitude = coords
 
 	def assign_area(self):
 		"""

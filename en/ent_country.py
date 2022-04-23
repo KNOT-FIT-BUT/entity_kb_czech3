@@ -65,7 +65,13 @@ class EntCountry(EntCore):
 		if "coordinates" in self.infobox_data and self.infobox_data["coordinates"] != "":
 			coords = self.get_coordinates(self.infobox_data["coordinates"])
 			if all(coords):
-				self.latitude, self.longitude = coords	
+				self.latitude, self.longitude = coords
+				return
+
+		if self.coords != "":
+			coords = self.get_coordinates(self.coords)
+			if all(coords):
+				self.latitude, self.longitude = coords
 
 	def assign_area(self):
 		"""

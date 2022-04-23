@@ -62,7 +62,7 @@ class EntCore(metaclass=ABCMeta):
         self.first_paragraph = ""
         self.first_sentence = ""
         self.description = ""
-        self.short_description = ""
+        self.coords = ""
         self.aliases = []
     
     def serialize(self, ent_data):
@@ -95,17 +95,16 @@ class EntCore(metaclass=ABCMeta):
         value = ""
 
         paragraph_bounds = False
-        description_found = False
+        coords_found = False
 
         # TODO: optimize this
         for line in lines:
             
-            if description_found == False:
-                pattern = r"^{{[s|S]hort description\|([^\|]+)(?:\|.+)?}}$"
-                match = re.search(pattern, line)
-                if match:
-                    description_found = True
-                    self.short_description = match.group(1)
+            if coords_found == False:
+                pattern = r"^{{[Cc]oord.*?}}$"
+                if re.search(pattern, line):
+                    coords_found = True
+                    self.coords = line
 
             # extract infobox / infoboxes
             if line.startswith("{{Infobox"):
@@ -346,7 +345,7 @@ class EntCore(metaclass=ABCMeta):
             #print(f"latitude: {m.group(1)}\nlongtitude: {m.group(2)}\n")
             return (m.group(1), m.group(2))
             
-        print(f"\nError: coords format error ({format})")
+        #print(f"\nError: coords format error ({format})")
         return (None, None)
 
     # converts units

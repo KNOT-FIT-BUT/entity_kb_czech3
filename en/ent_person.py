@@ -61,172 +61,169 @@ class EntPerson(EntCore):
         self.assign_nationality()
         self.assign_gender()
         self.assign_jobs()
+
+    @staticmethod
+    def format_death_date(string):
+        string = re.sub(r" \|", "|", string)
+        bad = False
+        data = string.split("|")
+        data = [d for d in data[1:] if "=" not in d and d != ""]
+        for d in data:
+            if re.search(r"[^0-9]", d):
+                bad = True
+        if bad:
+            death = EntPerson.format_other_date(data[0])
+            birth = EntPerson.format_other_date(data[1])
+            return (birth, death)
         
+        for i in range(len(data)):
+            data[i] = f"0{int(data[i])}" if int(data[i]) < 10 else data[i]
+        #print(f"birth {'-'.join(data[3:])}\tdeath {'-'.join(data[:3])}")
+        return ('-'.join(data[3:]), '-'.join(data[:3]))
+
+    @staticmethod
+    def format_birth_date(string):
+        string = re.sub(r"year=|month=|day=", "", string)
+        data = string.split("|")
+        data = [d.strip() for d in data[1:] if "=" not in d and d != ""]
+        for d in data:
+            if re.search(r"[^0-9]", d):                
+                return EntPerson.format_other_date(d)
+        for i in range(len(data)):
+            data[i] = f"0{int(data[i])}" if int(data[i]) < 10 else data[i]
+        
+        #print("-".join(data) + "\t" + self.title)
+        return "-".join(data)
+    
+    @staticmethod
+    def format_other_date(string):
+        months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+        
+        # either BC or AD in string
+        if "BC" in string or "BCE" in string or "AD" in string:
+            string = re.sub(r" AD", "", string)
+            string = re.sub(r"([0-9]+) BCE?", r"-\1", string)
+
+        # or
+        # August 16, 1946
+        # 31 July 2004
+        m = re.search(r"(\w+)\s([0-9]+),?\s(-?[0-9]+)", string)
+        if m:
+            data = []
+            if m.group(1) not in months:
+                return
+            data.append(months.index(m.group(1)) + 1)
+            data.append(m.group(2))
+            for i in range(len(data)):
+                data[i] = f"0{int(data[i])}" if int(data[i]) < 10 else str(data[i])
+            #print(f"{date} {m.group(3)}-{data[0]}-{data[1]}")
+            return f"{m.group(3)}-{data[0]}-{data[1]}"
+        m = re.search(r"([0-9]+)\s(\w+)\s(-?[0-9]+)", string)
+        if m:
+            data = []
+            if m.group(2) not in months:
+                return
+            data.append(months.index(m.group(2)) + 1)
+            data.append(m.group(1))
+            for i in range(len(data)):
+                data[i] = f"0{int(data[i])}" if int(data[i]) < 10 else str(data[i])
+            #print(f"{date} {m.group(3)}-{data[0]}-{data[1]}")
+            return f"{m.group(3)}-{data[0]}-{data[1]}"
+
+        # or
+        # June 218
+        m = re.search(r"^(\w+)\s(-?[0-9]+)$", string)
+        if m:
+            if m.group(1) not in months:
+                return
+            month = months.index(m.group(1)) + 1
+            #print(f"{date} {m.group(2)}-{month}-??")
+            return f"{m.group(2)}-{month}-??"
+
+        # or
+        # 1948
+        if re.search(r"^-?[0-9]+$", string):
+            #print(f"{date} {string}-??-??")
+            return f"{string}-??-??"
+
+        # or invalid
+        # print("error")
+        return ""
+
     def assign_dates(self):
         """
         pokusí se extrahovat datumy úmrtí a narození z infoboxů death_date a birth_date
-        TODO: refactor
         TODO: extrakce z první věty
         """
-        months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
-        
-        # death date extraction (death_date sometimes includes birth date, if found it is also extracted)
-        if "death_date" in self.infobox_data and self.infobox_data["death_date"]:
-            dates = ["", ""]
-            string = self.infobox_data["death_date"]
-            
-            # BC and AD
-            if "BC" in string:
-                string = re.sub("&nbsp;|{{nbsp}}", " ", string)
-                string = re.sub(r"\(.*?\)", "", string)
-                string = re.sub(r"{{.*?([0-9]+).*?}}", r"\1", string)
-                string = re.sub(r"{{.*}}", "", string).strip()
-                string = re.sub(r"([0-9]+)/([0-9]+)", r"\1", string)
-                if (string.startswith("c.")):
-                    string = string[2:].strip()
-                string = re.sub(r"\[\[.*\|(.*)\]\]", r"\1", string)
-                string = re.sub(r"BCE|BC", "", string).strip()
-                f = self.format_date(string)
-                if (f != -1):
-                    dates[0] = f"-{f}"
-                else:
-                    dates[0] = -1
 
-            if "AD" in string:
-                string = re.sub("&nbsp;|{{nbsp}}", " ", string)
-                string = re.sub(r"\(.*?\)", "", string)
-                string = re.sub(r"{{.*?([0-9]+).*?}}", r"\1", string)
-                string = re.sub(r"{{.*}}", "", string).strip()
-                string = re.sub(r"(.*?)\|.+", r"\1", string).strip()
-                if (string.startswith("c.")):
-                    string = string[2:].strip()
-                string = string.replace(" AD", "")
-                f = self.format_date(string)
-                dates[0] = f
-            
-            # month name in date
-            if dates[0] == "":
-                patterns = [r"(\w+)\s+([0-9]{1,2}),?\s+([0-9]{1,4})", r"([0-9]{1,2})\s+(\w+)\s+([0-9]{1,4})"]
-                pos = [[0, 1], [1, 0]]
-                for j in range(len(patterns)):
-                    match = re.findall(patterns[j], string)
-                    if match:
-                        for i in range(len(match)):
-                            date = ["", "", ""]
-                            date[0] = match[i][2]
-                            if match[i][pos[j][0]] in months:
-                                month_number = months.index(match[i][pos[j][0]])+1
-                                date[1] = str(month_number) if month_number > 9 else  "0" + str(month_number)
-                            date[2] = match[i][pos[j][1]] if len(match[i][pos[j][1]]) == 2 else "0"+match[i][pos[j][1]]
-                            dates[i] = "-".join(date)
-                            break
-            
-            # normal format (e.g.: ...|2000|01|01|2001|01|01... )
-            if dates[0] == "":
-                #YYYY|MM|DD|YYYY|MM|DD or YYYY|MM|DD
-                pattern = "{{.*?([0-9]{1,4})\|([0-9]{1,2})\|([0-9]{1,2})\s?\|([0-9]{1,4})\|([0-9]{1,2})\|([0-9]{1,2}).*?}}|{{.*?([0-9]{1,4})\|([0-9]{1,2})\|([0-9]{1,2})[^0-9].*?"
-                match = re.search(pattern, string)
-                if match:
-                    groups = [g for g in match.groups() if g != None]
-                    for i in range(int(len(groups) / 3)):
-                        month = groups[i*3+1] if len(groups[i*3+1]) == 2 else "0"+groups[i*3+1]
-                        day = groups[i*3+2] if len(groups[i*3+2]) == 2 else "0"+groups[i*3+2]
-                        dates[i] = "-".join([groups[i*3+0], month, day])
-            
-            # other formats     
-            if dates[0] == "":
-                string = re.sub(r"{{.*[dD]eath.*?([0-9]+).*}}", r"\1", string).strip()
-                string = re.sub(r"\(.*\)|{{.*}}", "", string).strip()
-                if (string.startswith("c.")):
-                    string = string[2:].strip()
-                f = self.format_date(string)
-                if f != -1:
-                    dates[0] = f
+        keys = ("death_date", "birth_date")
+        for key in keys:
+            if key in self.infobox_data and self.infobox_data[key] != "":
+                date = self.infobox_data[key].strip()
 
-            if dates[0] != "" and dates[0] != -1:
-                self.death_date = dates[0]
-                self.birth_date = dates[1]
-        else:
-            #print(f"{self.title}: did not find a death date inside the infobox...")
-            pass
+                # death date and age
+                pattern = r"{{((?:[Dd]eath(?:\s|-)date and age|dda|[Dd]-da).*?)}}"           
+                m = re.search(pattern, date)
+                if m:
+                    self.birth_date, self.death_date = self.format_death_date(m.group(1))
+                    return
 
-        # birth date extraction
-        if self.birth_date == "" and "birth_date" in self.infobox_data:
-            #print(self.infobox_data['birth_date'])
-            date = ""
-            string = self.infobox_data["birth_date"]
+                # death year and age
+                pattern = r"{{(?:[Dd]eath year and age|death year)\s?\|([0-9]+)\|([0-9]+).*?}}"
+                m = re.search(pattern, date)
+                if m:
+                    #print(f"birth {m.group(2)}-??-??\tdeath {m.group(1)}-??-??")
+                    self.birth_date = f"{m.group(2)}-??-??"
+                    self.death_date = f"{m.group(1)}-??-??"
+                    return
 
-            # BC and AD
-            if "BC" in string:
-                string = re.sub("&nbsp;|{{nbsp}}", " ", string)
-                string = re.sub(r"\(.*?\)", "", string)
-                string = re.sub(r"{{.*?([0-9]+).*?}}", r"\1", string)
-                string = re.sub(r"{{.*}}", "", string).strip()
-                string = re.sub(r"([0-9]+)/([0-9]+)", r"\1", string)
-                if (string.startswith("c.")):
-                    string = string[2:].strip()
-                string = re.sub(r"\[\[.*\|(.*)\]\]", r"\1", string)
-                string = re.sub(r"BCE|BC", "", string).strip()
-                f = self.format_date(string)
-                if (f != -1):
-                    date = f"-{f}"
-                else:
-                    date = -1
+                # death date
+                pattern = r"{{[Dd]eath date.*?\|([0-9]+)\|([0-9]+)\|([0-9]+).*?}}"
+                m = re.search(pattern, date)
+                if m:
+                    groups = []
+                    for group in m.groups():
+                        groups.append(f"0{int(group)}" if int(group) < 10 else group)
+                    #print(f"death {groups[0]}-{groups[1]}-{groups[2]}")
+                    self.death_date = f"{groups[0]}-{groups[1]}-{groups[2]}"
+                    continue
 
-            if "AD" in string:
-                string = re.sub("&nbsp;|{{nbsp}}", " ", string)
-                string = re.sub(r"\(.*?\)", "", string)
-                string = re.sub(r"{{.*?([0-9]+).*?}}", r"\1", string)
-                string = re.sub(r"{{.*}}", "", string).strip()
-                string = re.sub(r"(.*?)\|.+", r"\1", string).strip()
-                if (string.startswith("c.")):
-                    string = string[2:].strip()
-                string = string.replace(" AD", "")
-                f = self.format_date(string)
-                date = f
-            
-            # month name in date
-            if date == "":
-                patterns = [r"(\w+)\s+([0-9]{1,2}),?\s+([0-9]{1,4})", r"([0-9]{1,2})\s+(\w+)\s+([0-9]{1,4})"]
-                pos = [[0, 1], [1, 0]]
-                for j in range(len(patterns)):
-                    match = re.search(patterns[j], string)
-                    if match:
-                        arr = ["", "", ""]
-                        arr[0] = match.group(3)
-                        if match.group(pos[j][0]+1) in months:
-                            month_number = months.index(match.group(pos[j][0]+1))+1
-                            arr[1] = str(month_number) if month_number > 9 else  "0" + str(month_number)
-                        arr[2] = match.group(pos[j][1]+1) if len(match.group(pos[j][1]+1)) == 2 else "0"+match.group(pos[j][1]+1)
-                        date = "-".join(arr)
-            
-            # normal date format
-            if date == "":
-                #YYYY|MM|DD|YYYY|MM|DD or YYYY|MM|DD
-                pattern = "{{.*?([0-9]{1,4})\|([0-9]{1,2})\|([0-9]{1,2}).*?}}"
-                match = re.search(pattern, string)
-                if match:
-                    groups = [g for g in match.groups() if g != None]
-                    for i in range(int(len(groups) / 3)):
-                        month = groups[i*3+1] if len(groups[i*3+1]) == 2 else "0"+groups[i*3+1]
-                        day = groups[i*3+2] if len(groups[i*3+2]) == 2 else "0"+groups[i*3+2]
-                        date = "-".join([groups[i*3+0], month, day])
+                # birth date and age | birth date
+                pattern = r"{{((?:[Bb]irth(?:\s|-)date and age|[Bb]irth date|b-da).*?)}}"
+                m = re.search(pattern, date)
+                if m:
+                    self.birth_date = self.format_birth_date(m.group(1))
+                    return
 
-            # other formats     
-            if date == "":
-                string = re.sub(r"{{.*[dD]eath.*?([0-9]+).*}}", r"\1", string).strip()
-                string = re.sub(r"\(.*\)|{{.*}}", "", string).strip()
-                if (string.startswith("c.")):
-                    string = string[2:].strip()
-                f = self.format_date(string)
-                if f != -1:
-                    date = f
+                # birth year and age
+                pattern = r"{{(?:[Bb]irth year and age|birth year)\s?\|([0-9]+).*?}}"
+                m = re.search(pattern, date)
+                if m:
+                    #print(f"birth {m.group(1)}-??-??")
+                    self.birth_date = f"{m.group(1)}-??-??"
+                    return
 
-            if date != "" and date != -1:
-                self.birth_date = date            
-        else:
-            #print(f"{self.title}: did not find a birth date inside the infobox...")
-            pass
+                date = re.sub(r"{{(?:[Bb]irth-date|[Dd]eath-date)\|(.*?)}}", r"\1", date)
+                date = re.sub(r"\(.*?\)|'", "", date)
+                date = re.sub(r".*/.*/.*", "", date)
+                date = re.sub(r"&nbsp;|{{nbsp}}", " ", date)
+                date = re.sub(r"{{(?:circa|nowrap)\|(.*?)(?:\|.*?)?}}", r"\1", date)
+                date = re.sub(r"{{c\..*?\|([0-9]+).*?}}", r"\1", date)
+                date = re.sub(r"circa", "", date)
+                date = re.sub(r"c\.\s", "", date)
+                date = re.sub(r"\[\[.*?\|(.*?)\]\]", r"\1", date)
+                date = re.sub(r"{{.*?}}", "", date)
+                date = re.sub(r".*?([0-9]+)/[0-9]+.*", r"\1", date)
+
+                date = date.strip()
+
+                if date != "":
+                    if key == "death_date":
+                        self.death_date = self.format_other_date(date)
+                        continue
+                    else:
+                        self.birth_date = self.format_other_date(date)
+                        return
 
     @staticmethod
     def format_date(string):
