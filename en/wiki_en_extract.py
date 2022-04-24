@@ -336,7 +336,7 @@ class WikiExtract(object):
         return True
 
     def process_entity(self, page_title, page_content, langmap, redirects):
-
+        
         self.debug(f"processing: {page_title}\033[K", start="\r", end="", flush=True)
 
         page_content = self.remove_not_improtant(page_content)

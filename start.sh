@@ -173,9 +173,15 @@ EXTRACTION_ARGS+=(${MULTIPROC_PARAMS})
 # old code:
 # CMD="python3 wiki_cs_extract.py --lang ${LANG} --dump ${DUMP_VERSION} --indir \"${DUMP_PATH}\" ${EXTRACTION_ARGS[@]} 2>entities_processing.log"
 
-CMD="python3 ${LANG}/wiki_${LANG}_extract.py --lang ${LANG} --dump ${DUMP_VERSION} --indir \"${DUMP_PATH}\" ${EXTRACTION_ARGS[@]} 2>entities_processing.log"
+CMD="python3 ${LANG}/wiki_${LANG}_extract.py --lang ${LANG} --dump ${DUMP_VERSION} --indir \"${DUMP_PATH}\" ${EXTRACTION_ARGS[@]}"
 echo "RUNNING COMMAND: ${CMD}"
 eval $CMD
+
+retVal=$?
+if [ $retVal -ne 0 ]; then
+    echo "error while running python script"
+    exit $retVal
+fi
 
 # Add metrics to newly created KB
 if $LOG

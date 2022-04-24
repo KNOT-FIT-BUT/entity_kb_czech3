@@ -53,8 +53,13 @@ class EntPerson(EntCore):
         """
         # TODO: optimize and refactor this
 
-        if "character" in self.infobox_name:
+        if "character" in self.infobox_name or "fictional" in self.first_sentence:
             self.prefix += ":fictional"
+        if self.prefix != "person:fictional":
+            for c in self.categories:
+                if "fictional" in c.lower():
+                    self.prefix += ":fictional"
+                    break
 
         self.assign_dates()
         self.assign_places()
@@ -111,7 +116,7 @@ class EntPerson(EntCore):
         if m:
             data = []
             if m.group(1) not in months:
-                return
+                return ""
             data.append(months.index(m.group(1)) + 1)
             data.append(m.group(2))
             for i in range(len(data)):
@@ -122,7 +127,7 @@ class EntPerson(EntCore):
         if m:
             data = []
             if m.group(2) not in months:
-                return
+                return ""
             data.append(months.index(m.group(2)) + 1)
             data.append(m.group(1))
             for i in range(len(data)):
@@ -135,7 +140,7 @@ class EntPerson(EntCore):
         m = re.search(r"^(\w+)\s(-?[0-9]+)$", string)
         if m:
             if m.group(1) not in months:
-                return
+                return ""
             month = months.index(m.group(1)) + 1
             #print(f"{date} {m.group(2)}-{month}-??")
             return f"{m.group(2)}-{month}-??"
@@ -150,10 +155,24 @@ class EntPerson(EntCore):
         # print("error")
         return ""
 
+    @staticmethod
+    def fix_date_format(date):
+        date = re.sub(r"{{(?:[Bb]irth-date|[Dd]eath-date)\|(.*?)}}", r"\1", date)
+        date = re.sub(r"\(.*?\)|'", "", date)
+        date = re.sub(r".*/.*/.*", "", date)
+        date = re.sub(r"&nbsp;|{{nbsp}}", " ", date)
+        date = re.sub(r"{{(?:circa|nowrap)\|(.*?)(?:\|.*?)?}}", r"\1", date)
+        date = re.sub(r"{{c\..*?\|([0-9]+).*?}}", r"\1", date)
+        date = re.sub(r"circa", "", date)
+        date = re.sub(r"c\.\s", "", date)
+        date = re.sub(r"\[\[.*?\|(.*?)\]\]", r"\1", date)
+        date = re.sub(r"{{.*?}}", "", date)
+        date = re.sub(r".*?([0-9]+)/[0-9]+.*", r"\1", date)
+        return date.strip()
+    
     def assign_dates(self):
         """
         pokusí se extrahovat datumy úmrtí a narození z infoboxů death_date a birth_date
-        TODO: extrakce z první věty
         """
 
         keys = ("death_date", "birth_date")
@@ -203,19 +222,7 @@ class EntPerson(EntCore):
                     self.birth_date = f"{m.group(1)}-??-??"
                     return
 
-                date = re.sub(r"{{(?:[Bb]irth-date|[Dd]eath-date)\|(.*?)}}", r"\1", date)
-                date = re.sub(r"\(.*?\)|'", "", date)
-                date = re.sub(r".*/.*/.*", "", date)
-                date = re.sub(r"&nbsp;|{{nbsp}}", " ", date)
-                date = re.sub(r"{{(?:circa|nowrap)\|(.*?)(?:\|.*?)?}}", r"\1", date)
-                date = re.sub(r"{{c\..*?\|([0-9]+).*?}}", r"\1", date)
-                date = re.sub(r"circa", "", date)
-                date = re.sub(r"c\.\s", "", date)
-                date = re.sub(r"\[\[.*?\|(.*?)\]\]", r"\1", date)
-                date = re.sub(r"{{.*?}}", "", date)
-                date = re.sub(r".*?([0-9]+)/[0-9]+.*", r"\1", date)
-
-                date = date.strip()
+                date = self.fix_date_format(date)
 
                 if date != "":
                     if key == "death_date":
@@ -225,55 +232,85 @@ class EntPerson(EntCore):
                         self.birth_date = self.format_other_date(date)
                         return
 
-    @staticmethod
-    def format_date(string):
-        """
-        upraví datumy do vyhovujícího tvaru
-        """
-        months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
-        
-        # month in the middle (DD month YYYY)
-        m = re.search(r"([0-9]+)\s(\w+)\s([0-9]+)", string)
-        if m:
-            month = ""
-            day = int(m.group(1))
-            if m.group(2) in months:
-                month = months.index(m.group(2))+1 
-                month = str(month) if month > 9 else f"0{month}"
-            else:
-                return -1
-            day = str(day) if day > 9 else f"0{day}"
-            return f"{m.group(3)}-{month}-{day}"
-            
-        # month first (month DD YYYY)
-        m = re.search(r"(\w+)\s([0-9]+)\s([0-9]+)", string)
-        if m:
-            month = ""
-            day = int(m.group(2))
-            if m.group(1) in months:
-                month = months.index(m.group(1))+1 
-                month = str(month) if month > 9 else f"0{month}"
-            else:
-                return "date format error"
-            day = str(day) if day > 9 else f"0{day}"
-            return f"{m.group(3)}-{month}-{day}"
-        
-        # month and year (month YYYY)
-        m = re.search(r"(\w+)\s([0-9]+)", string)
-        if m:
-            month = ""
-            if m.group(1) in months:
-                month = months.index(m.group(1))+1 
-                month = str(month) if month > 9 else f"0{month}"
-            else:
-                return -1
-            return f"{m.group(2)}-{month}-??"
-        
-        if (re.search(r"[^0-9]+", string) or string == ""):
-            return -1
-        
-        # year only (YYYY)
-        return f"{string}-??-??"
+        # try to get the date from the 1st sentence
+        if (self.death_date == "" or self.birth_date == "") and self.prefix != "person:fictional":
+            m = re.search(r"\(([^\(\)]*?[0-9][^\(\)]*?)\)", self.first_sentence)
+            if m:
+                group = m.group(1)
+                string = re.sub(r"{{(?:circa|nowrap)\|(.*?)(?:\|.*?)?}}", r"\1", group)
+                string = re.sub(r"&ndash;|{spnd}|{snd}", "–", string)
+                string = re.sub(r"&nbsp;", " ", string)
+                string = re.sub(r"{{.*?}};?", "", string)
+                string = re.sub(r"c\.\s|{|}|;", "", string).strip()
+                string = string.split("–")
+                if len(string) == 1:
+                    string = string[0].split("-")
+
+                for s in string:
+                    # born July 18, 1962
+                    # born 25 August 1963
+                    m = re.search(r".*?((?:\w+\s[0-9]+,?\s[0-9]+|[0-9]+\s\w+\s[0-9]+)).*?", s)
+                    if m:
+                        if "born" in s:
+                            self.birth_date = self.format_other_date(m.group(1))
+                            continue
+                        if "died" in s:
+                            self.death_date = self.format_other_date(m.group(1))
+                            continue
+                        if string.index(s) == 0:
+                            self.birth_date = self.format_other_date(m.group(1))
+                            continue
+                        else:
+                            self.death_date = self.format_other_date(m.group(1))
+                            continue
+
+                    # born|died YYYY
+                    m = re.search(r"born\s+(?:ca\.?\s|c\.\s|circa\s+)?([0-9]+)", s)
+                    if m:
+                        self.birth_date = self.format_other_date(m.group(1))
+                        continue
+                    m = re.search(r"died\s+([0-9]+)$", s)
+                    if m:
+                        self.death_date = self.format_other_date(m.group(1))
+                        continue
+
+                    if "BC" in s:
+                        if "died" in s:
+                            m = re.search(r".*?([0-9]+\sBC).*?", s)
+                            if m:
+                                self.death_date = self.format_other_date(m.group(1))
+                                continue
+                        if string.index(s) == 0:
+                            m = re.search(r"^([0-9]+\sBCE?)$", s.strip())
+                            if m:
+                                self.birth_date = self.format_other_date(m.group(1))
+                                continue
+                        else:
+                            m = re.search(r"^([0-9]+\sBCE?)$", s.strip())
+                            if m:
+                                self.death_date = self.format_other_date(m.group(1))
+                                continue
+                    
+                    if "born" in s:
+                        s = re.sub("born", "", s).strip()
+                        self.birth_date = self.format_birth_date(s)
+                        continue
+
+                    # YYYY
+                    if re.search(r"^-?[0-9]+$", s.strip()):
+                        if string.index(s) == 0:
+                            self.birth_date = self.format_other_date(s.strip())
+                        else:
+                            self.death_date = self.format_other_date(s.strip())
+                        continue
+
+                    if len(string) > 1:
+                        if string.index(s) == 0:
+                            self.birth_date = self.format_other_date(s.strip())
+                            continue
+                        else:
+                            self.death_date = self.format_other_date(s.strip())
+                            continue
 
     def assign_places(self):
         """
@@ -355,23 +392,33 @@ class EntPerson(EntCore):
         if "gender" in self.infobox_data and self.infobox_data["gender"] != "":
             gender = self.infobox_data["gender"].lower()
             self.gender = gender
+            return
 
-        # TODO: move this out of infobox extraction 
-        if self.gender == "":
-            # if there is he/his/she/her in the second sentence
-            # TODO: split lines better
-            paragraph_split = self.first_paragraph.split(".")
-            if len(paragraph_split) > 1:
-                #print(f"{self.title}: {paragraph_split[1].strip()}")
-                match = re.search(r"\b[Hh]e\b|\b[Hh]is\b", paragraph_split[1].strip())
-                if match:
+        # extracting from categories
+        # e.g.: two and a half men -> can't extract gender from this
+        if self.prefix != "person:fictional":
+            for c in self.categories:
+                if "women" in c.lower() or "female" in c.lower():
+                    self.gender = "female"
+                    return
+                if "male" in c.lower():
                     self.gender = "male"
                     return
-                match = re.search(r"\b[Ss]he\b|\b[Hh]er\b", paragraph_split[1].strip())
-                if match:
-                # else:
-                #     print(f"{self.title}: undefined")
-                    self.gender = "female"
+
+        # if there is he/his/she/her in the second sentence
+        # TODO: split lines better
+        paragraph_split = self.first_paragraph.split(".")
+        if len(paragraph_split) > 1:
+            #print(f"{self.title}: {paragraph_split[1].strip()}")
+            match = re.search(r"\b[Hh]e\b|\b[Hh]is\b", paragraph_split[1].strip())
+            if match:
+                self.gender = "male"
+                return
+            match = re.search(r"\b[Ss]he\b|\b[Hh]er\b", paragraph_split[1].strip())
+            if match:
+            # else:
+            #     print(f"{self.title}: undefined")
+                self.gender = "female"
     
     def assign_jobs(self):
         """
