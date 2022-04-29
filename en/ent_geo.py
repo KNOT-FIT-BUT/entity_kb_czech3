@@ -129,8 +129,12 @@ class EntGeo(EntCore):
 				if len(split) > 1:
 					self.area = self.convert_units(split[0], split[1])
 				else:
-					number = float(area)
-					self.area = str(number if number % 1 != 0 else int(number))
+					try:
+						number = float(area)
+						self.area = str(number if number % 1 != 0 else int(number))
+					except:
+						self.print_error(f"{self.title}: error while converting area to float - {area} ({self.link})")
+						return
 				break
 
 	def assign_population(self):

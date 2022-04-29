@@ -83,6 +83,7 @@ class EntCore(metaclass=ABCMeta):
             ent_data
         ])
     
+    @staticmethod
     def print_error(msg):
         print(msg, file=sys.stderr)
 

@@ -239,7 +239,7 @@ class WikiExtract(object):
         all_page_cnt = 0
         ent_count = 0
 
-        LIMIT = 2400
+        LIMIT = 24000
 
         with open("kb", "a+", encoding="utf-8") as file:
             file.truncate(0)
