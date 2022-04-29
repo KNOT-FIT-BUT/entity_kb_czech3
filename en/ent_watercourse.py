@@ -98,12 +98,13 @@ class EntWaterCourse(EntCore):
 		if "basin_size" in self.infobox_data:
 			area = self.infobox_data["basin_size"]
 			if area != "":
-				match = re.search(r"{{.*?\|([0-9.]+)\|(\w+).*?}}", area)
+				match = re.search(r"{{.*?\|([0-9.,]+)\|(\w+).*?}}", area)
 				if match:
-					self.area = self.convert_units(match.group(1), match.group(2))
+					number = re.sub(r",", "", match.group(1))
+					self.area = self.convert_units(number, match.group(2))
 					return
 				else:
-					print(f"\ndid not match area ({area})")
+					self.print_error(f"{self.title}: did not match area ({area})")
 		
 		#print(f"\narea empty or not found ({self.link})")
 		pass
@@ -117,12 +118,12 @@ class EntWaterCourse(EntCore):
 		if "discharge1_avg" in self.infobox_data:
 			streamflow = self.infobox_data["discharge1_avg"]
 			if streamflow != "":
-				streamflow = streamflow.replace(",", ".")
+				streamflow = streamflow.replace(",", "")
 				match = re.search(r"{{.*?\|([0-9.,]+)\|((?:\w|\/)+).*?}}", streamflow)
 				if match:
 					self.streamflow = self.convert_units(match.group(1), match.group(2))
 				else:
-					print(f"{self.title}: did not match streamflow ({streamflow})")
+					self.print_error(f"{self.title}: did not match streamflow ({streamflow}) [{self.link}]")
 		
 		#print(f"{self.title}: streamflow empty or not found")
 		pass

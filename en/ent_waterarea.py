@@ -97,7 +97,7 @@ class EntWaterArea(EntCore):
 					match = re.search(patterns[i], location)
 					if match:					
 						curr_continents.append(continents[i])
-				self.continents  = " | ".join(curr_continents)
+				self.continents  = "|".join(curr_continents)
 				return
 
 		#print(f"{self.title}: did not find location")
@@ -110,7 +110,6 @@ class EntWaterArea(EntCore):
         parametry:
         content - obsah stránky
         návratové hodnoty: True / False
-		TODO: přidat lepší poznávání vodních ploch
         """
 
 		pattern = r"{{[Ii]nfobox (?:body\sof\swater|sea)"

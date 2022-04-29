@@ -20,4 +20,6 @@ outputs
 **/kb
 
 lang_gen.py
+kb_real
+push.sh
 

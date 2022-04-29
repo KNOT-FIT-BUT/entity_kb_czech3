@@ -7,6 +7,7 @@ Poznámka: inspirováno projektem entity_kb_czech3
 
 from abc import ABCMeta, abstractmethod
 import re
+import sys
 from hashlib import md5, sha224
 
 class EntCore(metaclass=ABCMeta):
@@ -81,6 +82,9 @@ class EntCore(metaclass=ABCMeta):
             self.link,
             ent_data
         ])
+    
+    def print_error(msg):
+        print(msg, file=sys.stderr)
 
     def get_data(self, content):
         """
@@ -225,6 +229,8 @@ class EntCore(metaclass=ABCMeta):
                 for s in split[1:]:
                     if "=" in s:
                         split.remove(s)
+                if len(split) < 2:
+                    return
                 alias = split[1]
                 if len(split) > 2:
                     if "{" not in alias:
@@ -355,7 +361,11 @@ class EntCore(metaclass=ABCMeta):
         konverze jednotek
         """
         
-        number = float(number)
+        try:
+            number = float(number)
+        except:
+            EntCore.print_error(f"couldn't conver string to float: {number}")
+            return ""
         unit = unit.lower()
 
         SQMI_TO_KM2 = 2.589988
@@ -367,7 +377,7 @@ class EntCore(metaclass=ABCMeta):
         MI_TO_KM = 1.609344
         CUFT_TO_M3 = 0.028317
 
-        accepted_untis = ["km2", "km", "m", "meters", "m3", "m3/s"]
+        accepted_untis = ["sqkm", "km2", "km", "m", "meters", "m3", "m3/s"]
         if unit in accepted_untis:
             return str(number if number % 1 != 0 else int(number))
 
@@ -388,7 +398,7 @@ class EntCore(metaclass=ABCMeta):
         elif unit == "mi2":
             number = round(number * MI2_TO_KM2, round_to)
         else:
-            print(f"\nError: unit conversion error ({unit})")
+            EntCore.print_error(f"Error: unit conversion error ({unit})")
             return ""
 
         return str(number if number % 1 != 0 else int(number))

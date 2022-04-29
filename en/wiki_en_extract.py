@@ -202,16 +202,18 @@ class WikiExtract(object):
         """
 
         redirects = dict()
-        try:
-            with open(self.redirects_dump_fpath, "r") as f:
-                for line in f:
-                    redirect_from, redirect_to = line.strip().split("\t")
-                    if not redirect_to in redirects:
-                        redirects[redirect_to] = set()
-                    redirects[redirect_to].add(redirect_from)
-                self.debug("loaded redirects")
-        except OSError:
-            self.debug(f'redirect file "{self.redirects_dump_fpath}" was not found - skipping...')
+        # try:
+        #     with open(self.redirects_dump_fpath, "r") as f:
+        #         self.debug("loading redirects")
+        #         for line in f:
+        #             line = re.sub(r"\s+", "\t", line)
+        #             redirect_from, redirect_to = line.strip().split("\t")
+        #             if not redirect_to in redirects:
+        #                 redirects[redirect_to] = set()
+        #             redirects[redirect_to].add(redirect_from)
+        #         self.debug("loaded redirects")
+        # except OSError:
+        #     self.debug(f'redirect file "{self.redirects_dump_fpath}" was not found - skipping...')
 
         # xml parser
         context = CElTree.iterparse(self.pages_dump_fpath, events=("start", "end"))
@@ -224,6 +226,7 @@ class WikiExtract(object):
         langmap = dict()
         try:
             with open("langmap.json", "r") as file:
+                self.debug("loading langmap")
                 langmap = json.load(file)
                 self.debug("loaded langmap")
         except OSError:
@@ -260,8 +263,6 @@ class WikiExtract(object):
                             for grandchild in child:
                                 if "text" in grandchild.tag:
                                     if is_entity and grandchild.text:                        
-                                        # TODO: přeskoč redirecty a rozcestníky
-                                        #print(grandchild.text)
                                         ent_titles.append(title)
                                         ent_pages.append(grandchild.text)
                                         curr_page_cnt += 1
@@ -301,9 +302,9 @@ class WikiExtract(object):
     @staticmethod
     def debug(string, print_time=True, end="\n", flush=False, start=""):
         if print_time:
-            print(f"{start}[{datetime.datetime.now().strftime('%H:%M:%S')}] {string}", end=end, flush=flush, file=sys.stderr)
+            print(f"{start}[{datetime.datetime.now().strftime('%H:%M:%S')}] {string}", end=end, flush=flush)
         else:
-            print(f"{start}{string}", end=end, flush=flush, file=sys.stderr)
+            print(f"{start}{string}", end=end, flush=flush)
     
     # filters out wikipedia special pages and date pages
     @staticmethod
@@ -341,7 +342,8 @@ class WikiExtract(object):
 
         page_content = self.remove_not_improtant(page_content)
 
-        ent_redirects = redirects[page_title] if page_title in redirects else []
+        # ent_redirects = redirects[link] if link in redirects else []
+        ent_redirects = []
 
         if (EntPerson.is_person(page_content)):
             person = EntPerson(page_title, "person", self.get_link(page_title), langmap, ent_redirects)
@@ -422,7 +424,7 @@ class WikiExtract(object):
         for m in re.finditer(ref_pattern, clean_content):
             index = m.start()+1
             indentation = 1            
-            while (indentation != 0):
+            while indentation != 0 and index != len(clean_content):
                 if clean_content[index] == "{":
                     indentation += 1
                 elif clean_content[index] == "}":
