@@ -51,7 +51,6 @@ class EntPerson(EntCore):
         """
         pokusí se extrahovat parametry z infoboxů
         """
-        # TODO: optimize and refactor this
 
         if "character" in self.infobox_name or "fictional" in self.first_sentence:
             self.prefix += ":fictional"
@@ -67,8 +66,10 @@ class EntPerson(EntCore):
         self.assign_gender()
         self.assign_jobs()
 
-    #@staticmethod
     def format_death_date(self, string):
+        '''
+        Pomocná funkce assign_dates, soustředí se na formáty {{death date and age|...}} / {{dda|...}} / ...
+        '''
         string = re.sub(r" \|", "|", string)
         bad = False
         data = string.split("|")
@@ -101,8 +102,10 @@ class EntPerson(EntCore):
 
         return ('-'.join(data[3:]), '-'.join(data[:3]))
 
-    # @staticmethod
     def format_birth_date(self, string):
+        '''
+        Pomocná funkce assign_dates, soustředí se na formáty {{birth date and age|...}} / {{birth date|...}} / ...
+        '''
         string = re.sub(r"year=|month=|day=", "", string)
         data = string.split("|")
 
@@ -122,8 +125,10 @@ class EntPerson(EntCore):
         
         return "-".join(data)
     
-    # @staticmethod
     def format_other_date(self, string):
+        '''
+        Pomocná funkce assign dates, pokouší se extrahovat datumy, které nemají žádný specifický formát wikipedie. 
+        '''
         months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
         
         # either BC or AD in string
@@ -180,6 +185,9 @@ class EntPerson(EntCore):
 
     @staticmethod
     def fix_date_format(date):
+        '''
+        Pomocná funkce assign_dates, pokouší se odstranit z data všechny nepodstatné věci.
+        '''
         date = re.sub(r"{{(?:[Bb]irth-date|[Dd]eath-date)\|(.*?)}}", r"\1", date)
         date = re.sub(r"\(.*?\)|'", "", date)
         date = re.sub(r".*/.*/.*", "", date)
@@ -195,7 +203,7 @@ class EntPerson(EntCore):
     
     def assign_dates(self):
         """
-        pokusí se extrahovat datumy úmrtí a narození z infoboxů death_date a birth_date
+        Pokusí se extrahovat datumy úmrtí a narození z infoboxů death_date a birth_date.
         """
 
         keys = ("death_date", "birth_date")
@@ -365,7 +373,6 @@ class EntPerson(EntCore):
     def assign_nationality(self):
         """
         extrakce národnosti z infoboxu nationality
-        TODO: extrakce z první věty
         """
         if "nationality" in self.infobox_data and self.infobox_data["nationality"] != "":
             nationalities = []
@@ -407,7 +414,6 @@ class EntPerson(EntCore):
     def assign_gender(self):
         """
         extrakce pohlaví z infoboxu gender
-        TODO (TEST): extrakce z druhé věty
         """
         if "gender" in self.infobox_data and self.infobox_data["gender"] != "":
             gender = self.infobox_data["gender"].lower()

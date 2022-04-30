@@ -24,8 +24,12 @@ class EntCore(metaclass=ABCMeta):
     třídní atributy:
         counter     - počítadlo instanciovaných objektů z odvozených tříd
     metody:
+        serialize           - serializuje třídu k vytisknutí
+        print_error         - funkce pro určena debugging, vytiskne zprávu na stderr
         get_data            - extrahuje infobox, paragraf a další hodnoty ze stránky
         get_first_sentence  - extrahuje první větu
+        get_aliases         - extrahuje aliasy z první věty
+        get_lang_aliases    - extrahuje aliasy v cizích jazycích (formát {{lang...}})
         extract_image       - extrahuje obrázky
         get_image_path      - vrátí cesty k obrázkům Wikimedia Commons
         get_coordinates     - pokusí se vrátit zeměpisnou šířku a výšku 
@@ -55,8 +59,6 @@ class EntCore(metaclass=ABCMeta):
         self.langmap = langmap
         self.redirects = redirects
 
-        # TODO: this should be dictionary of dictionaries for multiple infoboxes
-        # that way I can also save the infobox name
         self.infobox_data = dict()
         self.infobox_name = ""
         self.categories = []
@@ -111,7 +113,7 @@ class EntCore(metaclass=ABCMeta):
                     coords_found = True
                     self.coords = line
 
-            # extract infobox / infoboxes
+            # extract infobox / infoboxes (finite state machine)
             if line.startswith("{{Infobox"):
                 self.infobox_name = line[len("{{Infobox"):].strip()
                 infobox = True
@@ -164,7 +166,6 @@ class EntCore(metaclass=ABCMeta):
 
         self.extract_image()
 
-    #@staticmethod
     def get_first_sentence(self, paragraph):
         """
         extrahuje první větu
@@ -259,7 +260,7 @@ class EntCore(metaclass=ABCMeta):
                 split = name.split(" ")
                 i = -1
                 surname = split[i]
-                while "." in surname or abs(i) == len(split):
+                while "." in surname and abs(i) != len(split):
                     i -= 1
                     surname = split[i]
                 alias += f" {surname}"
@@ -318,7 +319,6 @@ class EntCore(metaclass=ABCMeta):
         return image
 
     # returns latitude, longtitude
-    # @staticmethod
     def get_coordinates(self, format):
         """
         pokusí se vrátit zeměpisnou šířku a výšku 
@@ -361,7 +361,6 @@ class EntCore(metaclass=ABCMeta):
         return (None, None)
 
     # converts units
-    # @staticmethod
     def convert_units(self, number, unit, round_to=2):
         """
         konverze jednotek

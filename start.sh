@@ -186,7 +186,7 @@ retVal=$?
 if [ $retVal -ne 0 ]; then
     echo ""
     echo "Error while running python script"
-    exit $retVal
+    # exit $retVal
 fi
 
 # Add metrics to newly created KB

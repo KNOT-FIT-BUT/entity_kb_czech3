@@ -72,8 +72,7 @@ class WikiExtract(object):
         parser.add_argument(
             "-I",
             "--indir",
-            # default="/mnt/minerva1/nlp/corpora_datasets/monolingual/czech/wikipedia/",
-            default="./testing_data/xml/",
+            default="/mnt/minerva1/nlp/corpora_datasets/monolingual/czech/wikipedia/",
             type=str,
             help="Directory, where input files are located (applied for files withoud directory location only).",
         )
@@ -154,6 +153,9 @@ class WikiExtract(object):
             self.console_args._kb_stability = ""
 
     def get_dump_fpath(self, dump_file, dump_file_mask):
+        '''
+        Vrací cestu k souboru dumpu.
+        '''
         if dump_file is None:
             dump_file = dump_file_mask.format(
                 self.console_args.lang, self.console_args.dump
@@ -166,6 +168,9 @@ class WikiExtract(object):
         return os.path.join(self.console_args.indir, dump_file)
 
     def assign_version(self):
+        '''
+        Připraví soubor VERSION
+        '''
         str_kb_stability = ""
         if self.console_args._kb_stability:
             str_kb_stability = f"-{self.console_args._kb_stability}"
@@ -197,10 +202,9 @@ class WikiExtract(object):
     def parse_xml_dump(self):
         """
         Parsuje XML dump Wikipedie, prochází jednotlivé stránky a vyhledává entity.
-        Poznámky:
-        - založeno na: http://effbot.org/zone/element-iterparse.htm
         """
 
+        # vynechání redirectů (viz. wiki)
         redirects = dict()
         # try:
         #     with open(self.redirects_dump_fpath, "r") as f:
@@ -224,7 +228,7 @@ class WikiExtract(object):
         # except OSError:
         #     print(f'redirect file was not found - skipping...')
 
-        # https://en.wikipedia.org/wiki/List_of_ISO_639-2_codes
+        # načtení langmapy
         langmap = dict()
         try:
             with open("langmap.json", "r") as file:
@@ -246,6 +250,7 @@ class WikiExtract(object):
         all_page_cnt = 0
         ent_count = 0
 
+        # LIMIT = skript bude číst a extrahovat data po blocích o velikosti [LIMIT]
         LIMIT = 24000
 
         with open("kb", "a+", encoding="utf-8") as file:
@@ -282,6 +287,7 @@ class WikiExtract(object):
                                             curr_page_cnt = 0    
                         elif "redirect" in child.tag:
                             self.debug(f"found redirect ({all_page_cnt})\033[K", start="\r", end="", flush=True)
+                            break
 
                     root.clear()
 
@@ -293,6 +299,10 @@ class WikiExtract(object):
         self.debug(f"processed {ent_count} entities")
 
     def output(self, file, ent_titles, ent_pages, langmap, redirects):
+        '''
+        Extrahuje data z načtených stránek a zapíše do souboru kb.
+        (využívá multiprocessing)
+        '''
         if len(ent_titles):
             pool = Pool(processes=self.console_args.m)
             serialized_entities = pool.starmap(
@@ -309,6 +319,9 @@ class WikiExtract(object):
 
     @staticmethod
     def debug(string, print_time=True, end="\n", flush=False, start=""):
+        '''
+        Funkce pro vizualici procesů běžícího skriptu.
+        '''
         if print_time:
             print(f"{start}[{datetime.datetime.now().strftime('%H:%M:%S')}] {string}", end=end, flush=flush)
         else:
@@ -317,6 +330,9 @@ class WikiExtract(object):
     # filters out wikipedia special pages and date pages
     @staticmethod
     def is_entity(title):
+        '''
+        Kontroluje jestli daná stránka pojednává o entitě. Odstraní speciální stránky wikipedie a datumy.
+        '''
         # special pages
         if title.startswith(
             (
@@ -334,23 +350,20 @@ class WikiExtract(object):
             )
         ):
             return False
-        
-        # dates
-        # TODO: is this regex pattern correct? the second part is for years but can there be a title with numbers that is not a date?
-        # this is different to czech wiki e.g.: czech: 28. říjen | english: September 28
+
         if re.search("[^\W\d_]+? \d{1,2}|\d{2,4}", title):
             return False
 
         return True
 
     def process_entity(self, page_title, page_content, langmap, redirects):
+        '''
+        Najde typ entity, zavolá její funkce a vratí údaje o extrahované entitě.
+        '''
         
         self.debug(f"processing: {page_title}\033[K", start="\r", end="", flush=True)
 
         page_content = self.remove_not_improtant(page_content)
-
-        # redirects currently not working...
-        # read more on why I chose to exclude them on the wiki: https://knot.fit.vutbr.cz/wiki/index.php/Entity_kb_english5
         
         # ent_redirects = redirects[link] if link in redirects else []
         ent_redirects = []
@@ -393,19 +406,18 @@ class WikiExtract(object):
             return geo.__repr__()
 
     @staticmethod
-    def get_link(link):
-        wiki_link = link.replace(" ", "_")
+    def get_link(page):
+        '''
+        Vrátí url dokaz wikipedie dané stránky.
+        '''
+        wiki_link = page.replace(" ", "_")
         return f"https://en.wikipedia.org/wiki/{wiki_link}"
 
     def remove_not_improtant(self, page_content):
-        # odstraní referencí a HTML komentáře
+        '''
+        Odstraní referencí a HTML komentáře.
+        '''
         clean_content = page_content
-
-        # TODO: QUESTION:
-        # I'm doing this with regex and not splitting by <
-        # maybe there is more tags not covered here though
-        # but do I really need to do this for the whole page?
-        # I'm only gonna use first paragraph and category part at the end
 
         # remove comments
         clean_content = re.sub(r"<!--.*?-->", "", clean_content, flags=re.DOTALL)
@@ -421,14 +433,13 @@ class WikiExtract(object):
         clean_content = re.sub(r"<br />", " ", clean_content, flags=re.DOTALL)
         clean_content = re.sub(r"<.*?/?>", "", clean_content, flags=re.DOTALL)
 
-        # TODO: clean this up
-        # remove comments
-        #clean_content = re.sub(r"<!--.+?-->", "", clean_content, flags=re.DOTALL)
-
         return clean_content
 
     @staticmethod
     def remove_references(string, ref_pattern):
+        '''
+        Odstraní typ reference.
+        '''
         clean_content = string
         arr = []
         for m in re.finditer(ref_pattern, clean_content):
