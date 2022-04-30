@@ -76,7 +76,6 @@ class EntCountry(EntCore):
 	def assign_area(self):
 		"""
         pokusí se extrahovat rozlohu z infoboxu area_km2
-		TODO (TEST): přidat více infoboxů? (země využívající imperiální jednotky)
         """
 		names = ("area_km2", "area_total_km2")
 		for name in names:

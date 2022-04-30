@@ -173,13 +173,19 @@ EXTRACTION_ARGS+=(${MULTIPROC_PARAMS})
 # old code:
 # CMD="python3 wiki_cs_extract.py --lang ${LANG} --dump ${DUMP_VERSION} --indir \"${DUMP_PATH}\" ${EXTRACTION_ARGS[@]} 2>entities_processing.log"
 
+if [ $LANG == "en" ]; then
+    echo "GENERATING: langmap.json"
+    CMD="python3 generate_langmap.py"
+fi
+
 CMD="python3 ${LANG}/wiki_${LANG}_extract.py --lang ${LANG} --dump ${DUMP_VERSION} --indir \"${DUMP_PATH}\" ${EXTRACTION_ARGS[@]} 2>entities_processing.log"
 echo "RUNNING COMMAND: ${CMD}"
 eval $CMD
 
 retVal=$?
 if [ $retVal -ne 0 ]; then
-    echo "error while running python script"
+    echo ""
+    echo "Error while running python script"
     exit $retVal
 fi
 

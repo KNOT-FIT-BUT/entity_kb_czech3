@@ -99,7 +99,6 @@ class EntSettlement(EntCore):
 	def assign_country(self):
 		"""
         pokusí se extrahovat zemi z infoboxu subdivision_name 
-		TODO (TEST): více dat
         """
 		# subdivision_name
 		if "subdivision_name" in self.infobox_data:

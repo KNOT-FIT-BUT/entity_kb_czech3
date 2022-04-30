@@ -204,23 +204,25 @@ class WikiExtract(object):
         redirects = dict()
         # try:
         #     with open(self.redirects_dump_fpath, "r") as f:
-        #         self.debug("loading redirects")
+        #         print("loading redirects")
         #         for line in f:
-        #             line = re.sub(r"\s+", "\t", line)
+        #             self.debug(line)
         #             redirect_from, redirect_to = line.strip().split("\t")
-        #             if not redirect_to in redirects:
-        #                 redirects[redirect_to] = set()
-        #             redirects[redirect_to].add(redirect_from)
+
+        #             # https://en.wikipedia.org/wiki/Computer_accessibility				
+        #             s = redirect_to.replace("https://en.wikipedia.org/wiki/", "")
+        #             s = s[:2].lower()
+        #             if s not in redirects:
+        #                 redirects[s] = dict()
+
+        #             if redirect_to not in redirects[s]:
+        #                 redirects[s][redirect_to] = set()
+        #             redirects[s][redirect_to].add(redirect_from)
+
+        #         # print(len(redirects))
         #         self.debug("loaded redirects")
         # except OSError:
-        #     self.debug(f'redirect file "{self.redirects_dump_fpath}" was not found - skipping...')
-
-        # xml parser
-        context = CElTree.iterparse(self.pages_dump_fpath, events=("start", "end"))
-
-        # langmap?
-        it_context_langmap, it_context_pages = tee(context)
-        #event, root = next(it_context_langmap)
+        #     print(f'redirect file was not found - skipping...')
 
         # https://en.wikipedia.org/wiki/List_of_ISO_639-2_codes
         langmap = dict()
@@ -230,7 +232,12 @@ class WikiExtract(object):
                 langmap = json.load(file)
                 self.debug("loaded langmap")
         except OSError:
-            self.debug(f'langmap file "langmap.json" was not found - skipping...')
+            self.debug(f"langmap file 'langmap.json' was not found")
+            self.debug(f"please generate langmap.json (use generate_langmap.json)")
+            exit(1)
+
+        # xml parser
+        context = CElTree.iterparse(self.pages_dump_fpath, events=("start", "end"))
 
         ent_titles = []
         ent_pages = []
@@ -243,8 +250,8 @@ class WikiExtract(object):
 
         with open("kb", "a+", encoding="utf-8") as file:
             file.truncate(0)
-            event, root = next(it_context_pages)
-            for event, elem in it_context_pages:
+            event, root = next(context)
+            for event, elem in context:
                 # hledá <page> element
                 if event == "end" and "page" in elem.tag:
                     # xml -> <page> -> <title>
@@ -274,7 +281,8 @@ class WikiExtract(object):
                                             ent_pages.clear()
                                             curr_page_cnt = 0    
                         elif "redirect" in child.tag:
-                            break
+                            self.debug(f"found redirect ({all_page_cnt})\033[K", start="\r", end="", flush=True)
+
                     root.clear()
 
             if len(ent_titles):
@@ -310,7 +318,6 @@ class WikiExtract(object):
     @staticmethod
     def is_entity(title):
         # special pages
-        # TODO: add more special tags
         if title.startswith(
             (
                 "Wikipedia:",
@@ -342,6 +349,9 @@ class WikiExtract(object):
 
         page_content = self.remove_not_improtant(page_content)
 
+        # redirects currently not working...
+        # read more on why I chose to exclude them on the wiki: https://knot.fit.vutbr.cz/wiki/index.php/Entity_kb_english5
+        
         # ent_redirects = redirects[link] if link in redirects else []
         ent_redirects = []
 

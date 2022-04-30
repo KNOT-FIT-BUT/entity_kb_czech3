@@ -2,4 +2,4 @@ testing_data
 kb_en
 KB.tsv
 *.txt
-langmap.json
+entities.log

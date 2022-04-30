@@ -19,7 +19,7 @@ outputs
 **/KBstatsMetrics.all
 **/kb
 
-lang_gen.py
+**/langmap.json
 kb_real
 push.sh
 

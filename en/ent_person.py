@@ -67,41 +67,63 @@ class EntPerson(EntCore):
         self.assign_gender()
         self.assign_jobs()
 
-    @staticmethod
-    def format_death_date(string):
+    #@staticmethod
+    def format_death_date(self, string):
         string = re.sub(r" \|", "|", string)
         bad = False
         data = string.split("|")
+        
+        if len(data) < 2:
+            self.print_error(f"could not format death date [{self.link}]")
+            return ("", "")
+
         data = [d for d in data[1:] if "=" not in d and d != ""]
         for d in data:
             if re.search(r"[^0-9]", d):
                 bad = True
         if bad:
-            death = EntPerson.format_other_date(data[0])
-            birth = EntPerson.format_other_date(data[1])
+            if len(data) < 2:
+                self.print_error(f"could not format death date [{self.link}]")
+                return ("", "")
+            death = self.format_other_date(data[0])
+            birth = self.format_other_date(data[1])
             return (birth, death)
         
         for i in range(len(data)):
+            if data[i] == "":
+                self.print_error(f"could not format death date [{self.link}]")
+                return ("", "")
             data[i] = f"0{int(data[i])}" if int(data[i]) < 10 else data[i]
-        #print(f"birth {'-'.join(data[3:])}\tdeath {'-'.join(data[:3])}")
+
+        if len(data) != 6:
+            self.print_error(f"could not format death date [{self.link}]")
+            return ("", "")
+
         return ('-'.join(data[3:]), '-'.join(data[:3]))
 
-    @staticmethod
-    def format_birth_date(string):
+    # @staticmethod
+    def format_birth_date(self, string):
         string = re.sub(r"year=|month=|day=", "", string)
         data = string.split("|")
+
+        if len(data) < 2:
+            self.print_error(f"could not format birth date [{self.link}]")
+            return ("", "")
+
         data = [d.strip() for d in data[1:] if "=" not in d and d != ""]
         for d in data:
             if re.search(r"[^0-9]", d):                
-                return EntPerson.format_other_date(d)
+                return self.format_other_date(d)
         for i in range(len(data)):
+            if data[i] == "":
+                self.print_error(f"could not format birth date [{self.link}]")
+                return ("", "")
             data[i] = f"0{int(data[i])}" if int(data[i]) < 10 else data[i]
         
-        #print("-".join(data) + "\t" + self.title)
         return "-".join(data)
     
-    @staticmethod
-    def format_other_date(string):
+    # @staticmethod
+    def format_other_date(self, string):
         months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
         
         # either BC or AD in string
@@ -123,6 +145,7 @@ class EntPerson(EntCore):
                 data[i] = f"0{int(data[i])}" if int(data[i]) < 10 else str(data[i])
             #print(f"{date} {m.group(3)}-{data[0]}-{data[1]}")
             return f"{m.group(3)}-{data[0]}-{data[1]}"
+            
         m = re.search(r"([0-9]+)\s(\w+)\s(-?[0-9]+)", string)
         if m:
             data = []
@@ -152,7 +175,7 @@ class EntPerson(EntCore):
             return f"{string}-??-??"
 
         # or invalid
-        # print("error")
+        self.print_error(f"invalid date {string} [{self.link}]")
         return ""
 
     @staticmethod
@@ -191,7 +214,6 @@ class EntPerson(EntCore):
                 pattern = r"{{(?:[Dd]eath year and age|death year)\s?\|([0-9]+)\|([0-9]+).*?}}"
                 m = re.search(pattern, date)
                 if m:
-                    #print(f"birth {m.group(2)}-??-??\tdeath {m.group(1)}-??-??")
                     self.birth_date = f"{m.group(2)}-??-??"
                     self.death_date = f"{m.group(1)}-??-??"
                     return
@@ -203,7 +225,6 @@ class EntPerson(EntCore):
                     groups = []
                     for group in m.groups():
                         groups.append(f"0{int(group)}" if int(group) < 10 else group)
-                    #print(f"death {groups[0]}-{groups[1]}-{groups[2]}")
                     self.death_date = f"{groups[0]}-{groups[1]}-{groups[2]}"
                     continue
 
@@ -218,7 +239,6 @@ class EntPerson(EntCore):
                 pattern = r"{{(?:[Bb]irth year and age|birth year)\s?\|([0-9]+).*?}}"
                 m = re.search(pattern, date)
                 if m:
-                    #print(f"birth {m.group(1)}-??-??")
                     self.birth_date = f"{m.group(1)}-??-??"
                     return
 
@@ -322,8 +342,8 @@ class EntPerson(EntCore):
         if "death_place" in self.infobox_data:
             self.death_place = self.fix_place(self.infobox_data["death_place"])
     
-    @staticmethod
-    def fix_place(place):
+    # @staticmethod
+    def fix_place(self, place):
         """
         upraví místa do vyhovujícího tvaru
         """
@@ -332,14 +352,14 @@ class EntPerson(EntCore):
         if p == "":
             return p
 
-        if p[0:9].lower() == "{{nowrap|":
-            p = p[9:-2]
+        p = re.sub(r"{{nowrap\|(.*?)}}", r"\1", p)
         
         if p.startswith("{{"):
+            self.print_error(f"couldn't fix place: {place} [{self.link}]")
             return ""
         else:
-            p = re.sub(r"\[|\]|'", "", p)
-            p = re.sub(r"\|", ", ", p)
+            p = re.sub(r"\[\[.*?\|([^\|]*?)\]\]", r"\1", p)
+            p = re.sub(r"\[|\]", "", p)
         return p
         
     def assign_nationality(self):

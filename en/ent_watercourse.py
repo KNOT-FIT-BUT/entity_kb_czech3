@@ -123,7 +123,7 @@ class EntWaterCourse(EntCore):
 				if match:
 					self.streamflow = self.convert_units(match.group(1), match.group(2))
 				else:
-					self.print_error(f"{self.title}: did not match streamflow ({streamflow}) [{self.link}]")
+					self.print_error(f"did not match streamflow ({streamflow}) [{self.link}]")
 		
 		#print(f"{self.title}: streamflow empty or not found")
 		pass

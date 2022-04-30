@@ -164,7 +164,6 @@ class EntCore(metaclass=ABCMeta):
 
         self.extract_image()
 
-    # WIP first sentence / description extraction
     #@staticmethod
     def get_first_sentence(self, paragraph):
         """
@@ -226,12 +225,15 @@ class EntCore(metaclass=ABCMeta):
                         code = self.langmap[code].split("|")[0]
                     else:
                         code = "??"
-
+                
                 for s in split[1:]:
                     if "=" in s:
                         split.remove(s)
+
                 if len(split) < 2:
+                    self.print_error(f"couldn't split lang alias: {split[0]} [{self.link}]")
                     return
+
                 alias = split[1]
                 if len(split) > 2:
                     if "{" not in alias:
@@ -289,7 +291,6 @@ class EntCore(metaclass=ABCMeta):
             #print(f"{self.aliases}")
             pass
 
-    # WIP image extraction
     def extract_image(self):
         """
         extrahuje obrázky
@@ -297,7 +298,7 @@ class EntCore(metaclass=ABCMeta):
         if "image" in self.infobox_data and self.infobox_data["image"] != "":
             image = self.infobox_data["image"]
             image = self.get_image_path(image)
-            self.images += image if not self.images else " | " + image
+            self.images += image if not self.images else "|" + image
 
     @staticmethod
     def get_image_path(image):
@@ -317,11 +318,12 @@ class EntCore(metaclass=ABCMeta):
         return image
 
     # returns latitude, longtitude
-    @staticmethod
-    def get_coordinates(format):
+    # @staticmethod
+    def get_coordinates(self, format):
         """
         pokusí se vrátit zeměpisnou šířku a výšku 
         """
+
         # matching coords format with directions
         # {{Coord|59|56|N|10|41|E|type:city}}
         format = re.sub(r"\s", "", format)
@@ -351,13 +353,16 @@ class EntCore(metaclass=ABCMeta):
         if m:
             #print(f"latitude: {m.group(1)}\nlongtitude: {m.group(2)}\n")
             return (m.group(1), m.group(2))
-            
-        #print(f"\nError: coords format error ({format})")
+        
+        if re.search(r"[Cc]oords?missing", format):
+            return (None, None)
+
+        self.print_error(f"coords format no match ({format}) [{self.link}]")
         return (None, None)
 
     # converts units
-    @staticmethod
-    def convert_units(number, unit, round_to=2):
+    # @staticmethod
+    def convert_units(self, number, unit, round_to=2):
         """
         konverze jednotek
         """
@@ -377,19 +382,25 @@ class EntCore(metaclass=ABCMeta):
         FT_TO_M = 3.2808
         MI_TO_KM = 1.609344
         CUFT_TO_M3 = 0.028317
+        FT3_TO_M3 = 0.0283168466
+        L_TO_M3 = 0.001
 
-        accepted_untis = ["sqkm", "km2", "km", "m", "meters", "m3", "m3/s"]
+        accepted_untis = ["sqkm", "km2", "km²", "km", "m", "meters", "metres", "m3", "m3/s", "m³/s"]
         if unit in accepted_untis:
             return str(number if number % 1 != 0 else int(number))
 
         if unit == "sqmi":
             number = round(number * SQMI_TO_KM2, round_to)
-        elif unit == "mi":
+        elif unit in ("mi", "mile", "miles"):
             number = round(number * MI_TO_KM,round_to)
         elif unit in ("ft", "feet"):
             number = round(number / FT_TO_M, round_to)
         elif unit in ("cuft/s", "cuft"):
             number = round(number * CUFT_TO_M3,round_to)
+        elif unit == "ft3/s":
+            number = round(number * FT3_TO_M3, round_to)
+        elif unit == "l/s":
+            number = round(number * L_TO_M3, round_to)
         elif unit == "ha":
             number = round(number * HA_TO_KM2, round_to)
         elif unit in ("acres", "acre"):
@@ -399,7 +410,7 @@ class EntCore(metaclass=ABCMeta):
         elif unit == "mi2":
             number = round(number * MI2_TO_KM2, round_to)
         else:
-            EntCore.print_error(f"Error: unit conversion error ({unit})")
+            EntCore.print_error(f"Error: unit conversion error ({unit}) [{self.link}]")
             return ""
 
         return str(number if number % 1 != 0 else int(number))
