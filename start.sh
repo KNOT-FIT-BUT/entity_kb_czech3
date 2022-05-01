@@ -176,6 +176,7 @@ EXTRACTION_ARGS+=(${MULTIPROC_PARAMS})
 if [ $LANG == "en" ]; then
     echo "GENERATING: langmap.json"
     CMD="python3 generate_langmap.py"
+    eval $CMD
 fi
 
 CMD="python3 ${LANG}/wiki_${LANG}_extract.py --lang ${LANG} --dump ${DUMP_VERSION} --indir \"${DUMP_PATH}\" ${EXTRACTION_ARGS[@]} 2>entities_processing.log"
@@ -186,7 +187,7 @@ retVal=$?
 if [ $retVal -ne 0 ]; then
     echo ""
     echo "Error while running python script"
-    # exit $retVal
+    exit $retVal
 fi
 
 # Add metrics to newly created KB
@@ -196,10 +197,21 @@ then
 fi
 
 ./metrics/start.sh ${metrics_params}
-
+retVal=$?
+if [ $retVal -ne 0 ]; then
+    echo ""
+    echo "Error while metrics script"
+    exit $retVal
+fi
 
 # Convert Wikipedia KB format to Generic KB format
 python3 kbwiki2gkb.py --indir outputs --outdir outputs
+retVal=$?
+if [ $retVal -ne 0 ]; then
+    echo ""
+    echo "Error while kbwiki2gkb script"
+    exit $retVal
+fi
 
 if $DEPLOY
 then

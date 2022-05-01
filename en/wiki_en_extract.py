@@ -274,7 +274,10 @@ class WikiExtract(object):
                         elif "revision" in child.tag:
                             for grandchild in child:
                                 if "text" in grandchild.tag:
-                                    if is_entity and grandchild.text:                        
+                                    if is_entity and grandchild.text:
+                                        if re.search(r"{{[^}]*?(?:disambiguation|disambig|dab)(?:\|[^}]*?)?}}", grandchild.text, re.I):
+                                            self.debug("found disambiguation\033[K", start="\r", end="", flush=True)
+                                            break                    
                                         ent_titles.append(title)
                                         ent_pages.append(grandchild.text)
                                         curr_page_cnt += 1
@@ -345,6 +348,7 @@ class WikiExtract(object):
                 "Special:",
                 "Portal:",
                 "Module:",
+                "Draft:",
                 "List",
                 "Geography"
             )
@@ -462,5 +466,5 @@ if __name__ == "__main__":
     
     wiki_extract.parse_args()
     wiki_extract.create_head_kb()
-    wiki_extract.parse_xml_dump()
     wiki_extract.assign_version()
+    wiki_extract.parse_xml_dump()

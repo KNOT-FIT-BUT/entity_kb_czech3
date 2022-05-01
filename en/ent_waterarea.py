@@ -117,6 +117,7 @@ class EntWaterArea(EntCore):
 			return True
 
 		# lake in name but no infobox
+		# TODO: could be wrong (e.g.: Meadow Lake Airport)
 		if "lake" in title.lower() and not "lakes" in title.lower():
 			return True
 			
