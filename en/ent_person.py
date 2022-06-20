@@ -25,12 +25,12 @@ class EntPerson(EntCore):
         jobs        - zaměstnání osoby
         nationality - národnost osoby
     """
-    def __init__(self, title, prefix, link, langmap, redirects):
+    def __init__(self, title, prefix, link, langmap, redirects, debugger):
         """
         inicializuje třídu EntPerson
         """
         # vyvolání inicializátoru nadřazené třídy
-        super(EntPerson, self).__init__(title, prefix, link, langmap, redirects)
+        super(EntPerson, self).__init__(title, prefix, link, langmap, redirects, debugger)
 
         # inicializace údajů specifických pro entitu
         self.birth_date = ""
@@ -75,7 +75,7 @@ class EntPerson(EntCore):
         data = string.split("|")
         
         if len(data) < 2:
-            self.print_error(f"could not format death date [{self.link}]")
+            self.d.log_message(f"could not format death date [{self.link}]")
             return ("", "")
 
         data = [d for d in data[1:] if "=" not in d and d != ""]
@@ -84,7 +84,7 @@ class EntPerson(EntCore):
                 bad = True
         if bad:
             if len(data) < 2:
-                self.print_error(f"could not format death date [{self.link}]")
+                self.d.log_message(f"could not format death date [{self.link}]")
                 return ("", "")
             death = self.format_other_date(data[0])
             birth = self.format_other_date(data[1])
@@ -92,12 +92,12 @@ class EntPerson(EntCore):
         
         for i in range(len(data)):
             if data[i] == "":
-                self.print_error(f"could not format death date [{self.link}]")
+                self.d.log_message(f"could not format death date [{self.link}]")
                 return ("", "")
             data[i] = f"0{int(data[i])}" if int(data[i]) < 10 else data[i]
 
         if len(data) != 6:
-            self.print_error(f"could not format death date [{self.link}]")
+            self.d.log_message(f"could not format death date [{self.link}]")
             return ("", "")
 
         return ('-'.join(data[3:]), '-'.join(data[:3]))
@@ -110,7 +110,7 @@ class EntPerson(EntCore):
         data = string.split("|")
 
         if len(data) < 2:
-            self.print_error(f"could not format birth date [{self.link}]")
+            self.d.log_message(f"could not format birth date [{self.link}]")
             return ("", "")
 
         data = [d.strip() for d in data[1:] if "=" not in d and d != ""]
@@ -119,7 +119,7 @@ class EntPerson(EntCore):
                 return self.format_other_date(d)
         for i in range(len(data)):
             if data[i] == "":
-                self.print_error(f"could not format birth date [{self.link}]")
+                self.d.log_message(f"could not format birth date [{self.link}]")
                 return ("", "")
             data[i] = f"0{int(data[i])}" if int(data[i]) < 10 else data[i]
         
@@ -180,7 +180,7 @@ class EntPerson(EntCore):
             return f"{string}-??-??"
 
         # or invalid
-        self.print_error(f"invalid date {string} [{self.link}]")
+        self.d.log_message(f"invalid date {string} [{self.link}]")
         return ""
 
     @staticmethod
@@ -363,7 +363,7 @@ class EntPerson(EntCore):
         p = re.sub(r"{{nowrap\|(.*?)}}", r"\1", p)
         
         if p.startswith("{{"):
-            self.print_error(f"couldn't fix place: {place} [{self.link}]")
+            self.d.log_message(f"couldn't fix place: {place} [{self.link}]")
             return ""
         else:
             p = re.sub(r"\[\[.*?\|([^\|]*?)\]\]", r"\1", p)

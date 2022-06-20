@@ -25,6 +25,8 @@ from ent_settlement import *
 from ent_waterarea import *
 from ent_watercourse import *
 from ent_geo import *
+from ent_organization import *
+from debugger import Debugger
 
 TESTING_PATH = "./testing_data/xml/people.xml"
 LANG_MAP = {"cz": "cs"}
@@ -35,6 +37,7 @@ class WikiExtract(object):
         inicializace třídy
         """
         self.console_args = None
+        self.d = Debugger()
 
     @staticmethod
     def create_head_kb():
@@ -204,40 +207,35 @@ class WikiExtract(object):
         Parsuje XML dump Wikipedie, prochází jednotlivé stránky a vyhledává entity.
         """
 
-        # vynechání redirectů (viz. wiki)
         redirects = dict()
-        # try:
-        #     with open(self.redirects_dump_fpath, "r") as f:
-        #         print("loading redirects")
-        #         for line in f:
-        #             self.debug(line)
-        #             redirect_from, redirect_to = line.strip().split("\t")
+        try:
+            with open(self.redirects_dump_fpath, "r") as f:
+                self.d.print("loading redirects")
+                i = 0
+                for line in f:
+                    i += 1
+                    self.d.update(i)
+                    redirect_from, redirect_to = line.strip().split("\t")
 
-        #             # https://en.wikipedia.org/wiki/Computer_accessibility				
-        #             s = redirect_to.replace("https://en.wikipedia.org/wiki/", "")
-        #             s = s[:2].lower()
-        #             if s not in redirects:
-        #                 redirects[s] = dict()
+                    if redirect_to not in redirects:
+                        redirects[redirect_to] = [redirect_from]
+                    else:
+                        redirects[redirect_to].append(redirect_from)
 
-        #             if redirect_to not in redirects[s]:
-        #                 redirects[s][redirect_to] = set()
-        #             redirects[s][redirect_to].add(redirect_from)
-
-        #         # print(len(redirects))
-        #         self.debug("loaded redirects")
-        # except OSError:
-        #     print(f'redirect file was not found - skipping...')
+                self.d.print(f"loaded redirects ({i})")
+        except OSError:            
+            self.d.print("redirect file was not found - skipping...")
 
         # načtení langmapy
         langmap = dict()
         try:
             with open("langmap.json", "r") as file:
-                self.debug("loading langmap")
+                self.d.print("loading langmap")
                 langmap = json.load(file)
-                self.debug("loaded langmap")
+                self.d.print("loaded langmap")
         except OSError:
-            self.debug(f"langmap file 'langmap.json' was not found")
-            self.debug(f"please generate langmap.json (use generate_langmap.json)")
+            self.d.print(f"langmap file 'langmap.json' was not found")
+            self.d.print(f"please generate langmap.json (use generate_langmap.json)")
             exit(1)
 
         # xml parser
@@ -245,13 +243,14 @@ class WikiExtract(object):
 
         ent_titles = []
         ent_pages = []
+        ent_redirects = []
         
         curr_page_cnt = 0
         all_page_cnt = 0
         ent_count = 0
 
         # LIMIT = skript bude číst a extrahovat data po blocích o velikosti [LIMIT]
-        LIMIT = 24000
+        LIMIT = 4000
 
         with open("kb", "a+", encoding="utf-8") as file:
             file.truncate(0)
@@ -276,32 +275,39 @@ class WikiExtract(object):
                                 if "text" in grandchild.tag:
                                     if is_entity and grandchild.text:
                                         if re.search(r"{{[^}]*?(?:disambiguation|disambig|dab)(?:\|[^}]*?)?}}", grandchild.text, re.I):
-                                            self.debug("found disambiguation\033[K", start="\r", end="", flush=True)
+                                            self.d.update("found disambiguation")
                                             break                    
+
+                                        # nalezení nové entity
                                         ent_titles.append(title)
                                         ent_pages.append(grandchild.text)
+                                        link = self.get_link(title)
+                                        ent_redirects.append(redirects[link] if link in redirects else [])
+
                                         curr_page_cnt += 1
                                         all_page_cnt += 1
-                                        self.debug(f"found new page ({all_page_cnt})\033[K", start="\r", end="", flush=True)
+                                        self.d.update(f"found new page ({all_page_cnt})")
+
                                         if curr_page_cnt == LIMIT:
-                                            ent_count += self.output(file, ent_titles, ent_pages, langmap, redirects)
+                                            ent_count += self.output(file, ent_titles, ent_pages, langmap, ent_redirects)
                                             ent_titles.clear()
                                             ent_pages.clear()
+                                            ent_redirects.clear()
                                             curr_page_cnt = 0    
                         elif "redirect" in child.tag:
-                            self.debug(f"found redirect ({all_page_cnt})\033[K", start="\r", end="", flush=True)
+                            self.d.update(f"found redirect ({all_page_cnt})")
                             break
 
                     root.clear()
 
             if len(ent_titles):
-                ent_count += self.output(file, ent_titles, ent_pages, langmap, redirects)
+                ent_count += self.output(file, ent_titles, ent_pages, langmap, ent_redirects)
 
-        self.debug(f"----------------------------", False)
-        self.debug(f"parsed xml dump (number of pages: {all_page_cnt})")
-        self.debug(f"processed {ent_count} entities")
+        self.d.print("----------------------------")
+        self.d.print(f"parsed xml dump (number of pages: {all_page_cnt})")
+        self.d.print(f"processed {ent_count} entities")
 
-    def output(self, file, ent_titles, ent_pages, langmap, redirects):
+    def output(self, file, ent_titles, ent_pages, langmap, ent_redirects):
         '''
         Extrahuje data z načtených stránek a zapíše do souboru kb.
         (využívá multiprocessing)
@@ -310,26 +316,16 @@ class WikiExtract(object):
             pool = Pool(processes=self.console_args.m)
             serialized_entities = pool.starmap(
                 self.process_entity,
-                zip(ent_titles, ent_pages, repeat(langmap), repeat(redirects))                    
+                zip(ent_titles, ent_pages, repeat(langmap), ent_redirects)                    
             )
             l = list(filter(None, serialized_entities))
             file.write("\n".join(l) + "\n")
             pool.close()
             pool.join()
             count = len(l)
-            self.debug(f"processed {count} entities\033[K", start="\r")
+            self.d.print(f"processed {count} entities")
             return count
 
-    @staticmethod
-    def debug(string, print_time=True, end="\n", flush=False, start=""):
-        '''
-        Funkce pro vizualici procesů běžícího skriptu.
-        '''
-        if print_time:
-            print(f"{start}[{datetime.datetime.now().strftime('%H:%M:%S')}] {string}", end=end, flush=flush)
-        else:
-            print(f"{start}{string}", end=end, flush=flush)
-    
     # filters out wikipedia special pages and date pages
     @staticmethod
     def is_entity(title):
@@ -360,54 +356,57 @@ class WikiExtract(object):
 
         return True
 
-    def process_entity(self, page_title, page_content, langmap, redirects):
+    def process_entity(self, page_title, page_content, langmap, ent_redirects):
         '''
         Najde typ entity, zavolá její funkce a vratí údaje o extrahované entitě.
         '''
         
-        self.debug(f"processing: {page_title}\033[K", start="\r", end="", flush=True)
+        self.d.update(f"processing: {page_title}")
 
         page_content = self.remove_not_improtant(page_content)
-        
-        # ent_redirects = redirects[link] if link in redirects else []
-        ent_redirects = []
 
         if (EntPerson.is_person(page_content)):
-            person = EntPerson(page_title, "person", self.get_link(page_title), langmap, ent_redirects)
+            person = EntPerson(page_title, "person", self.get_link(page_title), langmap, ent_redirects, self.d)
             person.get_data(page_content)
             person.assign_values()
             return person.__repr__()
 
         if (EntCountry.is_country(page_content, page_title)):
-            country = EntCountry(page_title, "country", self.get_link(page_title), langmap, ent_redirects)
+            country = EntCountry(page_title, "country", self.get_link(page_title), langmap, ent_redirects, self.d)
             country.get_data(page_content)
             country.assign_values()
             return country.__repr__()
 
         if (EntSettlement.is_settlement(page_content)):
-            settlement = EntSettlement(page_title, "settlement", self.get_link(page_title), langmap, ent_redirects)
+            settlement = EntSettlement(page_title, "settlement", self.get_link(page_title), langmap, ent_redirects, self.d)
             settlement.get_data(page_content)
             settlement.assign_values()
             return settlement.__repr__()
 
         if (EntWaterCourse.is_water_course(page_content, page_title)):
-            water_course = EntWaterCourse(page_title, "watercourse", self.get_link(page_title), langmap, ent_redirects)
+            water_course = EntWaterCourse(page_title, "watercourse", self.get_link(page_title), langmap, ent_redirects, self.d)
             water_course.get_data(page_content)
             water_course.assign_values()
             return water_course.__repr__()
 
         if (EntWaterArea.is_water_area(page_content, page_title)):
-            water_area = EntWaterArea(page_title, "waterarea", self.get_link(page_title), langmap, ent_redirects)
+            water_area = EntWaterArea(page_title, "waterarea", self.get_link(page_title), langmap, ent_redirects, self.d)
             water_area.get_data(page_content)
             water_area.assign_values()
             return water_area.__repr__()
 
         is_geo, prefix = EntGeo.is_geo(page_content, page_title)
         if is_geo:
-            geo = EntGeo(page_title, f"geo:{prefix}", self.get_link(page_title), langmap, ent_redirects)
+            geo = EntGeo(page_title, f"geo:{prefix}", self.get_link(page_title), langmap, ent_redirects, self.d)
             geo.get_data(page_content)
             geo.assign_values()
             return geo.__repr__()
+
+        if (EntOrganization.is_organization(page_content, page_title)):
+            organization = EntOrganization(page_title, "organization", self.get_link(page_title), langmap, ent_redirects, self.d)
+            organization.get_data(page_content)
+            organization.assign_values()
+            return repr(organization)
 
     @staticmethod
     def get_link(page):

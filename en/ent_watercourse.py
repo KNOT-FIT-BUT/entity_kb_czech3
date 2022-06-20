@@ -25,12 +25,12 @@ class EntWaterCourse(EntCore):
 		source_loc 	- lokace pramene
 		streamflow 	- proudění
     """
-	def __init__(self, title, prefix, link, langmap, redirects):
+	def __init__(self, title, prefix, link, langmap, redirects, debugger):
 		"""
         inicializuje třídu EntWaterCourse
         """
 
-		super(EntWaterCourse, self).__init__(title, prefix, link, langmap, redirects)
+		super(EntWaterCourse, self).__init__(title, prefix, link, langmap, redirects, debugger)
 
 		self.continents = ""
 		self.latitude = ""
@@ -104,7 +104,7 @@ class EntWaterCourse(EntCore):
 					self.area = self.convert_units(number, match.group(2))
 					return
 				else:
-					self.print_error(f"{self.title}: did not match area ({area})")
+					self.d.log_message(f"{self.title}: did not match area ({area})")
 		
 		#print(f"\narea empty or not found ({self.link})")
 		pass
@@ -123,7 +123,7 @@ class EntWaterCourse(EntCore):
 				if match:
 					self.streamflow = self.convert_units(match.group(1), match.group(2))
 				else:
-					self.print_error(f"did not match streamflow ({streamflow}) [{self.link}]")
+					self.d.log_message(f"did not match streamflow ({streamflow}) [{self.link}]")
 		
 		#print(f"{self.title}: streamflow empty or not found")
 		pass

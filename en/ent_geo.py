@@ -24,12 +24,12 @@ class EntGeo(EntCore):
 		continent 		- kontinenty
 		total_height 	- výška 
 	"""
-	def __init__(self, title, prefix, link, langmap, redirects):
+	def __init__(self, title, prefix, link, langmap, redirects, debugger):
 		"""
         inicializuje třídu EntGeo
         """
 
-		super(EntGeo, self).__init__(title, prefix, link, langmap, redirects)
+		super(EntGeo, self).__init__(title, prefix, link, langmap, redirects, debugger)
 
 		self.continent = ""
 		self.latitude = ""
@@ -133,7 +133,7 @@ class EntGeo(EntCore):
 						number = float(area)
 						self.area = str(number if number % 1 != 0 else int(number))
 					except:
-						self.print_error(f"{self.title}: error while converting area to float - {area} ({self.link})")
+						self.d.log_message(f"{self.title}: error while converting area to float - {area} ({self.link})")
 						return
 				break
 

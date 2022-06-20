@@ -25,7 +25,6 @@ class EntCore(metaclass=ABCMeta):
         counter     - počítadlo instanciovaných objektů z odvozených tříd
     metody:
         serialize           - serializuje třídu k vytisknutí
-        print_error         - funkce pro určena debugging, vytiskne zprávu na stderr
         get_data            - extrahuje infobox, paragraf a další hodnoty ze stránky
         get_first_sentence  - extrahuje první větu
         get_aliases         - extrahuje aliasy z první věty
@@ -39,7 +38,7 @@ class EntCore(metaclass=ABCMeta):
     counter = 0
 
     @abstractmethod
-    def __init__(self, title, prefix, link, langmap, redirects):
+    def __init__(self, title, prefix, link, langmap, redirects, debugger):
         """
         Inicializuje třídu EntCore
         Parametry:
@@ -48,6 +47,7 @@ class EntCore(metaclass=ABCMeta):
         link    - odkaz na Wikipedii
         """
         EntCore.counter += 1
+        self.d = debugger
 
         # vygenerování hashe
         self.eid = sha224(str(EntCore.counter).encode("utf-8")).hexdigest()[:10]
@@ -72,7 +72,7 @@ class EntCore(metaclass=ABCMeta):
         """
         serializuj entitu pro výstup
         """
-        return "\t".join([
+        data = "\t".join([
             self.eid,
             self.prefix,
             self.title,
@@ -84,10 +84,8 @@ class EntCore(metaclass=ABCMeta):
             self.link,
             ent_data
         ])
-    
-    @staticmethod
-    def print_error(msg):
-        print(msg, file=sys.stderr)
+        self.d.check_empty(data, self.prefix)
+        return data
 
     def get_data(self, content):
         """
@@ -232,7 +230,7 @@ class EntCore(metaclass=ABCMeta):
                         split.remove(s)
 
                 if len(split) < 2:
-                    self.print_error(f"couldn't split lang alias: {split[0]} [{self.link}]")
+                    self.d.log_message(f"couldn't split lang alias: {split[0]} [{self.link}]")
                     return
 
                 alias = split[1]
@@ -357,7 +355,7 @@ class EntCore(metaclass=ABCMeta):
         if re.search(r"[Cc]oords?missing", format):
             return (None, None)
 
-        self.print_error(f"coords format no match ({format}) [{self.link}]")
+        self.d.log_message(f"coords format no match ({format}) [{self.link}]")
         return (None, None)
 
     # converts units
@@ -369,7 +367,7 @@ class EntCore(metaclass=ABCMeta):
         try:
             number = float(number)
         except:
-            EntCore.print_error(f"couldn't conver string to float: {number}")
+            self.d.log_message(f"couldn't conver string to float: {number}")
             return ""
         unit = unit.lower()
 
@@ -409,7 +407,7 @@ class EntCore(metaclass=ABCMeta):
         elif unit == "mi2":
             number = round(number * MI2_TO_KM2, round_to)
         else:
-            EntCore.print_error(f"Error: unit conversion error ({unit}) [{self.link}]")
+            self.d.log_message(f"Error: unit conversion error ({unit}) [{self.link}]")
             return ""
 
         return str(number if number % 1 != 0 else int(number))

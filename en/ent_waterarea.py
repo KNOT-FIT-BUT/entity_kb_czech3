@@ -22,12 +22,12 @@ class EntWaterArea(EntCore):
 		longtitude	- zeměpisná délka
 		continents 	- kontinenty
     """
-	def __init__(self, title, prefix, link, langmap, redirects):
+	def __init__(self, title, prefix, link, langmap, redirects, debugger):
 		"""
         inicializuje třídu EntWaterArea
         """
 
-		super(EntWaterArea, self).__init__(title, prefix, link, langmap, redirects)
+		super(EntWaterArea, self).__init__(title, prefix, link, langmap, redirects, debugger)
 
 		self.continents = ""
 		self.latitude = ""
