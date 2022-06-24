@@ -43,6 +43,8 @@ class EntOrganization(EntCore):
 		"""
         pokusí se extrahovat parametry z infoboxů
         """
+		# self.d.log_infobox(self.infobox_data)
+
 		self.assign_dates()
 		self.assign_location()
 		self.assign_type()
@@ -67,7 +69,7 @@ class EntOrganization(EntCore):
 
 		pattern = r"\[\[Category:.*?(?:organizations?|organized crime (?:gangs|groups)|compan(?:y|ies)).*?]]"
 		if re.search(pattern, content):
-			# print(title)
+			# print(title)			
 			return True
 			
 		return False

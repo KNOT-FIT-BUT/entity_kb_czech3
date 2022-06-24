@@ -9,6 +9,7 @@ from abc import ABCMeta, abstractmethod
 import re
 import sys
 from hashlib import md5, sha224
+import mwparserfromhell as parser
 
 class EntCore(metaclass=ABCMeta):
     """
@@ -411,3 +412,154 @@ class EntCore(metaclass=ABCMeta):
             return ""
 
         return str(number if number % 1 != 0 else int(number))
+
+    def extract_date(self, data):
+        wikicode = parser.parse(data)
+        templates = wikicode.filter_templates()
+        
+        if len(templates) > 0:
+            new_templates = []
+            for t in templates:
+                if re.search(r"date|death|birth|dda|d-da|b-da", str(t), re.I) and not re.search(r"citation|note", str(t.name), re.I):
+                    new_templates.append(t)
+
+            templates = new_templates
+
+            if len(templates) == 0:
+                string = wikicode.strip_code()
+                templates = wikicode.filter_templates()
+                for t in templates:
+                    params = t.params
+                    for p in params:
+                        string += f" {str(p.value)}"
+                return [self.parse_no_template(string.strip())]
+
+            template = templates[-1]
+
+            if "based on age" in str(template).lower():
+                # invalid template
+                # TODO: log?
+                return [""]
+            
+            params = template.params
+            date = []
+
+            # filter empty fields, mf and df
+            for p in params:
+                param = p.value.strip()			
+                if param != "" and not param.startswith("mf=") and not param.startswith("df=") and re.search(r".*?[0-9].*?", param):
+                    date.append(param)
+
+            return self.get_date(date, str(template.name))            
+        
+        return [self.parse_no_template(data[:-1])]
+
+    def get_date(self, date, name):
+        result = []
+
+        if len(date) > 3 or re.search(r".*?(?:death(?:-| )(?:date|year) and age|dda|d-da).*?", name, re.I):
+            # split dates
+            if len(date) % 2 != 0:
+                return [""]
+            result.append(self.parse_date(date[:int(len(date)/2)]))
+            result.append(self.parse_date(date[int(len(date)/2):]))
+        else:
+            result.append(self.parse_date(date))
+
+        return result
+
+    def parse_date(self, date):
+        for item in date:
+            if not item.isnumeric():
+                return self.parse_string_format(item)
+        return self.parse_num_format(date)
+
+    def parse_num_format(self, array):
+        # e.g.: ['1919', '5'] -> 1919-05-??
+        if len(array) > 3:
+            # TODO: log invalid
+            return ""
+
+        while len(array) < 3:
+            array.append("??")
+
+        for i in range(len(array)):
+            if array[i].isnumeric():
+                if int(array[i]) < 10 and len(array[i]) == 1:
+                    array[i] = f"0{array[i]}"
+        
+        return "-".join(array)
+    
+    def parse_string_format(self, string):
+        
+        months = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"]
+
+        date = []
+
+        # month first
+        match = re.search(r"^([a-z]+)[^0-9a-z]+?([0-9]+)[^0-9a-z]+?(-?[0-9]+)", string, re.I)
+        if match:
+            groups = list(match.groups())
+            if groups[0].lower() in months:			
+                groups[0] = str(months.index(groups[0].lower())+1)
+                for i in range(len(groups)):
+                    if groups[i].isnumeric():
+                        if 0 < int(groups[i]) < 10 and len(groups[i]) == 1:
+                            groups[i] = f"0{groups[i]}"
+                date.append(groups[2])
+                date.append(groups[0])
+                date.append(groups[1])
+                return "-".join(date)
+
+        # day first
+        match = re.search(r"^([0-9]+)[^\(\)]+?([a-z]+)[^\(\)]+?(-?[0-9]+)", string, re.I)
+        if match:
+            groups = list(match.groups())
+            if groups[1].lower() in months:	
+                groups[1] = str(months.index(groups[1].lower())+1)
+                for i in range(len(groups)):
+                    if groups[i].isnumeric():
+                        if 0 < int(groups[i]) < 10 and len(groups[i]) == 1:
+                            groups[i] = f"0{groups[i]}"
+                date.append(groups[2])
+                date.append(groups[1])
+                date.append(groups[0])
+                return "-".join(date)
+
+        # month and year
+        match = re.search(r"^([a-z]+).+?(-?[0-9]+)(?:\s|$)", string, re.I)
+        if match:
+            groups = list(match.groups())
+            if groups[0].lower() in months:	
+                groups[0] = str(months.index(groups[0].lower())+1)
+                if 0 < int(groups[0]) < 10 and len(groups[0]) == 1:
+                    groups[0] = f"0{groups[0]}"
+                date.append(groups[1])
+                date.append(groups[0])
+                date.append("??")
+                return "-".join(date)
+
+        # year only
+        match = re.search(r"^(-?[0-9]+)", string, re.I)
+        if match:
+            date.append(match.group(1))
+            date.append("??")
+            date.append("??")
+            return "-".join(date)
+
+        # invalid date
+        # TODO: log?
+        return ""
+
+    def parse_no_template(self, string):
+        if re.search(r"[0-9]+/[0-9]+/[0-9]+", string):
+            # invalid template
+            # TODO: log?
+            return ""
+
+        string = re.sub(r"''circa''|circa|c\.|\(.*?\)|no|AD", "", string, re.I)
+        string = re.sub(r"{{nbsp}}|&nbsp;", " ", string, re.I)
+        string = re.sub(r"([0-9]+)(?:/|–|-)[0-9]+", r"\1", string, re.I)
+        string = re.sub(r"([0-9]+)\s+BCE?|BCE?\s+([0-9]+)", r"-\1\2", string, re.I)
+
+        return self.parse_string_format(string.strip())

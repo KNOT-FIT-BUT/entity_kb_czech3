@@ -5,4 +5,5 @@ KB.tsv
 entities.log
 entities.json
 log
+out
 test.py

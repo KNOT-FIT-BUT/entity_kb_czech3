@@ -206,59 +206,34 @@ class EntPerson(EntCore):
         Pokusí se extrahovat datumy úmrtí a narození z infoboxů death_date a birth_date.
         """
 
-        keys = ("death_date", "birth_date")
-        for key in keys:
-            if key in self.infobox_data and self.infobox_data[key] != "":
-                date = self.infobox_data[key].strip()
+        if "birth_date" in self.infobox_data and self.infobox_data["birth_date"] != "":
+            date = self.infobox_data["birth_date"].strip()
+            extracted = self.extract_date(date)
+            if len(extracted) > 0:
+                self.birth_date = extracted[0]
+        
+        if "death_date" in self.infobox_data and self.infobox_data["death_date"] != "":
+            date = self.infobox_data["death_date"].strip()
+            extracted = self.extract_date(date)
+            if len(extracted) > 0:
+                if len(extracted) == 1:
+                    self.death_date = extracted[0] 
+                else:
+                    years = []
+                    for d in extracted:
+                        split = d.split("-")
+                        if len(split) >= 2:
+                            if split[0] == "":
+                                years.append(-int(split[1]))
+                            else:
+                                years.append(int(split[0]))
+                    
+                    if len(years) == 2:
+                        birth_index = 0 if years[0] < years[1] else 1
+                        death_index = 0 if birth_index == 1 else 1
 
-                # death date and age
-                pattern = r"{{((?:[Dd]eath(?:\s|-)date and age|dda|[Dd]-da).*?)}}"           
-                m = re.search(pattern, date)
-                if m:
-                    self.birth_date, self.death_date = self.format_death_date(m.group(1))
-                    return
-
-                # death year and age
-                pattern = r"{{(?:[Dd]eath year and age|death year)\s?\|([0-9]+)\|([0-9]+).*?}}"
-                m = re.search(pattern, date)
-                if m:
-                    self.birth_date = f"{m.group(2)}-??-??"
-                    self.death_date = f"{m.group(1)}-??-??"
-                    return
-
-                # death date
-                pattern = r"{{[Dd]eath date.*?\|([0-9]+)\|([0-9]+)\|([0-9]+).*?}}"
-                m = re.search(pattern, date)
-                if m:
-                    groups = []
-                    for group in m.groups():
-                        groups.append(f"0{int(group)}" if int(group) < 10 else group)
-                    self.death_date = f"{groups[0]}-{groups[1]}-{groups[2]}"
-                    continue
-
-                # birth date and age | birth date
-                pattern = r"{{((?:[Bb]irth(?:\s|-)date and age|[Bb]irth date|b-da).*?)}}"
-                m = re.search(pattern, date)
-                if m:
-                    self.birth_date = self.format_birth_date(m.group(1))
-                    return
-
-                # birth year and age
-                pattern = r"{{(?:[Bb]irth year and age|birth year)\s?\|([0-9]+).*?}}"
-                m = re.search(pattern, date)
-                if m:
-                    self.birth_date = f"{m.group(1)}-??-??"
-                    return
-
-                date = self.fix_date_format(date)
-
-                if date != "":
-                    if key == "death_date":
-                        self.death_date = self.format_other_date(date)
-                        continue
-                    else:
-                        self.birth_date = self.format_other_date(date)
-                        return
+                    self.birth_date = extracted[birth_index]
+                    self.death_date = extracted[death_index]
 
         # try to get the date from the 1st sentence
         if (self.death_date == "" or self.birth_date == "") and self.prefix != "person:fictional":
