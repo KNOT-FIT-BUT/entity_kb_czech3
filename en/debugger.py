@@ -14,6 +14,7 @@ LOG = "log"
 class Debugger:
 	def __init__(self):
 		# add debug mode on/off switch
+		self.debug_limit = None
 		with open(LOG, 'r+') as f:
 			f.truncate(0)
 

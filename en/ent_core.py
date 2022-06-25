@@ -231,7 +231,7 @@ class EntCore(metaclass=ABCMeta):
                         split.remove(s)
 
                 if len(split) < 2:
-                    self.d.log_message(f"couldn't split lang alias: {split[0]} [{self.link}]")
+                    # self.d.log_message(f"couldn't split lang alias: {split[0]} [{self.link}]")
                     return
 
                 alias = split[1]
@@ -452,7 +452,8 @@ class EntCore(metaclass=ABCMeta):
 
             return self.get_date(date, str(template.name))            
         
-        return [self.parse_no_template(data[:-1])]
+
+        return [self.parse_no_template(data)]
 
     def get_date(self, date, name):
         result = []
@@ -557,9 +558,9 @@ class EntCore(metaclass=ABCMeta):
             # TODO: log?
             return ""
 
-        string = re.sub(r"''circa''|circa|c\.|\(.*?\)|no|AD", "", string, re.I)
+        string = re.sub(r"''circa''|circa|c\.|\(.*?age.*?\)|no|AD", "", string, re.I)
         string = re.sub(r"{{nbsp}}|&nbsp;", " ", string, re.I)
-        string = re.sub(r"([0-9]+)(?:/|–|-)[0-9]+", r"\1", string, re.I)
+        string = re.sub(r"([0-9]+)(?:\/|–|-)[0-9]+", r"\1", string, re.I)
         string = re.sub(r"([0-9]+)\s+BCE?|BCE?\s+([0-9]+)", r"-\1\2", string, re.I)
 
         return self.parse_string_format(string.strip())

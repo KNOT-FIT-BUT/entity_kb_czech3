@@ -26,6 +26,7 @@ from ent_waterarea import *
 from ent_watercourse import *
 from ent_geo import *
 from ent_organization import *
+from ent_event import *
 from debugger import Debugger
 
 TESTING_PATH = "./testing_data/xml/people.xml"
@@ -59,8 +60,8 @@ class WikiExtract(object):
             "<geo:island>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\t{m}CONTINENT\tLATITUDE\tLONGITUDE\tAREA\tPOPULATION\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
             "<geo:peninsula>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tLATITUDE\tLONGITUDE\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
             "<geo:continent>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tLATITUDE\tLONGITUDE\tAREA\tPOPULATION\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
-            # <organisation>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tFOUNDED\tCANCELLED\tORGANIZATION TYPE\tLOCATION\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
-            # "<event>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tSTART\tEND\tLOCATION\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n"
+            "<organisation>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tFOUNDED\tCANCELLED\tORGANIZATION TYPE\tLOCATION\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+            "<event>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tSTART\tEND\tLOCATION\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n"
         ]
 
         with open("HEAD-KB", "w", encoding="utf-8") as file:
@@ -290,6 +291,11 @@ class WikiExtract(object):
 
                                         if curr_page_cnt == LIMIT:
                                             ent_count += self.output(file, ent_titles, ent_pages, langmap, ent_redirects)
+                                            if self.d.debug_limit is not None and ent_count >= self.d.debug_limit:
+                                                self.d.print("----------------------------")
+                                                self.d.print(f"debug limit hit (number of pages: {all_page_cnt})")
+                                                self.d.print(f"processed {ent_count} entities")
+                                                return
                                             ent_titles.clear()
                                             ent_pages.clear()
                                             ent_redirects.clear()
@@ -351,9 +357,6 @@ class WikiExtract(object):
         ):
             return False
 
-        if re.search("[^\W\d_]+? \d{1,2}|\d{2,4}", title):
-            return False
-
         return True
 
     def process_entity(self, page_title, page_content, langmap, ent_redirects):
@@ -407,6 +410,12 @@ class WikiExtract(object):
             organization.get_data(page_content)
             organization.assign_values()
             return repr(organization)
+
+        if (EntEvent.is_event(page_content, page_title)):
+            event = EntEvent(page_title, "event", self.get_link(page_title), langmap, ent_redirects, self.d)
+            event.get_data(page_content)
+            event.assign_values()
+            return repr(event)
 
     @staticmethod
     def get_link(page):

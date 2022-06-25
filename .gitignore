@@ -23,4 +23,5 @@ outputs
 kb_real
 push.sh
 metrics/bad_lines.log
+log
 

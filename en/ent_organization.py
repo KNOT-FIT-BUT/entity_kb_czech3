@@ -43,20 +43,107 @@ class EntOrganization(EntCore):
 		"""
         pokusí se extrahovat parametry z infoboxů
         """
-		# self.d.log_infobox(self.infobox_data)
 
 		self.assign_dates()
 		self.assign_location()
 		self.assign_type()
 
 	def assign_dates(self):
-		pass
+		
+		keys = ["formation", "foundation", "founded", "fouded_date", "established"]
+
+		for key in keys:
+			if key in self.infobox_data and self.infobox_data[key] != "":
+				data = self.infobox_data[key]
+				date = self.extract_date(data)
+				if len(date) >= 1:
+					self.founded = date[0]
+					break
+
+		keys = ["defunct", "banned", "dissolved"]
+		for key in keys:
+			if key in self.infobox_data and self.infobox_data[key] != "":
+				data = self.infobox_data[key]
+				date = self.extract_date(data)
+				if len(date) >= 1:
+					self.cancelled = date[0]
+					break
+
+		keys = ["active", "dates"]
+		for key in keys:
+			if key in self.infobox_data and self.infobox_data[key] != "":
+				data = self.infobox_data[key]
+				splitter = '-'
+				if '–' in data:
+					splitter = '–'
+				data = data.split(splitter)
+				if len(data) == 2:
+					date = self.extract_date(data[0])
+					if self.founded == "":
+						self.founded = date[0]
+					date = self.extract_date(data[1])
+					if self.cancelled == "":
+						self.cancelled = date[0]
+					break
 
 	def assign_location(self):
-		pass
+		
+		location = ""
+		country = ""
+		city = ""
+
+		keys = ["location", "headquarters", "hq_location", "area"]
+		for key in keys:
+			if key in self.infobox_data and self.infobox_data[key] != "":
+				data = self.infobox_data[key]
+				data = self.remove_templates(data)
+				location = data
+				break
+		
+		keys = ["location_country", "country", "hq_location_country"]
+		for key in keys:
+			if key in self.infobox_data and self.infobox_data[key] != "":
+				data = self.infobox_data[key]
+				data = self.remove_templates(data)
+				country = data
+				break
+
+		keys = ["location_city", "hq_location_city"]
+		for key in keys:
+			if key in self.infobox_data and self.infobox_data[key] != "":
+				data = self.infobox_data[key]
+				data = self.remove_templates(data)
+				city = data
+				break
+
+		if city != "" and country != "":
+			self.location = f"{city}, {country}"
+		else:
+			if location != "":
+				self.location = location
+			elif country != "":
+				self.location = country
+			else:
+				self.location = city
+
+	@staticmethod
+	def remove_templates(data):
+		data = re.sub(r"\{\{.*?\}\}", "", data)
+		data = re.sub(r"\[\[.*?\|([^\|]*?)\]\]", r"\1", data)
+		data = re.sub(r"\[|\]|'|\(\)", "", data)
+		return data
 
 	def assign_type(self):
-		pass
+		if "type" in self.infobox_data and self.infobox_data["type"] != "":
+			data = self.infobox_data["type"]
+			data = self.remove_templates(data)
+			self.type = data
+			return
+
+		if self.infobox_name != "":
+			if self.infobox_name.lower() != "organization":
+				self.type = self.infobox_name
+
 
 	@staticmethod
 	def is_organization(content, title):
