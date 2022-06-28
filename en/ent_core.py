@@ -470,6 +470,10 @@ class EntCore(metaclass=ABCMeta):
         return result
 
     def parse_date(self, date):
+        
+        if len(date) < 1:
+            return ""
+        
         for item in date:
             if not item.isnumeric():
                 return self.parse_string_format(item)
@@ -513,7 +517,7 @@ class EntCore(metaclass=ABCMeta):
                 return "-".join(date)
 
         # day first
-        match = re.search(r"^([0-9]+)[^\(\)]+?([a-z]+)[^\(\)]+?(-?[0-9]+)", string, re.I)
+        match = re.search(r"^([0-9]+)[^\(\)0-9]+?([a-z]+)[^\(\)]+?(-?[0-9]+)", string, re.I)
         if match:
             groups = list(match.groups())
             if groups[1].lower() in months:	
@@ -541,7 +545,7 @@ class EntCore(metaclass=ABCMeta):
                 return "-".join(date)
 
         # year only
-        match = re.search(r"^(-?[0-9]+)", string, re.I)
+        match = re.search(r"^(-?[0-9]+)(?:[^,0-9]|$)", string, re.I)
         if match:
             date.append(match.group(1))
             date.append("??")
