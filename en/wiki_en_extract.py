@@ -19,6 +19,9 @@ import json
 import datetime
 import sys
 
+import mwparserfromhell as parser
+from collections import Counter
+
 from ent_person import *
 from ent_country import *
 from ent_settlement import *
@@ -208,6 +211,7 @@ class WikiExtract(object):
         Parsuje XML dump Wikipedie, prochází jednotlivé stránky a vyhledává entity.
         """
 
+        # redirects
         redirects = dict()
         try:
             with open(self.redirects_dump_fpath, "r") as f:
@@ -239,6 +243,15 @@ class WikiExtract(object):
             self.d.print(f"please generate langmap.json (use generate_langmap.json)")
             exit(1)
 
+        # patterns for entity recognition
+        patterns = dict()
+        try:
+            with open("identification.json", "r") as file:
+                patterns = json.load(file)
+        except OSError:
+            self.d.print("entity identification patterns were not found - exiting...")
+            exit(1)
+
         # xml parser
         context = CElTree.iterparse(self.pages_dump_fpath, events=("start", "end"))
 
@@ -267,7 +280,7 @@ class WikiExtract(object):
                     for child in elem:
                         # získá title stránky
                         if "title" in child.tag:
-                            is_entity = self.is_entity(child.text)
+                            is_entity = self.is_entity(child.text.lower())
                             if is_entity:
                                 title = child.text
                         # získá text stránky
@@ -290,7 +303,7 @@ class WikiExtract(object):
                                         self.d.update(f"found new page ({all_page_cnt})")
 
                                         if curr_page_cnt == LIMIT:
-                                            ent_count += self.output(file, ent_titles, ent_pages, langmap, ent_redirects)
+                                            ent_count += self.output(file, ent_titles, ent_pages, langmap, ent_redirects, patterns)
                                             if self.d.debug_limit is not None and ent_count >= self.d.debug_limit:
                                                 self.d.print("----------------------------")
                                                 self.d.print(f"debug limit hit (number of pages: {all_page_cnt})")
@@ -307,13 +320,13 @@ class WikiExtract(object):
                     root.clear()
 
             if len(ent_titles):
-                ent_count += self.output(file, ent_titles, ent_pages, langmap, ent_redirects)
+                ent_count += self.output(file, ent_titles, ent_pages, langmap, ent_redirects, patterns)
 
         self.d.print("----------------------------")
         self.d.print(f"parsed xml dump (number of pages: {all_page_cnt})")
         self.d.print(f"processed {ent_count} entities")
 
-    def output(self, file, ent_titles, ent_pages, langmap, ent_redirects):
+    def output(self, file, ent_titles, ent_pages, langmap, ent_redirects, patterns):
         '''
         Extrahuje data z načtených stránek a zapíše do souboru kb.
         (využívá multiprocessing)
@@ -322,7 +335,7 @@ class WikiExtract(object):
             pool = Pool(processes=self.console_args.m)
             serialized_entities = pool.starmap(
                 self.process_entity,
-                zip(ent_titles, ent_pages, repeat(langmap), ent_redirects)                    
+                zip(ent_titles, ent_pages, repeat(langmap), ent_redirects, repeat(patterns))                    
             )
             l = list(filter(None, serialized_entities))
             file.write("\n".join(l) + "\n")
@@ -341,81 +354,172 @@ class WikiExtract(object):
         # special pages
         if title.startswith(
             (
-                "Wikipedia:",
-                "File",
-                "MediaWiki:",
-                "Template:",
-                "Help:",
-                "Category:",
-                "Special:",
-                "Portal:",
-                "Module:",
-                "Draft:",
-                "List",
-                "Geography"
+                "wikipedia:",
+                "file",
+                "mediawiki:",
+                "template:",
+                "help:",
+                "category:",
+                "special:",
+                "portal:",
+                "module:",
+                "draft:",
+                "list of",
+                "geography of",
+                "history of",
+                "economy of",
+                "politics of",
+                "culture of",
+                "bibliography of",
+                "outline of",
+                "music of",
+                "flag of",
+                "index of",
+                "timeline of"
             )
         ):
             return False
 
+        # TODO: also exclude dates
+
         return True
 
-    def process_entity(self, page_title, page_content, langmap, ent_redirects):
-        '''
-        Najde typ entity, zavolá její funkce a vratí údaje o extrahované entitě.
-        '''
+    # TODO: remove this later - old code
+    #     is_geo, prefix = EntGeo.is_geo(page_content, page_title)
+    #     if is_geo:
+    #         geo = EntGeo(page_title, f"geo:{prefix}", self.get_link(page_title), langmap, ent_redirects, self.d)
+    #         geo.get_data(page_content)
+    #         geo.assign_values()
+    #         return geo.__repr__()
+
+    def process_entity(self, page_title, page_content, langmap, ent_redirects, patterns):
         
-        self.d.update(f"processing: {page_title}")
+        self.d.update(f"processing {page_title}")
+        
+        extracted = self.extract_entity_data(page_content)
+        identification = self.identify_entity(page_title, extracted, patterns).most_common()
 
-        page_content = self.remove_not_improtant(page_content)
+        count = 0
+        for _, value in identification:
+            count += value
 
-        if (EntPerson.is_person(page_content)):
-            person = EntPerson(page_title, "person", self.get_link(page_title), langmap, ent_redirects, self.d)
-            person.get_data(page_content)
-            person.assign_values()
-            return person.__repr__()
+        entities = {
+            "person":       EntPerson,
+            "country":      EntCountry,
+            "settlement":   EntSettlement,
+            "waterarea":    EntWaterArea,
+            "watercourse":  EntWaterCourse,
+            # "geo":          EntGeo,
+            "organization": EntOrganization,
+            "event":        EntEvent
+        }
 
-        if (EntCountry.is_country(page_content, page_title)):
-            country = EntCountry(page_title, "country", self.get_link(page_title), langmap, ent_redirects, self.d)
-            country.get_data(page_content)
-            country.assign_values()
-            return country.__repr__()
+        if count != 0:
+            key = identification[0][0]
+            if key in entities:
+                entity = entities[key](page_title, key, self.get_link(page_title), extracted, langmap, ent_redirects, self.d)
+                entity.assign_values()
+                return repr(entity)
 
-        if (EntSettlement.is_settlement(page_content)):
-            settlement = EntSettlement(page_title, "settlement", self.get_link(page_title), langmap, ent_redirects, self.d)
-            settlement.get_data(page_content)
-            settlement.assign_values()
-            return settlement.__repr__()
+        # TODO: log unidentified
+        return None
 
-        if (EntWaterCourse.is_water_course(page_content, page_title)):
-            water_course = EntWaterCourse(page_title, "watercourse", self.get_link(page_title), langmap, ent_redirects, self.d)
-            water_course.get_data(page_content)
-            water_course.assign_values()
-            return water_course.__repr__()
+    def extract_entity_data(self, content):
+        content = self.remove_not_improtant(content)
 
-        if (EntWaterArea.is_water_area(page_content, page_title)):
-            water_area = EntWaterArea(page_title, "waterarea", self.get_link(page_title), langmap, ent_redirects, self.d)
-            water_area.get_data(page_content)
-            water_area.assign_values()
-            return water_area.__repr__()
+        result = {
+            "found": False,
+            "name": "",
+            "data": dict(),
+            "paragraph": "",
+            "categories": []
+        }
 
-        is_geo, prefix = EntGeo.is_geo(page_content, page_title)
-        if is_geo:
-            geo = EntGeo(page_title, f"geo:{prefix}", self.get_link(page_title), langmap, ent_redirects, self.d)
-            geo.get_data(page_content)
-            geo.assign_values()
-            return geo.__repr__()
+        wikicode = parser.parse(content)
+        templates = wikicode.filter_templates()
 
-        if (EntOrganization.is_organization(page_content, page_title)):
-            organization = EntOrganization(page_title, "organization", self.get_link(page_title), langmap, ent_redirects, self.d)
-            organization.get_data(page_content)
-            organization.assign_values()
-            return repr(organization)
+        infobox = None
 
-        if (EntEvent.is_event(page_content, page_title)):
-            event = EntEvent(page_title, "event", self.get_link(page_title), langmap, ent_redirects, self.d)
-            event.get_data(page_content)
-            event.assign_values()
-            return repr(event)
+        # look for infobox
+        for t in templates:
+            name = t.name.lower().strip()
+            if name.startswith("infobox"):
+                infobox = t
+                name = name.split()
+                name.pop(0)
+                name = " ".join(name)
+                result["found"] = True
+                result["name"] = name
+                break
+
+        # extract infobox
+        if result["found"]:
+            for p in infobox.params:
+                field = p.strip()
+                field = [item.strip() for item in field.split("=")]
+                key = field.pop(0).lower()
+                value = "=".join(field)
+                result["data"][key] = value
+
+        # extract first paragraph
+        sections = wikicode.get_sections()
+        if len(sections):
+            section = sections[0]
+            templates = section.filter_templates()
+            
+            for t in templates:
+                if t.name.lower().startswith("infobox"):
+                    section.remove(t)
+                    break
+            
+            split = [s for s in section.strip().split("\n") if s != ""]
+            for s in split:
+                if s.startswith("'''") or s.startswith("The '''"):
+                    result["paragraph"] = s
+                    break
+
+        # extract categories
+        lines = content.splitlines()
+        for line in lines:
+            if line.startswith("[[Category:"):
+                result["categories"].append(line[11:-2].strip())
+        
+        return result
+
+    @staticmethod
+    def identify_entity(title, extracted, patterns):
+        counter = Counter({key: 0 for key in patterns.keys()})
+
+        # categories
+        for c in extracted["categories"]:
+            for entity in patterns.keys():
+                for p in patterns[entity]["categories"]:
+                    if re.search(p, c, re.I):
+                        # print("matched category")
+                        counter[entity] += 1
+
+        # infobox names
+        for entity in patterns.keys():
+            for p in patterns[entity]["names"]:
+                if re.search(p, extracted["name"], re.I):
+                    # print("matched name")
+                    counter[entity] += 1
+
+        # titles
+        for entity in patterns.keys():
+            for p in patterns[entity]["titles"]:
+                if re.search(p, title, re.I):
+                    # print("matched title")
+                    counter[entity] += 1
+
+        # infobox fields
+        for entity in patterns.keys():
+            for field in patterns[entity]["fields"]:
+                if field in extracted["data"]:
+                    # print("matched field")
+                    counter[entity] += 1
+
+        return counter
 
     @staticmethod
     def get_link(page):

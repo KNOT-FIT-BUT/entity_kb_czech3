@@ -21,12 +21,12 @@ class EntOrganization(EntCore):
 		location	- lokace
 		type 		- typ organizace
     """
-	def __init__(self, title, prefix, link, langmap, redirects, debugger):
+	def __init__(self, title, prefix, link, data, langmap, redirects, debugger):
 		"""
         inicializuje třídu EntOrganization
         """
 
-		super(EntOrganization, self).__init__(title, prefix, link, langmap, redirects, debugger)
+		super(EntOrganization, self).__init__(title, prefix, link, data, langmap, redirects, debugger)
 
 		self.founded = ""
 		self.cancelled = ""
@@ -143,20 +143,3 @@ class EntOrganization(EntCore):
 		if self.infobox_name != "":
 			if self.infobox_name.lower() != "organization":
 				self.type = self.infobox_name
-
-
-	@staticmethod
-	def is_organization(content, title):
-		"""
-        na základě obsahu stránky určuje, zda stránka pojednává o organizaci, či nikoliv
-        parametry:
-        content - obsah stránky
-        návratové hodnoty: True / False
-        """
-
-		pattern = r"\[\[Category:.*?(?:organizations?|organized crime (?:gangs|groups)|compan(?:y|ies)).*?]]"
-		if re.search(pattern, content):
-			# print(title)			
-			return True
-			
-		return False

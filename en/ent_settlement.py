@@ -23,11 +23,11 @@ class EntSettlement(EntCore):
 		longtitude	- zeměpisná délka
 		country 	- země
     """
-	def __init__(self, title, prefix, link, langmap, redirects, debugger):
+	def __init__(self, title, prefix, link, data, langmap, redirects, debugger):
 		"""
         inicializuje třídu EntSettlement
         """
-		super(EntSettlement, self).__init__(title, prefix, link, langmap, redirects, debugger)
+		super(EntSettlement, self).__init__(title, prefix, link, data, langmap, redirects, debugger)
 
 		self.area = ""
 		self.population = ""
@@ -112,24 +112,3 @@ class EntSettlement(EntCore):
 		# else: 
 		# 	print(f"{self.title}: country not found")	
 		pass
-
-	@staticmethod
-	def is_settlement(content):
-		"""
-        na základě obsahu stránky určuje, zda stránka pojednává o sídle, či nikoliv
-        parametry:
-        content - obsah stránky
-        návratové hodnoty: True / False
-        """
-		
-		# infobox name = settlement
-		pattern = r"{{infobox settlement"
-		if re.search(pattern, content, re.I):
-			return True
-
-		# categories
-		pattern = r"\[\[Category:\s?(?:cities|towns|villages|.*?populated\splaces).*?\]\]"
-		if re.search(pattern, content, re.I):
-			return True
-			
-		return False

@@ -22,12 +22,12 @@ class EntCountry(EntCore):
 		latitude	- zeměpisná šířka
 		longtitude	- zeměpisná délka
     """
-	def __init__(self, title, prefix, link, langmap, redirects, debugger):
+	def __init__(self, title, prefix, link, data, langmap, redirects, debugger):
 		"""
         inicializuje třídu EntCountry
         """
 
-		super(EntCountry, self).__init__(title, prefix, link, langmap, redirects, debugger)
+		super(EntCountry, self).__init__(title, prefix, link, data, langmap, redirects, debugger)
 
 		self.area = ""
 		self.population = ""
@@ -117,43 +117,3 @@ class EntCountry(EntCore):
 		# if self.prefix != "country:former":
 		# 	print(f"\n{self.title}: population not found ({self.link})")
 		pass
-
-	@staticmethod
-	def is_country(content, title):
-		"""
-        na základě obsahu stránky určuje, zda stránka pojednává o zemi, či nikoliv
-        parametry:
-        content - obsah stránky
-        návratové hodnoty: True / False
-        """
-
-		# check title
-		bad_pages = ["history", "geography", "list"]
-		for page in bad_pages:
-			if page in title.lower():
-				return False
-
-		# check categories
-		pattern = r"\[\[Category:Countries\s+in\s+(?:Europe|Africa|Asia|Australia|Oceania|(?:South|North)\s+America)\]\]"
-		if re.search(pattern, content):
-			return True
-		
-		pattern = r"\[\[Category:Member\s+states\s+of\s+(?:the\sUnited\sNations|the\sCommonwealth\sof\sNations|the\sEuropean\sUnion|NATO)\]\]"
-		if re.search(pattern, content):
-			return True
-
-		pattern = r"\[\[Category:States\s+(?:of\sthe\sUnited\sStates|with\slimited\srecognition)\]\]"	
-		if re.search(pattern, content):
-			return True
-
-		pattern = r"\[\[Category:States\s+(?:of\sthe\sUnited\sStates|with\slimited\srecognition)\]\]"
-		if re.search(pattern, content):
-			return True
-
-		# TODO: categories or infobox?
-		#pattern = r"{{Infobox former country"
-		pattern = r"\[\[Category:.*?former.*?countries.*?\]\]"
-		if re.search(pattern, content, re.I):
-			return True
-			
-		return False

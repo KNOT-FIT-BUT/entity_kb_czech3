@@ -21,12 +21,12 @@ class EntEvent(EntCore):
 		locations	- lokace
 		type 		- typ události
     """
-	def __init__(self, title, prefix, link, langmap, redirects, debugger):
+	def __init__(self, title, prefix, link, data, langmap, redirects, debugger):
 		"""
         inicializuje třídu EntEvent
         """
 
-		super(EntEvent, self).__init__(title, prefix, link, langmap, redirects, debugger)
+		super(EntEvent, self).__init__(title, prefix, link, data, langmap, redirects, debugger)
 
 		self.start_date = ""
 		self.end_date = ""
@@ -197,21 +197,3 @@ class EntEvent(EntCore):
 		data = re.sub(r"\[|\]|'|\(\)", "", data)
 		return data
 
-
-
-	@staticmethod
-	def is_event(content, title):
-		"""
-        na základě obsahu stránky určuje, zda stránka pojednává o události, či nikoliv
-        parametry:
-        content - obsah stránky
-        návratové hodnoty: True / False
-        """
-
-		# TODO: better recognition - some entities have "event" in their categories but aren't actual events and vice versa
-		pattern = r"\[\[Category:.*?event.*?]]"
-		if re.search(pattern, content):
-			# print(title)			
-			return True
-			
-		return False

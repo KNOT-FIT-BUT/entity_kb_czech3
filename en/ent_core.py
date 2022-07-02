@@ -36,10 +36,11 @@ class EntCore(metaclass=ABCMeta):
         convert_units       - konverze jednotek
     """
 
+    # FIXME: this is a bad idea because of multiprocessing 
     counter = 0
 
     @abstractmethod
-    def __init__(self, title, prefix, link, langmap, redirects, debugger):
+    def __init__(self, title, prefix, link, data, langmap, redirects, debugger):
         """
         Inicializuje třídu EntCore
         Parametry:
@@ -60,14 +61,20 @@ class EntCore(metaclass=ABCMeta):
         self.langmap = langmap
         self.redirects = redirects
 
-        self.infobox_data = dict()
-        self.infobox_name = ""
-        self.categories = []
-        self.first_paragraph = ""
+        self.infobox_data = data["data"]
+        self.infobox_name = data["name"]
+        self.categories = data["categories"]
+        self.first_paragraph = data["paragraph"]
         self.first_sentence = ""
         self.description = ""
         self.coords = ""
         self.aliases = []
+
+        if (self.first_paragraph):
+            self.get_first_sentence(self.first_paragraph)
+            self.get_aliases()
+
+        self.extract_image()
     
     def serialize(self, ent_data):
         """
@@ -87,83 +94,6 @@ class EntCore(metaclass=ABCMeta):
         ])
         self.d.check_empty(data, self.prefix)
         return data
-
-    def get_data(self, content):
-        """
-        extrahuje infobox, paragraf a další hodnoty ze stránky
-        """
-        lines = content.splitlines()
-        
-        infobox = False
-        indentation = 0
-        level = 0
-        key = ""
-        value = ""
-
-        paragraph_bounds = False
-        coords_found = False
-
-        # TODO: optimize this
-        for line in lines:
-            
-            if coords_found == False:
-                pattern = r"^{{[Cc]oord.*?}}$"
-                if re.search(pattern, line):
-                    coords_found = True
-                    self.coords = line
-
-            # extract infobox / infoboxes (finite state machine)
-            if line.startswith("{{Infobox"):
-                self.infobox_name = line[len("{{Infobox"):].strip()
-                infobox = True
-            elif infobox == True:
-                line = line.strip()
-                for i in range(len(line)):
-                    if level == 0:
-                        if line[i] == "|":
-                            level = 1
-                    elif level == 1:
-                        if line[i] == "=":
-                            level = 2
-                        else:
-                            key += line[i]
-                    elif level == 2:
-                        
-                        if line[i] == "{":
-                            indentation += 1
-                        elif line[i] == "}":
-                            indentation -= 1
-                            
-                        if line[i] == "|" and indentation == 0 and i == 0:
-                            self.infobox_data[key.strip()] = value.strip()
-                            key = ""
-                            value = ""
-                            level = 1
-                        elif indentation < 0:
-                            self.infobox_data[key.strip()] = value.strip()
-                            infobox = False
-                            break
-                        else:
-                            value += line[i]         
-
-            # extract first paragraph
-            if (line.startswith("'''") or line.startswith("The '''")) and not self.first_paragraph and not infobox:
-                paragraph_bounds = True
-                self.first_paragraph += line
-            elif line.startswith("==") and paragraph_bounds == True:
-                paragraph_bounds = False
-            elif paragraph_bounds == True:
-                self.first_paragraph += line
-            
-            # extract categories
-            if line.startswith("[[Category:"):
-                self.categories.append(line[11:-2].strip())
-        
-        if (self.first_paragraph):
-            self.get_first_sentence(self.first_paragraph)
-            self.get_aliases()
-
-        self.extract_image()
 
     def get_first_sentence(self, paragraph):
         """

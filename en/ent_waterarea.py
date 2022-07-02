@@ -22,12 +22,12 @@ class EntWaterArea(EntCore):
 		longtitude	- zeměpisná délka
 		continents 	- kontinenty
     """
-	def __init__(self, title, prefix, link, langmap, redirects, debugger):
+	def __init__(self, title, prefix, link, data, langmap, redirects, debugger):
 		"""
         inicializuje třídu EntWaterArea
         """
 
-		super(EntWaterArea, self).__init__(title, prefix, link, langmap, redirects, debugger)
+		super(EntWaterArea, self).__init__(title, prefix, link, data, langmap, redirects, debugger)
 
 		self.continents = ""
 		self.latitude = ""
@@ -102,23 +102,3 @@ class EntWaterArea(EntCore):
 
 		#print(f"{self.title}: did not find location")
 		pass
-
-	@staticmethod
-	def is_water_area(content, title):
-		"""
-        na základě obsahu stránky určuje, zda stránka pojednává o vodní ploše, či nikoliv
-        parametry:
-        content - obsah stránky
-        návratové hodnoty: True / False
-        """
-
-		pattern = r"{{[Ii]nfobox (?:body\sof\swater|sea)"
-		if re.search(pattern, content):
-			return True
-
-		# lake in name but no infobox
-		# TODO: could be wrong (e.g.: Meadow Lake Airport)
-		if "lake" in title.lower() and not "lakes" in title.lower():
-			return True
-			
-		return False

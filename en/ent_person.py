@@ -25,12 +25,12 @@ class EntPerson(EntCore):
         jobs        - zaměstnání osoby
         nationality - národnost osoby
     """
-    def __init__(self, title, prefix, link, langmap, redirects, debugger):
+    def __init__(self, title, prefix, link, data, langmap, redirects, debugger):
         """
         inicializuje třídu EntPerson
         """
         # vyvolání inicializátoru nadřazené třídy
-        super(EntPerson, self).__init__(title, prefix, link, langmap, redirects, debugger)
+        super(EntPerson, self).__init__(title, prefix, link, data, langmap, redirects, debugger)
 
         # inicializace údajů specifických pro entitu
         self.birth_date = ""
@@ -59,6 +59,9 @@ class EntPerson(EntCore):
                 if "fictional" in c.lower():
                     self.prefix += ":fictional"
                     break
+        
+        if self.prefix != "person:fictional":
+            self.d.log_categories(self.categories)
 
         self.assign_dates()
         self.assign_places()
@@ -126,7 +129,7 @@ class EntPerson(EntCore):
         p = re.sub(r"{{nowrap\|(.*?)}}", r"\1", p)
         
         if p.startswith("{{"):
-            self.d.log_message(f"couldn't fix place: {place} [{self.link}]")
+            # self.d.log_message(f"couldn't fix place: {place} [{self.link}]")
             return ""
         else:
             p = re.sub(r"\[\[.*?\|([^\|]*?)\]\]", r"\1", p)
@@ -232,32 +235,5 @@ class EntPerson(EntCore):
             occupation = tmp
             
             self.jobs = "|".join(occupation)
-
-    @staticmethod
-    def is_person(content):
-        """
-        na základě obsahu stránky určuje, zda stránka pojednává o osobě, či nikoliv
-        parametry:
-        content - obsah stránky
-        návratové hodnoty: True / False
-        """
-
-        # TODO: další možné problematické skupiny, které zatím nejsou řešeny
-        # transgender
-
-        # birth or births
-        if (re.search(r"\[\[Category:.*?\bbirths?\b.*?\]\]", content, re.I)):
-            return True
-        # death or deaths
-        if (re.search(r"\[\[Category:.*?\bdeaths?\b.*?\]\]", content, re.I)):
-            return True
-        # men or women
-        if (re.search(r"\[\[Category:.*?\b(wo)?men\b.*?\]\]", content, re.I)):
-            return True
-        # characters
-        if (re.search(r"\[\[Category:.*?\bcharacters\b.*?\]\]", content, re.I)):
-            return True
-
-        return False
 
         

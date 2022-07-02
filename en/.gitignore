@@ -3,7 +3,8 @@ kb_en
 KB.tsv
 *.txt
 entities.log
-entities.json
 log
 out
 test.py
+
+*.out

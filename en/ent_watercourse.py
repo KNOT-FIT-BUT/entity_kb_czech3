@@ -25,12 +25,12 @@ class EntWaterCourse(EntCore):
 		source_loc 	- lokace pramene
 		streamflow 	- proudění
     """
-	def __init__(self, title, prefix, link, langmap, redirects, debugger):
+	def __init__(self, title, prefix, link, data, langmap, redirects, debugger):
 		"""
         inicializuje třídu EntWaterCourse
         """
 
-		super(EntWaterCourse, self).__init__(title, prefix, link, langmap, redirects, debugger)
+		super(EntWaterCourse, self).__init__(title, prefix, link, data, langmap, redirects, debugger)
 
 		self.continents = ""
 		self.latitude = ""
@@ -144,26 +144,3 @@ class EntWaterCourse(EntCore):
 		
 		#print(f"{self.title}: did not found source location")
 		pass
-
-	@staticmethod
-	def is_water_course(content, title):
-		"""
-        na základě obsahu stránky určuje, zda stránka pojednává o vodním toku, či nikoliv
-        parametry:
-        content - obsah stránky
-        návratové hodnoty: True / False
-		TODO: přidat lepší poznávání vodních toků
-        """
-		pattern = r"{{[Ii]nfobox river"
-		match = re.search(pattern, content)
-		if match:
-			return True
-
-		# cannot match categories because of pages like "American Heritage Rivers Protection Program"
-		# category .*river*. would get matched
-
-		# river, brook, creek, stream
-		names = ("river", "brook", "creek", "stream")
-		for name in names:
-			if name in title.lower() and not f"{name}s" in title.lower():
-				return True

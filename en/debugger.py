@@ -2,6 +2,7 @@
 
 import datetime
 import json
+from collections import Counter
 
 # ideas:
 # pause extraction every time interesting entity is found / inform about it
@@ -15,6 +16,11 @@ class Debugger:
 	def __init__(self):
 		# add debug mode on/off switch
 		self.debug_limit = None
+
+		# category related
+		self.infobox_names = set()
+		self.category_counter = Counter()
+
 		with open(LOG, 'r+') as f:
 			f.truncate(0)
 
@@ -71,4 +77,8 @@ class Debugger:
 				for key, item in infobox.items():
 					if item != "":
 						f.write(f"{key}: {item}\n")
-				f.write("\n\n")			
+				f.write("\n\n")
+
+	def log_categories(self, categories):
+		for c in categories:
+			self.log_message(c.lower())
