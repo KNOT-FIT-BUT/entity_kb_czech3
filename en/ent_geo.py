@@ -24,12 +24,12 @@ class EntGeo(EntCore):
 		continent 		- kontinenty
 		total_height 	- výška 
 	"""
-	def __init__(self, title, prefix, link, langmap, redirects, debugger):
+	def __init__(self, title, prefix, link, data, langmap, redirects, debugger):
 		"""
         inicializuje třídu EntGeo
         """
 
-		super(EntGeo, self).__init__(title, prefix, link, langmap, redirects, debugger)
+		super(EntGeo, self).__init__(title, prefix, link, data, langmap, redirects, debugger)
 
 		self.continent = ""
 		self.latitude = ""
@@ -57,6 +57,9 @@ class EntGeo(EntCore):
 		"""
         pokusí se extrahovat parametry z infoboxů
         """
+
+		self.prefix += f":{self.get_prefix(self.infobox_name)}"
+
 		self.assign_coordinates()
 		if self.prefix == "geo:waterfall":
 			# assign continent
@@ -162,31 +165,13 @@ class EntGeo(EntCore):
 				self.population = match.group(1)			
 
 	@staticmethod
-	def is_geo(content, title):
-		"""
-        na základě obsahu stránky určuje, zda stránka pojednává o vodním toku, či nikoliv, přidává prefix
-        parametry:
-        content - obsah stránky
-        návratové hodnoty: 
-		True / False
-		prefix - typ geografické entity
-		TODO: přidat lepší poznávání geografických entit?
-        """
-		# check and change prefix
-		check = False
+	def get_prefix(name):
 		prefix = ""
-
-		# check title
-		bad_pages = ["history", "geography", "list"]
-		for page in bad_pages:
-			if page in title.lower():
-				return False, None
 		
-		pattern = r"{{[Ii]nfobox\s+(waterfall|[Ii]slands?|[Mm]ountain|[Pp]eninsulas?|[Cc]ontinent)"
-		match = re.search(pattern, content)
+		pattern = r"(waterfall|islands?|mountain|peninsulas?|continent)"
+		match = re.search(pattern, name, re.I)
 		if match:
 			prefix = match.group(1).lower()
-			check = True
 
 		if prefix in ("island", "islands"):
 			prefix = "island"
@@ -195,4 +180,4 @@ class EntGeo(EntCore):
 		if prefix == "peninsulas":
 			prefix = "peninsula"
 
-		return check, prefix
+		return prefix

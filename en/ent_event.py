@@ -44,34 +44,12 @@ class EntEvent(EntCore):
         pokusí se extrahovat parametry z infoboxů
         """
 
-		# arr = [
-		# 	"place", 
-		# 	"cities",
-		# 	"host_city",
-		# 	"affected",
-		# 	"country",
-		# 	"location",
-		# 	"Location"
-		# 	"Areas",
-		# 	"city",
-		# 	"venue",
-		# 	"site"
-		# ]
-		# found = False
-
-		# for item in arr:
-		# 	if item in self.infobox_data and item != "":
-		# 		found = True
-		# 		break
-		# if not found:
-		# 	self.d.log_infobox(self.infobox_data)
-
 		self.assign_dates()
 		self.assign_locations()
 		self.assign_type()
 
 	def assign_dates(self):
-		keys = ["year", "Year", "start_date", "first_aired", "election_date"]
+		keys = ["year", "start_date", "first_aired", "election_date"]
 
 		for key in keys:
 			if key in self.infobox_data and self.infobox_data[key] != "":
@@ -87,7 +65,7 @@ class EntEvent(EntCore):
 				data = self.extract_date(data)
 				self.end_date = data[0]
 
-		keys = ["date", "Date"]
+		keys = ["date"]
 		
 		for key in keys:
 			if key in self.infobox_data and self.infobox_data[key] != "":
@@ -128,8 +106,7 @@ class EntEvent(EntCore):
 			"place", 
 			"country",
 			"location",
-			"Location",
-			"Areas",
+			"areas",
 			"city",
 			"host_city",
 			"cities",

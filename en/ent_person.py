@@ -60,8 +60,8 @@ class EntPerson(EntCore):
                     self.prefix += ":fictional"
                     break
         
-        if self.prefix != "person:fictional":
-            self.d.log_categories(self.categories)
+        # if self.prefix != "person:fictional":
+        #     self.d.log_categories(self.categories)
 
         self.assign_dates()
         self.assign_places()
@@ -230,10 +230,10 @@ class EntPerson(EntCore):
                 star_split = o.split("*")
                 for s in star_split:
                     if s != "":
-                        tmp.append(s)
+                        tmp.append(s.strip())
             
             occupation = tmp
             
-            self.jobs = "|".join(occupation)
+            self.jobs = "|".join(occupation).replace("\n", " ")
 
         

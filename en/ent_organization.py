@@ -126,13 +126,6 @@ class EntOrganization(EntCore):
 			else:
 				self.location = city
 
-	@staticmethod
-	def remove_templates(data):
-		data = re.sub(r"\{\{.*?\}\}", "", data)
-		data = re.sub(r"\[\[.*?\|([^\|]*?)\]\]", r"\1", data)
-		data = re.sub(r"\[|\]|'|\(\)", "", data)
-		return data
-
 	def assign_type(self):
 		if "type" in self.infobox_data and self.infobox_data["type"] != "":
 			data = self.infobox_data["type"]
@@ -143,3 +136,10 @@ class EntOrganization(EntCore):
 		if self.infobox_name != "":
 			if self.infobox_name.lower() != "organization":
 				self.type = self.infobox_name
+
+	@staticmethod
+	def remove_templates(data):
+		data = re.sub(r"\{\{.*?\}\}", "", data)
+		data = re.sub(r"\[\[.*?\|([^\|]*?)\]\]", r"\1", data)
+		data = re.sub(r"\[|\]|'|\(\)", "", data)
+		return data

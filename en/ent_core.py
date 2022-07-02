@@ -67,7 +67,7 @@ class EntCore(metaclass=ABCMeta):
         self.first_paragraph = data["paragraph"]
         self.first_sentence = ""
         self.description = ""
-        self.coords = ""
+        self.coords = data["coords"]
         self.aliases = []
 
         if (self.first_paragraph):
@@ -227,7 +227,7 @@ class EntCore(metaclass=ABCMeta):
         """
         if "image" in self.infobox_data and self.infobox_data["image"] != "":
             image = self.infobox_data["image"]
-            image = self.get_image_path(image)
+            image = self.get_image_path(image).replace("\n", "")
             self.images += image if not self.images else "|" + image
 
     @staticmethod

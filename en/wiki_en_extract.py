@@ -384,14 +384,6 @@ class WikiExtract(object):
 
         return True
 
-    # TODO: remove this later - old code
-    #     is_geo, prefix = EntGeo.is_geo(page_content, page_title)
-    #     if is_geo:
-    #         geo = EntGeo(page_title, f"geo:{prefix}", self.get_link(page_title), langmap, ent_redirects, self.d)
-    #         geo.get_data(page_content)
-    #         geo.assign_values()
-    #         return geo.__repr__()
-
     def process_entity(self, page_title, page_content, langmap, ent_redirects, patterns):
         
         self.d.update(f"processing {page_title}")
@@ -409,7 +401,7 @@ class WikiExtract(object):
             "settlement":   EntSettlement,
             "waterarea":    EntWaterArea,
             "watercourse":  EntWaterCourse,
-            # "geo":          EntGeo,
+            "geo":          EntGeo,
             "organization": EntOrganization,
             "event":        EntEvent
         }
@@ -432,7 +424,8 @@ class WikiExtract(object):
             "name": "",
             "data": dict(),
             "paragraph": "",
-            "categories": []
+            "categories": [],
+            "coords": ""
         }
 
         wikicode = parser.parse(content)
@@ -443,14 +436,15 @@ class WikiExtract(object):
         # look for infobox
         for t in templates:
             name = t.name.lower().strip()
-            if name.startswith("infobox"):
+            if name.startswith("infobox") and infobox is None:
                 infobox = t
                 name = name.split()
                 name.pop(0)
                 name = " ".join(name)
                 result["found"] = True
                 result["name"] = name
-                break
+            elif "coord" in name or "coords" in name:
+                result["coords"] = str(t)
 
         # extract infobox
         if result["found"]:
