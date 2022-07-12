@@ -8,7 +8,7 @@ import re
 
 from ent_core import EntCore
 
-class EntOrganization(EntCore):
+class EntOrganisation(EntCore):
 	"""
     třída určená pro organizace
     instanční atributy:
@@ -26,7 +26,7 @@ class EntOrganization(EntCore):
         inicializuje třídu EntOrganization
         """
 
-		super(EntOrganization, self).__init__(title, prefix, link, data, langmap, redirects, debugger)
+		super(EntOrganisation, self).__init__(title, prefix, link, data, langmap, redirects, debugger)
 
 		self.founded = ""
 		self.cancelled = ""

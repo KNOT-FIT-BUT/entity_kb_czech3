@@ -46,7 +46,7 @@
 			"site"
 		]
 	},
-	"organization": {
+	"organisation": {
 		"categories": [
 			".*?(?:organizations?|organized crime (?:gangs|groups)|compan(?:y|ies)).*?"
 		],
