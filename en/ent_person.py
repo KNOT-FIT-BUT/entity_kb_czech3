@@ -40,25 +40,33 @@ class EntPerson(EntCore):
         self.gender = ""
         self.jobs = ""
         self.nationality = ""
+        
+        # artist
+        self.art_forms = ""
+        self.urls = ""
 
     def __repr__(self):
         """
         serializuje parametry třídy EntPerson
         """
-        return self.serialize(f"{self.gender}\t{self.birth_date}\t{self.birth_place}\t{self.death_date}\t{self.death_place}\t{self.jobs}\t{self.nationality}")
+        data = [
+            self.gender,
+            self.birth_date,
+            self.birth_place,
+            self.death_date,
+            self.death_place,
+            self.jobs,
+            self.nationality
+        ]
+        self.d.log_message(f"stats_ent,person,{'$'.join(data)}")
+        return self.serialize("\t".join(data))
     
     def assign_values(self):
         """
         pokusí se extrahovat parametry z infoboxů
         """
 
-        if "character" in self.infobox_name or "fictional" in self.first_sentence:
-            self.prefix += ":fictional"
-        if self.prefix != "person:fictional":
-            for c in self.categories:
-                if "fictional" in c.lower():
-                    self.prefix += ":fictional"
-                    break
+        self.assign_prefix()
         
         # if self.prefix != "person:fictional":
         #     self.d.log_categories(self.categories)
@@ -67,7 +75,11 @@ class EntPerson(EntCore):
         self.assign_places()
         self.assign_nationality()
         self.assign_gender()
-        self.assign_jobs()
+        self.assign_jobs()        
+
+        if self.prefix == "person:artist":
+            self.assign_art_forms()
+            self.assign_urls()
     
     def assign_dates(self):
         """
@@ -77,34 +89,46 @@ class EntPerson(EntCore):
         if "birth_date" in self.infobox_data and self.infobox_data["birth_date"] != "":
             date = self.infobox_data["birth_date"].strip()
             extracted = self.extract_date(date)
-            if len(extracted) > 0:
-                self.birth_date = extracted[0]
+            self.birth_date = extracted[0]
         
         if "death_date" in self.infobox_data and self.infobox_data["death_date"] != "":
             date = self.infobox_data["death_date"].strip()
             extracted = self.extract_date(date)
-            if len(extracted) > 0:
-                if len(extracted) == 1:
-                    self.death_date = extracted[0] 
-                else:
-                    years = []
-                    for d in extracted:
-                        split = d.split("-")
-                        if len(split) >= 2:
-                            if split[0] == "":
-                                years.append(-int(split[1]))
-                            else:
-                                years.append(int(split[0]))
-                    
-                    if len(years) == 2:
-                        birth_index = 0 if years[0] < years[1] else 1
-                        death_index = 0 if birth_index == 1 else 1
-                        self.birth_date = extracted[birth_index]
-                        self.death_date = extracted[death_index]
+            if extracted[1] == "":
+                self.death_date = extracted[0]
+            else:
+                if self.birth_date == "":
+                    self.birth_date = extracted[0]
+                self.death_date = extracted[1]
 
         # try to get the date from the 1st sentence
-        if (self.death_date == "" or self.birth_date == "") and self.prefix != "person:fictional":
-            pass
+        if (self.death_date == "" or self.birth_date == "") and self.prefix != "person:fictional":        
+            match = re.search(r"\((.*?)\)", self.first_paragraph)
+            if match:
+                group = match.group(1)
+                group = re.sub(r"\[\[.*?\]\]", "", group)
+                group = re.sub(r"\{\{.*?\}\};?", "", group)
+                group = re.sub(r"&ndash;", "–", group).strip()
+                group = group.split("–")
+                if len(group) == 2:
+                    # get rid of born and died
+                    born = group[0].replace("born", "").strip()
+                    died = group[1].replace("died", "").strip()
+                    if "BC" in died and "BC" not in born:
+                        born += " BC"
+                    self.birth_date = self.extract_date(born)[0]
+                    self.death_date = self.extract_date(died)[0]
+                else:
+                    date = group[0]
+                    # look for born and died
+                    if "born" in date:
+                        date = date.replace("born", "").strip()
+                        self.birth_date = self.extract_date(date)[0]
+                    elif "died" in date:
+                        date = date.replace("died", "").strip()
+                        self.death_date = self.extract_date(date)[0]
+                    else:
+                        self.birth_date = self.extract_date(date)[0]
 
     def assign_places(self):
         """
@@ -235,5 +259,64 @@ class EntPerson(EntCore):
             occupation = tmp
             
             self.jobs = "|".join(occupation).replace("\n", " ")
+
+    def assign_art_forms(self):
+        
+        keys = ["movement", "field"]
+
+        for key in keys:
+            if key in self.infobox_data and self.infobox_data[key] != "":
+                value = self.infobox_data[key].replace("\n", " ")
+                if "''" in value:
+                    continue
+                value = re.sub(r"\[\[.*?\|([^\|]*?)\]\]", r"\1", value)
+                value = re.sub(r"\[|\]", "", value)
+                value = re.sub(r"\{\{.*?\}\}", "", value)
+                value = value.lower()
+              
+                value = [item.strip() for item in value.split(",")]
+                
+                if len(value) == 1:
+                    value = value[0]
+                    value = [item.strip() for item in value.split("/")]
+                
+                value = "|".join(value)
+
+                if value != "":
+                    if self.art_forms == "":
+                        self.art_forms = value
+                    else:
+                        self.art_forms += f"|{value}"
+
+    def assign_urls(self):
+        if "website" in self.infobox_data and self.infobox_data["website"] != "":
+            value = self.infobox_data["website"]
+
+            value = re.sub(r"\{\{url\|(?:.*?=)?([^\|\}]+).*?\}\}", r"\1", value, flags=re.I)
+            value = re.sub(r"\[(.*?)\s.*?\]", r"\1", value)
+
+            self.urls = value
+
+    def assign_prefix(self):
+        
+        if "character" in self.infobox_name or "fictional" in self.first_sentence:
+            self.prefix += ":fictional"
+            return
+
+        for c in self.categories:
+            if "fictional" in c.lower():
+                self.prefix += ":fictional"
+                return
+
+        if self.infobox_name.lower() == "artist":
+            self.prefix += ":artist"
+            return
+
+        # artist, painter, writer
+
+        for c in self.categories:
+            if re.search(r"artist", c, re.I):
+                self.prefix += ":artist"
+                return
 
         

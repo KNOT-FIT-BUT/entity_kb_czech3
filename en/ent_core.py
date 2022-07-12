@@ -92,7 +92,7 @@ class EntCore(metaclass=ABCMeta):
             self.link,
             ent_data
         ])
-        self.d.check_empty(data, self.prefix)
+        # self.d.check_empty(data, self.prefix)
         return data
 
     def get_first_sentence(self, paragraph):
@@ -343,6 +343,8 @@ class EntCore(metaclass=ABCMeta):
 
         return str(number if number % 1 != 0 else int(number))
 
+    # should always return array with 2 ordered values
+    # e.g.: ["", ""], ["1952-07-23", ""], ["1952-07-23", "1999-04-27"]
     def extract_date(self, data):
         wikicode = parser.parse(data)
         templates = wikicode.filter_templates()
@@ -362,14 +364,14 @@ class EntCore(metaclass=ABCMeta):
                     params = t.params
                     for p in params:
                         string += f" {str(p.value)}"
-                return [self.parse_no_template(string.strip())]
+                return [self.parse_no_template(string.strip()), ""]
 
             template = templates[-1]
 
             if "based on age" in str(template).lower():
                 # invalid template
                 # TODO: log?
-                return [""]
+                return ["", ""]
             
             params = template.params
             date = []
@@ -380,22 +382,24 @@ class EntCore(metaclass=ABCMeta):
                 if param != "" and not param.startswith("mf=") and not param.startswith("df=") and re.search(r".*?[0-9].*?", param):
                     date.append(param)
 
-            return self.get_date(date, str(template.name))            
+            return self.order_dates(self.get_date(date, str(template.name)))            
         
 
-        return [self.parse_no_template(data)]
+        return [self.parse_no_template(data), ""]
 
+    # return format: ["date1", "date2"]
     def get_date(self, date, name):
         result = []
 
         if len(date) > 3 or re.search(r".*?(?:death(?:-| )(?:date|year) and age|dda|d-da).*?", name, re.I):
             # split dates
             if len(date) % 2 != 0:
-                return [""]
+                return ["", ""]
             result.append(self.parse_date(date[:int(len(date)/2)]))
             result.append(self.parse_date(date[int(len(date)/2):]))
         else:
             result.append(self.parse_date(date))
+            result.append("")
 
         return result
 
@@ -498,3 +502,8 @@ class EntCore(metaclass=ABCMeta):
         string = re.sub(r"([0-9]+)\s+BCE?|BCE?\s+([0-9]+)", r"-\1\2", string, re.I)
 
         return self.parse_string_format(string.strip())
+
+    @staticmethod
+    def order_dates(array):
+        reverse = True if array[0].startswith("-") and array[1].startswith("-") else False
+        return sorted(array, key=lambda x: x if x != "" else "z", reverse=reverse)

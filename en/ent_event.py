@@ -74,11 +74,8 @@ class EntEvent(EntCore):
 				split = [item.strip() for item in split if item != ""]
 				if len(split) == 1:
 					date = self.extract_date(split[0])
-					if len(date) == 1:
-						self.start_date = date[0]
-					else:
-						self.start_date = date[0]
-						self.end_date = date[1]
+					self.start_date = date[0]
+					self.end_date = date[1]						
 					break
 				else:
 					

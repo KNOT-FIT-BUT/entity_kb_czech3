@@ -60,6 +60,9 @@ class EntGeo(EntCore):
 
 		self.prefix += f":{self.get_prefix(self.infobox_name)}"
 
+		if self.prefix == "geo:":
+			self.d.log_message(self.link)
+
 		self.assign_coordinates()
 		if self.prefix == "geo:waterfall":
 			# assign continent

@@ -179,7 +179,7 @@ if [ $LANG == "en" ]; then
     eval $CMD
 fi
 
-CMD="python3 ${LANG}/wiki_${LANG}_extract.py --lang ${LANG} --dump ${DUMP_VERSION} --indir \"${DUMP_PATH}\" ${EXTRACTION_ARGS[@]} 2>entities_processing.log"
+CMD="python3 ${LANG}/wiki_${LANG}_extract.py --lang ${LANG} --dump ${DUMP_VERSION} --indir \"${DUMP_PATH}\" ${EXTRACTION_ARGS[@]} 2>en/out/kb.out"
 echo "RUNNING COMMAND: ${CMD}"
 eval $CMD
 

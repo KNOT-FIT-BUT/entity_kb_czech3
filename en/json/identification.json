@@ -37,7 +37,14 @@
 		],
 		"names": [],
 		"titles": [],
-		"fields": []
+		"fields": [
+			"first_aired",
+			"election_date",
+			"venue",
+			"host_city",
+			"affected",
+			"site"
+		]
 	},
 	"organization": {
 		"categories": [
@@ -68,7 +75,13 @@
 			"creek", 
 			"stream"
 		],
-		"fields": []
+		"fields": [
+			"source1_coordinates",
+			"length",
+			"basin_size",
+			"discharge1_avg",
+			"source1_location"
+		]
 	},
 	"waterarea": {
 		"categories": [],

@@ -21,6 +21,7 @@ import sys
 
 import mwparserfromhell as parser
 from collections import Counter
+import cProfile
 
 from ent_person import *
 from ent_country import *
@@ -234,7 +235,7 @@ class WikiExtract(object):
         # načtení langmapy
         langmap = dict()
         try:
-            with open("langmap.json", "r") as file:
+            with open(os.path.join(os.path.dirname(sys.argv[0]), "json/langmap.json"), "r") as file:
                 self.d.print("loading langmap")
                 langmap = json.load(file)
                 self.d.print("loaded langmap")
@@ -246,7 +247,7 @@ class WikiExtract(object):
         # patterns for entity recognition
         patterns = dict()
         try:
-            with open("identification.json", "r") as file:
+            with open(os.path.join(os.path.dirname(sys.argv[0]), "json/identification.json"), "r") as file:
                 patterns = json.load(file)
         except OSError:
             self.d.print("entity identification patterns were not found - exiting...")
@@ -380,20 +381,28 @@ class WikiExtract(object):
         ):
             return False
 
-        # TODO: also exclude dates
+        if re.search(r"(?:january|february|march|april|may|june|july|august|september|october|november|december)(?:\s[0-9]+)?", title, re.I):
+            return False
 
         return True
 
     def process_entity(self, page_title, page_content, langmap, ent_redirects, patterns):
-        
+
         self.d.update(f"processing {page_title}")
         
         extracted = self.extract_entity_data(page_content)
+
         identification = self.identify_entity(page_title, extracted, patterns).most_common()
 
         count = 0
         for _, value in identification:
             count += value
+        
+        # DEBUG:
+        # if count == 1:
+        #     self.d.log_identification(page_title, identification)
+        if count > 1:
+            self.d.log_message(f"stats_id_avg,{identification[0][0]},{identification[0][1]}")
 
         entities = {
             "person":       EntPerson,
@@ -469,7 +478,7 @@ class WikiExtract(object):
             split = [s for s in section.strip().split("\n") if s != ""]
             for s in split:
                 if s.startswith("'''") or s.startswith("The '''"):
-                    result["paragraph"] = s
+                    result["paragraph"] = s.strip()
                     break
 
         # extract categories
@@ -573,4 +582,7 @@ if __name__ == "__main__":
     wiki_extract.parse_args()
     wiki_extract.create_head_kb()
     wiki_extract.assign_version()
+
     wiki_extract.parse_xml_dump()
+
+    wiki_extract.d.stats()
