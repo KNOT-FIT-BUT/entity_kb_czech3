@@ -30,7 +30,7 @@ def generate():
 			
 			langs[split[0]] = f"{split[3]}|{split[4]}"
 
-	with open("langmap.json", "w", encoding="utf8") as f:
+	with open("json/langmap.json", "w", encoding="utf8") as f:
 		json.dump(langs, f, ensure_ascii=False, indent=4)
 
 if __name__ == "__main__":

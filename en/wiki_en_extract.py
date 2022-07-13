@@ -21,16 +21,16 @@ import sys
 
 import mwparserfromhell as parser
 from collections import Counter
-import cProfile
 
-from ent_person import *
-from ent_country import *
-from ent_settlement import *
-from ent_waterarea import *
-from ent_watercourse import *
-from ent_geo import *
-from ent_organisation import *
-from ent_event import *
+from entities.ent_person import *
+from entities.ent_country import *
+from entities.ent_settlement import *
+from entities.ent_waterarea import *
+from entities.ent_watercourse import *
+from entities.ent_geo import *
+from entities.ent_organisation import *
+from entities.ent_event import *
+
 from debugger import Debugger
 
 TESTING_PATH = "./testing_data/xml/people.xml"
@@ -64,8 +64,8 @@ class WikiExtract(object):
             "<geo:island>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\t{m}CONTINENT\tLATITUDE\tLONGITUDE\tAREA\tPOPULATION\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
             "<geo:peninsula>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tLATITUDE\tLONGITUDE\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
             "<geo:continent>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tLATITUDE\tLONGITUDE\tAREA\tPOPULATION\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
-            "<organisation>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tFOUNDED\tCANCELLED\tORGANISATION_TYPE\tLOCATION\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
-            "<event>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tSTART\tEND\tLOCATION\tEVENT_TYPE\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n"
+            "<organisation>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tFOUNDED\tCANCELLED\tORGANISATION_TYPE\tLOCATION\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+            "<event>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tSTART\tEND\tLOCATION\tEVENT_TYPE\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n"
         ]
 
         with open("HEAD-KB", "w", encoding="utf-8") as file:
@@ -323,9 +323,9 @@ class WikiExtract(object):
             if len(ent_titles):
                 ent_count += self.output(file, ent_titles, ent_pages, langmap, ent_redirects, patterns)
 
-        self.d.print("----------------------------")
-        self.d.print(f"parsed xml dump (number of pages: {all_page_cnt})")
-        self.d.print(f"processed {ent_count} entities")
+        self.d.print("----------------------------", print_time=False)
+        self.d.print(f"parsed xml dump (number of pages: {all_page_cnt})", print_time=False)
+        self.d.print(f"processed {ent_count} entities", print_time=False)
 
     def output(self, file, ent_titles, ent_pages, langmap, ent_redirects, patterns):
         '''
@@ -333,6 +333,8 @@ class WikiExtract(object):
         (využívá multiprocessing)
         '''
         if len(ent_titles):
+            start_time = datetime.datetime.now()
+
             pool = Pool(processes=self.console_args.m)
             serialized_entities = pool.starmap(
                 self.process_entity,
@@ -343,7 +345,11 @@ class WikiExtract(object):
             pool.close()
             pool.join()
             count = len(l)
-            self.d.print(f"processed {count} entities")
+
+            end_time = datetime.datetime.now()
+            tdelta = end_time - start_time
+            self.d.print(f"processed {count} entities (in {self.d.pretty_time_delta(tdelta.total_seconds())})")
+            self.d.log_message(f"time_avg,{tdelta},{len(ent_pages)};")
             return count
 
     # filters out wikipedia special pages and date pages
@@ -397,12 +403,9 @@ class WikiExtract(object):
         count = 0
         for _, value in identification:
             count += value
-        
-        # DEBUG:
-        # if count == 1:
-        #     self.d.log_identification(page_title, identification)
-        if count > 1:
-            self.d.log_message(f"stats_id_avg,{identification[0][0]},{identification[0][1]}")
+
+        if count != 0:
+            self.d.log_message(f"id_stats,{identification[0][0]},{identification[0][1]};")
 
         entities = {
             "person":       EntPerson,
@@ -582,7 +585,7 @@ if __name__ == "__main__":
     wiki_extract.parse_args()
     wiki_extract.create_head_kb()
     wiki_extract.assign_version()
-
+    
     wiki_extract.parse_xml_dump()
 
     wiki_extract.d.stats()

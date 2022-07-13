@@ -38,14 +38,6 @@ class EntCountry(EntCore):
 		"""
         serializuje parametry třídy EntCounry
         """
-		data = [
-			self.latitude,
-			self.longitude,
-			self.area,
-			self.population
-		]
-		# latitude:longtitude:area:population
-		self.d.log_message(f"stats_ent,country,{'$'.join(data)}")
 		return self.serialize(f"{self.latitude}\t{self.longitude}\t{self.area}\t{self.population}")
 
 	def assign_values(self):

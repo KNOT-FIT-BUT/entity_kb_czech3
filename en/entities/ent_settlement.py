@@ -39,15 +39,6 @@ class EntSettlement(EntCore):
 		"""
         serializuje parametry třídy EntSettlement
         """
-		data = [
-			self.country,
-			self.latitude,
-			self.longitude,
-			self.area,
-			self.population
-		]
-		# country:latitude:longtitude:area:population
-		self.d.log_message(f"stats_ent,settlement,{'$'.join(data)}")
 		return self.serialize(f"{self.country}\t{self.latitude}\t{self.longitude}\t{self.area}\t{self.population}")
 
 	def assign_values(self):

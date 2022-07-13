@@ -20,6 +20,9 @@ class Debugger:
 		
 		self.debug_limit = None
 
+		# time
+		self.start_time = datetime.datetime.now()
+
 		# categories
 		self.infobox_names = set()
 		self.category_counter = Counter()
@@ -33,8 +36,10 @@ class Debugger:
 
 	# clears currently updating message and prints a message with a new line 
 	@staticmethod
-	def print(msg):
-		print(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] {msg}\033[K")
+	def print(message, print_time=True):
+		if print_time:
+			message = f"[{datetime.datetime.now().strftime('%H:%M:%S')}] {message}"
+		print(f"{message}\033[K")
 
 	# updates (clears) current line and writes new message 
 	@staticmethod
@@ -45,9 +50,8 @@ class Debugger:
 	@staticmethod
 	def log_message(message, print_time=False):		
 		if print_time:
-			print(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] {message}", file=sys.stderr)
-		else:
-			print(f"{message}", file=sys.stderr)
+			message = f"[{datetime.datetime.now().strftime('%H:%M:%S')}] {message}"
+		print(f"{message}", file=sys.stderr)
 
 	# logs entity information
 	def log_entity(self, entity, prefix):
@@ -109,7 +113,6 @@ class Debugger:
 		
 		self.log_message("\n".join(data))
 
-
 	def log_identification(self, title, identification):
 		# identification is a Counter
 		self.log_message(f"identification of {title}:")
@@ -117,60 +120,35 @@ class Debugger:
 			self.log_message(f"{key}: {value}")
 
 	def stats(self):
+		end_time = datetime.datetime.now()
+		tdelta = end_time - self.start_time
+		self.print(f"completed extraction in {self.pretty_time_delta(tdelta.total_seconds())}", print_time=False)
+		self.log_message(f"time_total,{tdelta};")
 
 		log = []
-
-		# stats_id_avg
-		id_count = 0
-		id_sum = 0
-		id_counter = Counter()
-
-		# gender:birth_date:birth_place:death_date:death_place:jobs:nationality
-		ent = {
-			"person": [0, 0, 0, 0, 0, 0, 0, 0],
-			"country": [0, 0, 0, 0, 0],
-			"settlement": [0, 0, 0, 0, 0, 0]
-		}
-		ent_names = {
-			"person": "gender:birth_date:birth_place:death_date:death_place:jobs:nationality",
-			"country": "latitude:longtitude:area:population",
-			"settlement": "country:latitude:longtitude:area:population"
-		}
 
 		with open(os.path.join(os.path.dirname(sys.argv[0]), "out/kb.out"), "r") as f:
 			lines = f.readlines()
 			for line in lines:
-				split = line.split(",")
-
-				# format: stats_id_avg,<type>,<number>
-				if split[0] == "stats_id_avg":
-					id_count += 1
-					# FIXME: id_sum += int(split[2])
-					id_counter[split[1]] += 1
-				elif split[0] == "stats_ent":
-					ent[split[1]][-1] += 1
-					values = split[2].split("$")
-					for i in range(len(values)):
-						if values[i] != "":
-							ent[split[1]][i] += 1
-				else:
+				msg = line.split(";")[0]
+				msg = msg.split(",")
+				if msg[0] not in ["id_stats", "time_avg", "time_total"]:
 					log.append(line)
 
 		with open(os.path.join(os.path.dirname(sys.argv[0]), "log/kb.log"), "w") as f:
 			f.writelines(log)
 
-		with open(os.path.join(os.path.dirname(sys.argv[0]), "log/stats.log"), "w") as f:
-			f.write("identification:\n\n")
-			if id_count != 0:
-				f.write(f"count: {id_count}\n")
-				f.write(f"sum: {id_sum}\n")
-				f.write(f"avg: {round(id_sum/id_count, 2)}\n\n")
-			for key, value in id_counter.most_common():
-				f.write("{:<15} {}\n".format(key, value))
-
-			f.write("\nentities:\n")
-			for key in ent.keys():
-				f.write("\n{:<15} {}\n".format(key.upper(), ent[key][-1]))
-				names = ent_names[key].split(":")
-				for i in range(len(ent[key])-1):
-					f.write("{:<15} {}%\n".format(names[i], round(ent[key][i]/ent[key][-1]*100,2)))
+	@staticmethod
+	def pretty_time_delta(seconds):
+		seconds = int(seconds)
+		days, seconds = divmod(seconds, 86400)
+		hours, seconds = divmod(seconds, 3600)
+		minutes, seconds = divmod(seconds, 60)
+		if days > 0:
+			return '%dd%dh%dm%ds' % (days, hours, minutes, seconds)
+		elif hours > 0:
+			return '%dh%dm%ds' % (hours, minutes, seconds)
+		elif minutes > 0:
+			return '%dm%ds' % (minutes, seconds)
+		else:
+			return '%ds' % (seconds,)

@@ -92,7 +92,6 @@ class EntCore(metaclass=ABCMeta):
             self.link,
             ent_data
         ])
-        # self.d.check_empty(data, self.prefix)
         return data
 
     def get_first_sentence(self, paragraph):

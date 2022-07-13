@@ -58,7 +58,6 @@ class EntPerson(EntCore):
             self.jobs,
             self.nationality
         ]
-        self.d.log_message(f"stats_ent,person,{'$'.join(data)}")
         return self.serialize("\t".join(data))
     
     def assign_values(self):

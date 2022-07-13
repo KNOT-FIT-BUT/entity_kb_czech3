@@ -200,7 +200,7 @@ fi
 retVal=$?
 if [ $retVal -ne 0 ]; then
     echo ""
-    echo "Error while metrics script"
+    echo "Error while running metrics script"
     exit $retVal
 fi
 
@@ -209,7 +209,7 @@ python3 kbwiki2gkb.py --indir outputs --outdir outputs
 retVal=$?
 if [ $retVal -ne 0 ]; then
     echo ""
-    echo "Error while kbwiki2gkb script"
+    echo "Error while running kbwiki2gkb script"
     exit $retVal
 fi
 
