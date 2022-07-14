@@ -6,7 +6,7 @@ Popis souboru: Soubor obsahuje třídu 'EntOrganization', která uchovává úda
 
 import re
 
-from ent_core import EntCore
+from entities.ent_core import EntCore
 
 class EntOrganisation(EntCore):
 	"""

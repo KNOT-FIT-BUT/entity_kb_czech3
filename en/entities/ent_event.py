@@ -6,7 +6,7 @@ Popis souboru: Soubor obsahuje třídu 'EntEvent', která uchovává údaje o ud
 
 import re
 
-from ent_core import EntCore
+from entities.ent_core import EntCore
 
 class EntEvent(EntCore):
 	"""

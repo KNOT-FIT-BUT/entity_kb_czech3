@@ -7,7 +7,6 @@ Poznámka: inspirováno projektem entity_kb_czech3
 
 from abc import ABCMeta, abstractmethod
 import re
-import sys
 from hashlib import md5, sha224
 import mwparserfromhell as parser
 
@@ -224,10 +223,49 @@ class EntCore(metaclass=ABCMeta):
         """
         extrahuje obrázky
         """
-        if "image" in self.infobox_data and self.infobox_data["image"] != "":
-            image = self.infobox_data["image"]
-            image = self.get_image_path(image).replace("\n", "")
-            self.images += image if not self.images else "|" + image
+
+        keys = ["image", "photo", "image_name", "image_flag", "image_coat", "image_map", "map_image", "logo"]
+
+        for key in keys:
+            if key in self.infobox_data and self.infobox_data[key] != "":
+                image = self.infobox_data[key].replace("\n", "")
+                if not image.startswith("http"):
+                    image = self.get_images(image)
+                    self.images += image if not self.images else "|" + image
+
+    def get_images(self, image):
+        """
+        Převádí název obrázku na absolutní cestu Wikimedia Commons.
+
+        Parametry:
+        image - název obrázku
+        """
+
+        result = []
+
+        image = re.sub(r"file:", "", image, flags=re.I)
+        
+        images = []
+        
+        if re.search(r"\{|\}", image):
+            wikicode = parser.parse(image)
+            templates = wikicode.filter_templates(wikicode)
+            for t in templates:
+                params = t.params
+                for p in params:
+                    if re.search(r"image|photo|[0-9]+", str(p.name), re.I):
+                        if re.search(r"\.jpg|\.svg", str(p.value), re.I):
+                            images.append(str(p.value))
+
+        if not len(images):
+            images.append(image)    
+        
+        images = [re.sub(r"^(?:\[\[(?:image:)?)?(.*?(?:\.jpg|\.png|\.svg)).*$", r"\1", img, flags=re.I) for img in images]
+        images = [img.strip().replace(" ", "_") for img in images]
+
+        result = [self.get_image_path(img) for img in images]
+
+        return "|".join(result)
 
     @staticmethod
     def get_image_path(image):
@@ -237,14 +275,9 @@ class EntCore(metaclass=ABCMeta):
         Parametry:
         image - název obrázku
         """
-
-        # remove templates with descriptions from image path
-        image = re.sub(r"{{.*$", "", image)
-        image = re.sub(r"\s*\|.*$", "", image).replace("}", "").strip().replace(" ", "_")
         image_hash = md5(image.encode("utf-8")).hexdigest()[:2]
-        image = "wikimedia/commons/" + image_hash[0] + "/" + image_hash + "/" + image
-
-        return image
+        image_link = f"wikimedia/commons/{image_hash[0]}/{image_hash}/{image}"
+        return image_link
 
     # returns latitude, longtitude
     def get_coordinates(self, format):

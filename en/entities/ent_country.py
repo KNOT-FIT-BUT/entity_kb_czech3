@@ -7,7 +7,7 @@ Poznámka: inspirováno projektem entity_kb_czech3
 
 import re
 
-from ent_core import EntCore
+from entities.ent_core import EntCore
 
 class EntCountry(EntCore):
 	"""

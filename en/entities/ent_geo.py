@@ -7,7 +7,7 @@ Poznámka: inspirováno projektem entity_kb_czech3
 
 import re
 
-from ent_core import EntCore
+from entities.ent_core import EntCore
 
 class EntGeo(EntCore):
 	"""
@@ -125,7 +125,7 @@ class EntGeo(EntCore):
 				area = re.sub(r",|\(.*\)", "", area).strip()
 				
 				# {{convert|[number]|[km2 / sqmi]}}
-				match = re.search(r"{{.*?\|([0-9]+)\|(\w+).*?}}", area)
+				match = re.search(r"{{.*?\|([0-9]+)\s?\|(\w+).*?}}", area)
 				if match:
 					self.area = self.convert_units(match.group(1), match.group(2))
 					break
