@@ -142,6 +142,13 @@ class KnowledgeBase:
                 "wiki_hits": [],
                 "wiki_ps": [],
             },
+            "person:artist": {
+                "description_length": [],
+                "columns_number": [],
+                "wiki_backlinks": [],
+                "wiki_hits": [],
+                "wiki_ps": [],
+            },
             "person:fictional": {
                 "description_length": [],
                 "columns_number": [],
@@ -261,6 +268,13 @@ class KnowledgeBase:
         # data structure for indexing percentile scores
         self.metric_index = {
             "person": {
+                "description_length": {},
+                "columns_number": {},
+                "wiki_backlinks": {},
+                "wiki_hits": {},
+                "wiki_ps": {},
+            },
+            "person:artist": {
                 "description_length": {},
                 "columns_number": {},
                 "wiki_backlinks": {},

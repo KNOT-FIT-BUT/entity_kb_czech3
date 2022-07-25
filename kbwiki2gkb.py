@@ -28,6 +28,8 @@ COLTYPE_PERSON = "person"
 COLTYPE_ARTIST = "artist"
 COLTYPE_GROUP = "group"
 COLTYPE_GEOGRAPHICAL = "geographical"
+COLTYPE_ORGANISATION = "organisation"
+COLTYPE_EVENT = "event"
 
 
 # >>> Unique column codes of Generic KB format for processing conversion of formats
@@ -64,6 +66,16 @@ ARTIST_INFLUENCERS = "ARTIST:INFLUENCERS"
 ARTIST_INFLUENCEES = "ARTIST:INFLUENCEES"
 ARTIST_ULANID = "ARTIST:ULAN_ID"
 ARTIST_OTHER_URLS = "ARTIST:OTHER_URLS"
+
+ORG_FOUNDED = "ORGANISATION:FOUNDED"
+ORG_CANCELLED = "ORGANISATION:CANCELLED"
+ORG_LOCATION = "ORGANISATION:LOCATION"
+ORG_TYPE = "ORGANISATION:TYPE"
+
+EVENT_START = "EVENT:START_DATE"
+EVENT_END = "EVENT:END_DATE"
+EVENT_LOCATIONS = "EVENT_LOCATIONS"
+EVENT_TYPE = "EVENT:TYPE"
 
 GEO_LAT = "GEO:LATITUDE"
 GEO_LONG = "GEO:LONGITUDE"
@@ -102,6 +114,8 @@ MAP_ENTITIES_BASETYPES = {
     "geo:island": COLTYPE_GEOGRAPHICAL,
     "geo:peninsula": COLTYPE_GEOGRAPHICAL,
     "geo:continent": COLTYPE_GEOGRAPHICAL,
+    "organisation": COLTYPE_ORGANISATION,
+    "event": COLTYPE_EVENT
 }
 
 # Map of main types of Generic KB format to set of consisting types (except generic types prefixed and suffixed with underscore, which are present always)
@@ -110,6 +124,8 @@ MAP_BASETYPES_COMPOSITE_TYPES = {
     COLTYPE_GROUP: [COLTYPE_GROUP],
     COLTYPE_ARTIST: [COLTYPE_PERSON, COLTYPE_ARTIST],
     COLTYPE_GEOGRAPHICAL: [COLTYPE_GEOGRAPHICAL],
+    COLTYPE_ORGANISATION: [COLTYPE_ORGANISATION],
+    COLTYPE_EVENT: [COLTYPE_EVENT]
 }
 
 
@@ -184,6 +200,24 @@ HEAD_GEOGRAPHICAL = OrderedDict(
     ]
 )
 
+HEAD_ORGANISATION = OrderedDict(
+    [
+        (ORG_FOUNDED, "FOUNDED"),
+        (ORG_CANCELLED, "CANCELLED"),
+        (ORG_LOCATION, "LOCATION"),
+        (ORG_TYPE, "ORGANISATION_TYPE")
+    ]
+)
+
+HEAD_EVENT = OrderedDict(
+    [
+        (EVENT_START, "START"),
+        (EVENT_END, "END"),
+        (EVENT_LOCATIONS, "LOCATION"),
+        (EVENT_TYPE, "EVENT_TYPE")
+    ]
+)
+
 HEAD_STATS = OrderedDict(
     [
         # (GenericKB column code , GenericKB column name (eventually with flags and other properties))
@@ -207,6 +241,8 @@ MAP_TYPES_COLUMNS = OrderedDict(
         (COLTYPE_GROUP, HEAD_GROUP),
         (COLTYPE_ARTIST, HEAD_ARTIST),
         (COLTYPE_GEOGRAPHICAL, HEAD_GEOGRAPHICAL),
+        (COLTYPE_ORGANISATION, HEAD_ORGANISATION),
+        (COLTYPE_EVENT, HEAD_EVENT),
         (COLTYPE_STATS, HEAD_STATS),
     ]
 )

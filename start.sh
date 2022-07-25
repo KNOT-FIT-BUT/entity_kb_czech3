@@ -8,8 +8,8 @@ export LC_ALL="C.UTF-8"
 # default values
 SAVE_PARAMS=$*
 LOG=false
-LANG=cs
-DUMP_PATH=/mnt/minerva1/nlp/corpora/monolingual/czech/wikipedia/
+LANG=en
+DUMP_PATH=/mnt/minerva1/nlp/corpora/monolingual/english/wikipedia/
 DUMP_VERSION=latest
 
 # saved values
@@ -170,21 +170,48 @@ EXTRACTION_ARGS+=(${KB_STABILITY})
 EXTRACTION_ARGS+=(${MULTIPROC_PARAMS})
 
 # Run CS Wikipedia extractor to create new KB
-CMD="python3 wiki_cs_extract.py --lang ${LANG} --dump ${DUMP_VERSION} --indir \"${DUMP_PATH}\" ${EXTRACTION_ARGS[@]} 2>entities_processing.log"
+# old code:
+# CMD="python3 wiki_cs_extract.py --lang ${LANG} --dump ${DUMP_VERSION} --indir \"${DUMP_PATH}\" ${EXTRACTION_ARGS[@]} 2>entities_processing.log"
+
+if [ $LANG == "en" ]; then
+    echo "GENERATING: langmap.json"
+    CMD="python3 generate_langmap.py"
+    eval $CMD
+fi
+
+CMD="python3 ${LANG}/wiki_${LANG}_extract.py --lang ${LANG} --dump ${DUMP_VERSION} --indir \"${DUMP_PATH}\" ${EXTRACTION_ARGS[@]} 2>en/out/kb.out"
 echo "RUNNING COMMAND: ${CMD}"
 eval $CMD
+
+retVal=$?
+if [ $retVal -ne 0 ]; then
+    echo ""
+    echo "Error while running python script"
+    exit $retVal
+fi
 
 # Add metrics to newly created KB
 if $LOG
 then
     metrics_params="--log"
 fi
-./metrics/start.sh ${metrics_params}
 
+./metrics/start.sh ${metrics_params}
+retVal=$?
+if [ $retVal -ne 0 ]; then
+    echo ""
+    echo "Error while running metrics script"
+    exit $retVal
+fi
 
 # Convert Wikipedia KB format to Generic KB format
 python3 kbwiki2gkb.py --indir outputs --outdir outputs
-
+retVal=$?
+if [ $retVal -ne 0 ]; then
+    echo ""
+    echo "Error while running kbwiki2gkb script"
+    exit $retVal
+fi
 
 if $DEPLOY
 then

@@ -37,4 +37,4 @@ kb = metrics_knowledge_base.KnowledgeBase(
     path_to_headkb=arguments.head_kb, path_to_kb=arguments.knowledge_base
 )
 kb.insert_metrics()
-print kb
+print(kb)

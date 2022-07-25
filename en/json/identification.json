@@ -1,0 +1,111 @@
+{
+	"person": {
+		"categories": [
+			".*?\\bbirths?\\b.*?",
+			".*?\\bdeaths?\\b.*?",
+			".*?\\b(wo)?men\\b.*",
+			".*?\\bcharacters\\b.*?"
+		],
+		"names": [
+			"person"
+		],
+		"titles": [],
+		"fields": [
+			"birth_date",
+			"death_date",
+			"gender",
+			"birth_place",
+			"death_place",
+			"nationality"
+		]
+	},
+	"country": {
+		"categories": [
+			"Countries\\s+in\\s+(?:Europe|Africa|Asia|Australia|Oceania|(?:South|North)\\s+America)",
+			"Member\\s+states\\s+of\\s+(?:the\\sUnited\\sNations|the\\sCommonwealth\\sof\\sNations|the\\sEuropean\\sUnion|NATO)",
+			"States\\s+(?:of\\sthe\\sUnited\\sStates|with\\slimited\\srecognition)",
+			"States\\s+(?:of\\sthe\\sUnited\\sStates|with\\slimited\\srecognition)",
+			".*?former.*?countries.*?"
+		],
+		"names": [],
+		"titles": [],
+		"fields": []
+	},
+	"event": {
+		"categories": [
+			".*?event.*?"
+		],
+		"names": [],
+		"titles": [],
+		"fields": [
+			"first_aired",
+			"election_date",
+			"venue",
+			"host_city",
+			"affected",
+			"site"
+		]
+	},
+	"organisation": {
+		"categories": [
+			".*?(?:organizations?|organized crime (?:gangs|groups)|compan(?:y|ies)).*?"
+		],
+		"names": [],
+		"titles": [],
+		"fields": []
+	},
+	"settlement": {
+		"categories": [
+			"\\s?(?:cities|towns|villages|.*?populated\\splaces).*?"
+		],
+		"names": [
+			"settlement"
+		],
+		"titles": [],
+		"fields": []
+	},
+	"watercourse": {
+		"categories": [],
+		"names": [
+			"river"
+		],
+		"titles": [
+			"river", 
+			"brook", 
+			"creek", 
+			"stream"
+		],
+		"fields": [
+			"source1_coordinates",
+			"length",
+			"basin_size",
+			"discharge1_avg",
+			"source1_location"
+		]
+	},
+	"waterarea": {
+		"categories": [],
+		"names": [
+			"body\\sof\\swater",
+			"sea",
+			"lake"
+		],
+		"titles": [
+			"lake",
+			"loch"
+		],
+		"fields": []
+	},
+	"geo": {
+		"categories": [],
+		"names": [
+			"waterfall", 
+			"(island)s?", 
+			"mountain",
+			"(peninsula)s?",
+			"continent"
+		],
+		"titles": [],
+		"fields": []
+	}
+}

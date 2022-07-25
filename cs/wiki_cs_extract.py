@@ -411,7 +411,7 @@ class WikiExtract(object):
         ent_pages = []
         # context = CElTree.iterparse(self.pages_dump_fpath, events=("start", "end"))
         event, root = next(it_context_pages)
-        with open("kb_cs", "a", encoding="utf-8") as fl:
+        with open("kb", "a", encoding="utf-8") as fl:
             for event, elem in it_context_pages:
                 if event == "end" and "page" in elem.tag:
                     is_entity = True
