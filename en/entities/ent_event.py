@@ -1,53 +1,57 @@
-"""
-Projekt: entity_kb_english5
-Autor: Jan Kapsa (xkapsa00)
-Popis souboru: Soubor obsahuje třídu 'EntEvent', která uchovává údaje o událostích.
-"""
+##
+# @file ent_event.py
+# @brief contains EntEvent class - entity used for events
+#
+# @section ent_information entity information
+# - start date
+# - end date
+# - locations
+# - type
+#
+# @author created by Jan Kapsa (xkapsa00)
+# @date 15.07.2022
 
 import re
 
 from entities.ent_core import EntCore
 
+##
+# @class EntEvent
+# @brief entity used for events
 class EntEvent(EntCore):
-	"""
-    třída určená pro události
-    instanční atributy:
-        title       - jméno události
-        prefix      - prefix entity
-        eid         - ID entity
-        link        - odkaz na Wikipedii
-        start date	- datum začátku
-		end date	- datum ukončení
-		locations	- lokace
-		type 		- typ události
-    """
-	def __init__(self, title, prefix, link, data, langmap, redirects, debugger):
-		"""
-        inicializuje třídu EntEvent
-        """
-
-		super(EntEvent, self).__init__(title, prefix, link, data, langmap, redirects, debugger)
+	##
+    # @brief initializes the event entity
+    # @param title - page title (entity name) <string>
+    # @param prefix - entity type <string>
+    # @param link - link to the wikipedia page <string>
+    # @param data - extracted entity data (infobox data, categories, ...) <dictionary>
+    # @param langmap - language abbreviations <dictionary>
+    # @param redirects - redirects to the wikipedia page <array of strings>
+    # @param sentence - first sentence of the page <string>
+    # @param debugger - instance of the Debugger class used for debugging <Debugger>
+	def __init__(self, title, prefix, link, data, langmap, redirects, sentence, debugger):
+		super(EntEvent, self).__init__(title, prefix, link, data, langmap, redirects, sentence, debugger)
 
 		self.start_date = ""
 		self.end_date = ""
 		self.locations = []
 		self.type = ""
 
+	##
+    # @brief serializes entity data for output (tsv format)
+    # @return tab separated values containing all of entity data <string>
 	def __repr__(self):
-		"""
-        serializuje parametry třídy EntEvent
-        """
 		return self.serialize(f"{self.start_date}\t{self.end_date}\t{'|'.join(self.locations)}\t{self.type}")
 
-	def assign_values(self):
-		"""
-        pokusí se extrahovat parametry z infoboxů
-        """
-
+	##
+    # @brief tries to assign entity information (calls the appropriate functions)
+	def assign_values(self):		
 		self.assign_dates()
 		self.assign_locations()
 		self.assign_type()
 
+	##
+    # @brief extracts and assigns start date and end date variables from infobox
 	def assign_dates(self):
 		keys = ["year", "start_date", "first_aired", "election_date"]
 
@@ -98,6 +102,8 @@ class EntEvent(EntCore):
 					self.start_date = self.extract_date(split[0])[0]
 					self.end_date = self.extract_date(split[1])[0]
 
+	##
+    # @brief extracts and assigns locations from infobox
 	def assign_locations(self):		
 		keys = [
 			"place", 
@@ -141,6 +147,8 @@ class EntEvent(EntCore):
 				self.locations.append(data)
 				break
 
+	##
+    # @brief extracts and assigns type from infobox
 	def assign_type(self):
 		
 		type = ""
@@ -164,6 +172,10 @@ class EntEvent(EntCore):
 		else:
 			self.type = name
 
+	##
+	# @brief removes wikipedia formatting
+	# @param data - string with wikipedia formatting
+	# @return string without wikipedia formatting
 	@staticmethod
 	def remove_templates(data):
 		data = re.sub(r"\{\{.*?\}\}", "", data)

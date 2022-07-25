@@ -1,4 +1,13 @@
-# TUI debugging for easier testing and usage
+##
+# @file debugger.py
+# @brief contains TUI and functions for debugging and logging
+#
+# @section ideas ideas
+# pause extraction every time interesting entity is found / inform about it
+# print messages with color depending on their importance / meaning 
+#
+# @author created by Jan Kapsa (xkapsa00)
+# @date 25.07.2022 
 
 import datetime
 import json
@@ -6,17 +15,17 @@ from collections import Counter
 import sys
 import os
 
-# ideas:
-# pause extraction every time interesting entity is found / inform about it
-# print messages with color depending on their importance / meaning 
-
 SCORE = 10
 ENTITIES_FP	= "json/entities.json"
 
+##
+# @class Debugger
+# @brief used for TUI, debugging and logging
 class Debugger:
+	##
+	# @brief initializes debugger entity
 	def __init__(self):
 		# TODO: add debug mode on/off switch
-		# TODO: stats
 		
 		self.debug_limit = None
 
@@ -34,26 +43,30 @@ class Debugger:
 		with open(os.path.join(os.path.dirname(sys.argv[0]), ENTITIES_FP), "r") as f:
 			self.entities = json.load(f)
 
-	# clears currently updating message and prints a message with a new line 
+	##
+	# @brief clears currently updating message and prints a message with a new line 
 	@staticmethod
 	def print(message, print_time=True):
 		if print_time:
 			message = f"[{datetime.datetime.now().strftime('%H:%M:%S')}] {message}"
 		print(f"{message}\033[K")
 
-	# updates (clears) current line and writes new message 
+	## 
+	# @brief updates (clears) current line and writes new message 
 	@staticmethod
 	def update(msg):
 		print(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] {msg}\033[K", end="\r")
 
-	# logs data into a file
+	## 
+	# @brief logs data into a file (prints data to stderr, which is redirected to a file)
 	@staticmethod
 	def log_message(message, print_time=False):		
 		if print_time:
 			message = f"[{datetime.datetime.now().strftime('%H:%M:%S')}] {message}"
 		print(f"{message}", file=sys.stderr)
 
-	# logs entity information
+	##
+	# @brief logs entity information
 	def log_entity(self, entity, prefix):
 		data = []
 
@@ -68,7 +81,8 @@ class Debugger:
 		data.append(f"  empty: {', '.join(empty)}")
 		self.log_message("\n".join(data))
 	
-	# checks if entity is mostly empty (implies badly identified entity)
+	##
+	# @brief checks if entity is mostly empty (implies badly identified entity)
 	def check_empty(self, entity, prefix):
 		entity_data = entity.split("\t")
 		score = 0
@@ -78,6 +92,8 @@ class Debugger:
 		if score > SCORE:
 			self.log_entity(entity, prefix)
 
+	##
+	# @brief logs the result of entity extraction (infobox, categories, first paragraph, ...)
 	def log_extraction(self, title, extraction, flags=(False, False, False)):
 		
 		data = []
@@ -113,13 +129,17 @@ class Debugger:
 		
 		self.log_message("\n".join(data))
 
+	##
+	# @brief logs identification of an entity (how much score each entity type got)
 	def log_identification(self, title, identification):
 		# identification is a Counter
 		self.log_message(f"identification of {title}:")
 		for key, value in identification:
 			self.log_message(f"{key}: {value}")
 
-	def stats(self):
+	##
+	# @brief fiters data sent to stderr (stderr is redirected to out/kb.out) and logs important data into a log file (log/kb.log) 
+	def log(self):
 		end_time = datetime.datetime.now()
 		tdelta = end_time - self.start_time
 		self.print(f"completed extraction in {self.pretty_time_delta(tdelta.total_seconds())}", print_time=False)
@@ -138,6 +158,8 @@ class Debugger:
 		with open(os.path.join(os.path.dirname(sys.argv[0]), "log/kb.log"), "w") as f:
 			f.writelines(log)
 
+	##
+	# @brief TUI function, prints time delta in readable format
 	@staticmethod
 	def pretty_time_delta(seconds):
 		seconds = int(seconds)

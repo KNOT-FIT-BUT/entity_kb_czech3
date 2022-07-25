@@ -1,33 +1,37 @@
-"""
-Projekt: entity_kb_english5
-Autor: Jan Kapsa (xkapsa00)
-Popis souboru: Soubor obsahuje třídu 'EntSettlement', která uchovává údaje o sídlech.
-Poznámka: inspirováno projektem entity_kb_czech3
-"""
+##
+# @file ent_settlement.py
+# @brief contains EntSettlement class - entity used for settlements
+#
+# @section ent_information entity information
+# - area
+# - population
+# - latitude
+# - longtitude
+# - country
+#
+# @author created by Jan Kapsa (xkapsa00)
+# @date 15.07.2022
 
 import re
 
 from entities.ent_core import EntCore
 
+##
+# @class EntSettlement
+# @brief entity used for settlements
 class EntSettlement(EntCore):
-	"""
-    třída určená pro sídla
-    instanční atributy:
-        title       - jméno sídla
-        prefix      - prefix entity
-        eid         - ID entity
-        link        - odkaz na Wikipedii
-        area		- rozloha
-		population	- populace	
-		latitude	- zeměpisná šířka
-		longtitude	- zeměpisná délka
-		country 	- země
-    """
-	def __init__(self, title, prefix, link, data, langmap, redirects, debugger):
-		"""
-        inicializuje třídu EntSettlement
-        """
-		super(EntSettlement, self).__init__(title, prefix, link, data, langmap, redirects, debugger)
+	##
+    # @brief initializes the settlement entity
+    # @param title - page title (entity name) <string>
+    # @param prefix - entity type <string>
+    # @param link - link to the wikipedia page <string>
+    # @param data - extracted entity data (infobox data, categories, ...) <dictionary>
+    # @param langmap - language abbreviations <dictionary>
+    # @param redirects - redirects to the wikipedia page <array of strings>
+    # @param sentence - first sentence of the page <string>
+    # @param debugger - instance of the Debugger class used for debugging <Debugger>
+	def __init__(self, title, prefix, link, data, langmap, redirects, sentence, debugger):
+		super(EntSettlement, self).__init__(title, prefix, link, data, langmap, redirects, sentence, debugger)
 
 		self.area = ""
 		self.population = ""
@@ -35,26 +39,23 @@ class EntSettlement(EntCore):
 		self.longitude = ""
 		self.country = ""
 
+	##
+    # @brief serializes entity data for output (tsv format)
+    # @return tab separated values containing all of entity data <string>
 	def __repr__(self):
-		"""
-        serializuje parametry třídy EntSettlement
-        """
 		return self.serialize(f"{self.country}\t{self.latitude}\t{self.longitude}\t{self.area}\t{self.population}")
 
+	##
+    # @brief tries to assign entity information (calls the appropriate functions)
 	def assign_values(self):
-		"""
-        pokusí se extrahovat parametry z infoboxů
-        """
 		self.assign_area()
 		self.assign_population()
 		self.assign_coordinates()
 		self.assign_country()
 
+	##
+    # @brief extracts and assigns latitude and longtitude from infobox
 	def assign_coordinates(self):
-		"""
-        pokusí se extrahovat souřadnice z infoboxu coordinates
-		využívá funkci get_coordinates třídy EntCore
-        """
 		if "coordinates" in self.infobox_data and self.infobox_data["coordinates"] != "":
 			coords = self.get_coordinates(self.infobox_data["coordinates"])
 			if all(coords):
@@ -66,11 +67,9 @@ class EntSettlement(EntCore):
 			if all(coords):
 				self.latitude, self.longitude = coords
 
+	##
+    # @brief extracts and assigns area from infobox
 	def assign_area(self):
-		"""
-        pokusí se extrahovat rozlohu z infoboxu area_km2
-		TODO (TEST): přidat více infoboxů? (země využívající imperiální jednotky)
-        """
 		if "area_total_km2" in self.infobox_data:
 			area = self.infobox_data['area_total_km2']
 			area = area.replace(",", "")
@@ -80,11 +79,9 @@ class EntSettlement(EntCore):
 		# 	print(f"{self.title}: area not found")
 		pass
 
+	##
+    # @brief extracts and assigns population from infobox
 	def assign_population(self):
-		"""
-        pokusí se extrahovat populaci z infoboxu population_total
-        """
-
 		# population_total
 		if "population_total" in self.infobox_data:
 			if self.infobox_data["population_total"] != "":
@@ -96,10 +93,9 @@ class EntSettlement(EntCore):
 		# 	print(f"{self.title}: population not found")
 		pass
 
+	##
+    # @brief extracts and assigns country from infobox
 	def assign_country(self):
-		"""
-        pokusí se extrahovat zemi z infoboxu subdivision_name 
-        """
 		# subdivision_name
 		if "subdivision_name" in self.infobox_data:
 			if self.infobox_data["subdivision_name"] != "":

@@ -1,7 +1,16 @@
+##
+# @file generate_langmap.py
+# @brief generates langmap if langmap.json was not found
+#
+# @author created by Jan Kapsa (xkapsa00)
+# @date 25.07.2022 
+
 import re
 import json
 import requests
 
+##
+# @brief gets a "List of ISO 639-2 codes" wikipedia page and generates langmap
 def generate():
 
 	r = requests.get("https://en.wikipedia.org/w/index.php?title=Special:Export&pages=List_of_ISO_639-2_codes")

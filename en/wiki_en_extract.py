@@ -1,12 +1,28 @@
-"""
-Projekt: entity_kb_english5
-Autor: Jan Kapsa (xkapsa00)
-Popis souboru:
-    Soubor obsahuje třídu 'WikiExtract', jež uchovává metody pro parsování argumentů příkazové řádky, 
-    parsování XML dumpu Wikipedie, vytvoření znalostní báze a hlavičkového souboru a správu entit a jejich údajů.
-Poznámky:
-    založeno na projektu entity_kb_czech3 (https://knot.fit.vutbr.cz/wiki/index.php/Entity_kb_czech3)
-"""
+##
+# @mainpage Entity KB English index page
+# see https://knot.fit.vutbr.cz/wiki/index.php/Entity_kb_english5 for more information...
+
+##
+# @file wiki_en_extract.py
+# @brief main script that contains WikiExtract class that extracts and identifies entities
+# 
+# code is based on an earlier project with different language - entity_kb_czech3 (https://knot.fit.vutbr.cz/wiki/index.php/Entity_kb_czech3)
+# @section how_it_works how it works
+# - parses arguments
+# - creates head and version
+# - parses wikipedia xml dump
+# - logs errors and statistics to a file
+# @section parsing_xml_dump parsing the xml dump
+# - loads the redirect, first sentence, identification patterns and langmap files
+# - goes through the xml file and identifies entities
+# - for each entity:
+#   - extracts important data
+#   - identifies the entity
+#   - assigns a class to the entity
+# - outputs extracted entities into a file
+# 
+# @author created by Jan Kapsa (xkapsa00)
+# @date 14.07.2022
 
 import re
 import os
@@ -36,19 +52,25 @@ from debugger import Debugger
 TESTING_PATH = "./testing_data/xml/people.xml"
 LANG_MAP = {"cz": "cs"}
 
+##
+# @class WikiExtract
+# @brief main class of the project, one istanced is created to execute the main functions
 class WikiExtract(object):
+    ##
+    # @brief initializes the console_args variable and debugger class
     def __init__(self):
-        """
-        inicializace třídy
-        """
         self.console_args = None
         self.d = Debugger()
 
+        # self.first_sentence_version = "20210101"
+        # self.first_sentences_path = f"/mnt/minerva1/nlp/corpora_datasets/monolingual/english/wikipedia/1st_sentences_from_enwiki-20210101-pages-articles.tsv"
+        self.first_sentences_path = f"testing_data/xml/1st_sentences_from_enwiki-20210101-pages-articles.tsv"
+
+    ##
+    # @brief creates the HEAD-KB file
+    # HEAD-KB file contains individual fields of each entity
     @staticmethod
     def create_head_kb():
-        """
-        Vytváří hlavičkový soubor HEAD-KB, který upřesňuje množinu záznamů znalostní báze.
-        """
         entities = [
             "<person>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tGENDER\t{e}DATE OF BIRTH\tPLACE OF BIRTH\t{e}DATE OF DEATH\tPLACE OF DEATH\t{m}JOBS\t{m}NATIONALITY\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
             "<person:artist>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tGENDER\t{e}DATE OF BIRTH\tPLACE OF BIRTH\t{e}DATE OF DEATH\tPLACE OF DEATH\t{m}JOBS\t{m}NATIONALITY\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
@@ -72,15 +94,14 @@ class WikiExtract(object):
             for entity in entities:
                 file.write(entity)
 
+    ##
+    # @brief parses the console arguments
     def parse_args(self):
-        """
-        Parsuje argumenty zadané při spuštění skriptu.
-        """
         parser = argparse.ArgumentParser()
         parser.add_argument(
             "-I",
             "--indir",
-            default="/mnt/minerva1/nlp/corpora_datasets/monolingual/czech/wikipedia/",
+            default="/mnt/minerva1/nlp/corpora_datasets/monolingual/english/wikipedia/",
             type=str,
             help="Directory, where input files are located (applied for files withoud directory location only).",
         )
@@ -160,10 +181,15 @@ class WikiExtract(object):
         else:
             self.console_args._kb_stability = ""
 
+    def get_config():
+        pass
+
+    ##
+    # @brief creates a path to the dump file
+    # @param dump_file
+    # @param dump_file_mask
+    # @return string file path
     def get_dump_fpath(self, dump_file, dump_file_mask):
-        '''
-        Vrací cestu k souboru dumpu.
-        '''
         if dump_file is None:
             dump_file = dump_file_mask.format(
                 self.console_args.lang, self.console_args.dump
@@ -175,10 +201,9 @@ class WikiExtract(object):
 
         return os.path.join(self.console_args.indir, dump_file)
 
+    ##
+    # @brief creates the VERSION file
     def assign_version(self):
-        '''
-        Připraví soubor VERSION
-        '''
         str_kb_stability = ""
         if self.console_args._kb_stability:
             str_kb_stability = f"-{self.console_args._kb_stability}"
@@ -207,11 +232,9 @@ class WikiExtract(object):
                 )
             )
 
+    ## 
+    # @brief loads redirects, first sentences, langmap and patterns, then parses xml dump
     def parse_xml_dump(self):
-        """
-        Parsuje XML dump Wikipedie, prochází jednotlivé stránky a vyhledává entity.
-        """
-
         # redirects
         redirects = dict()
         try:
@@ -231,6 +254,24 @@ class WikiExtract(object):
                 self.d.print(f"loaded redirects ({i})")
         except OSError:            
             self.d.print("redirect file was not found - skipping...")
+
+        # first sentences
+        first_sentences = dict()
+        try:
+            with open(self.first_sentences_path, "r") as f:
+                self.d.print("loading first sentences")
+                i = 0
+                for line in f:
+                    i += 1
+                    self.d.update(i)
+                    split = line.strip().split("\t")
+                    link = split[0]
+                    sentence = split[1] if len(split) > 1 else ""
+                    first_sentences[link] = sentence
+
+                self.d.print(f"loaded first sentences ({i})")
+        except OSError:            
+            self.d.print("first sentence file was not found - skipping...")
 
         # načtení langmapy
         langmap = dict()
@@ -259,6 +300,7 @@ class WikiExtract(object):
         ent_titles = []
         ent_pages = []
         ent_redirects = []
+        ent_sentences = []
         
         curr_page_cnt = 0
         all_page_cnt = 0
@@ -266,11 +308,16 @@ class WikiExtract(object):
 
         # LIMIT = skript bude číst a extrahovat data po blocích o velikosti [LIMIT]
         LIMIT = 4000
+        debug_limit_hit = False
 
         with open("kb", "a+", encoding="utf-8") as file:
             file.truncate(0)
             event, root = next(context)
             for event, elem in context:
+
+                if debug_limit_hit:
+                    break
+
                 # hledá <page> element
                 if event == "end" and "page" in elem.tag:
                     # xml -> <page> -> <title>
@@ -298,21 +345,24 @@ class WikiExtract(object):
                                         ent_pages.append(grandchild.text)
                                         link = self.get_link(title)
                                         ent_redirects.append(redirects[link] if link in redirects else [])
+                                        ent_sentences.append(first_sentences[link] if link in first_sentences else "")
 
                                         curr_page_cnt += 1
                                         all_page_cnt += 1
+
                                         self.d.update(f"found new page ({all_page_cnt})")
 
+                                        if self.d.debug_limit is not None and all_page_cnt >= self.d.debug_limit:
+                                            self.d.print(f"debug limit hit (number of pages: {all_page_cnt})")
+                                            debug_limit_hit = True
+                                            break
+
                                         if curr_page_cnt == LIMIT:
-                                            ent_count += self.output(file, ent_titles, ent_pages, langmap, ent_redirects, patterns)
-                                            if self.d.debug_limit is not None and ent_count >= self.d.debug_limit:
-                                                self.d.print("----------------------------")
-                                                self.d.print(f"debug limit hit (number of pages: {all_page_cnt})")
-                                                self.d.print(f"processed {ent_count} entities")
-                                                return
+                                            ent_count += self.output(file, ent_titles, ent_pages, langmap, ent_redirects, ent_sentences, patterns)
                                             ent_titles.clear()
                                             ent_pages.clear()
                                             ent_redirects.clear()
+                                            ent_sentences.clear()
                                             curr_page_cnt = 0    
                         elif "redirect" in child.tag:
                             self.d.update(f"found redirect ({all_page_cnt})")
@@ -321,24 +371,30 @@ class WikiExtract(object):
                     root.clear()
 
             if len(ent_titles):
-                ent_count += self.output(file, ent_titles, ent_pages, langmap, ent_redirects, patterns)
+                ent_count += self.output(file, ent_titles, ent_pages, langmap, ent_redirects, ent_sentences, patterns)
 
         self.d.print("----------------------------", print_time=False)
         self.d.print(f"parsed xml dump (number of pages: {all_page_cnt})", print_time=False)
         self.d.print(f"processed {ent_count} entities", print_time=False)
 
-    def output(self, file, ent_titles, ent_pages, langmap, ent_redirects, patterns):
-        '''
-        Extrahuje data z načtených stránek a zapíše do souboru kb.
-        (využívá multiprocessing)
-        '''
+    ##
+    # @brief extracts the entities with multiprocessing and outputs the data to a file
+    # @param file - output file ("kb" file)
+    # @param ent_titles - ordered array of strings containing entity titles
+    # @param ent_pages - ordered array of strings containing entity pages
+    # @param langmap - dictionary of language abbreviations
+    # @param ent_redirects - ordered array of arrays of strings containing entity redirects
+    # @param ent_sentences - ordered array of strings containing entity sentences
+    # @param patterns - dictionary containing identification patterns
+    # @return number of pages that were identified as entities (count of extracted entities)
+    def output(self, file, ent_titles, ent_pages, langmap, ent_redirects, ent_sentences, patterns):
         if len(ent_titles):
             start_time = datetime.datetime.now()
 
             pool = Pool(processes=self.console_args.m)
             serialized_entities = pool.starmap(
                 self.process_entity,
-                zip(ent_titles, ent_pages, repeat(langmap), ent_redirects, repeat(patterns))                    
+                zip(ent_titles, ent_pages, repeat(langmap), ent_redirects, ent_sentences, repeat(patterns))                    
             )
             l = list(filter(None, serialized_entities))
             file.write("\n".join(l) + "\n")
@@ -352,12 +408,12 @@ class WikiExtract(object):
             self.d.log_message(f"time_avg,{tdelta},{len(ent_pages)};")
             return count
 
+    ##
+    # @brief determines if page is an entity or not
+    #  
     # filters out wikipedia special pages and date pages
     @staticmethod
     def is_entity(title):
-        '''
-        Kontroluje jestli daná stránka pojednává o entitě. Odstraní speciální stránky wikipedie a datumy.
-        '''
         # special pages
         if title.startswith(
             (
@@ -392,9 +448,20 @@ class WikiExtract(object):
 
         return True
 
-    def process_entity(self, page_title, page_content, langmap, ent_redirects, patterns):
-
+    ##
+    # @brief extracts entity data, identifies the type of the entity and assigns a class
+    # @param page_title - string containing the page title
+    # @param page_content - string containing the page content
+    # @param langmap - dictionary of language abbreviations
+    # @param ent_redirects - array of string containing the redirects
+    # @param ent_sentence - string containing the first sentence
+    # @param patterns - dictionary containing identification patterns
+    # @return tab separated string with entity data or None if entity is unidentified
+    def process_entity(self, page_title, page_content, langmap, ent_redirects, ent_sentence, patterns):
         self.d.update(f"processing {page_title}")
+
+        if ent_sentence != "":
+            self.d.log_message(f"sentence: {ent_sentence}")
         
         extracted = self.extract_entity_data(page_content)
 
@@ -421,13 +488,19 @@ class WikiExtract(object):
         if count != 0:
             key = identification[0][0]
             if key in entities:
-                entity = entities[key](page_title, key, self.get_link(page_title), extracted, langmap, ent_redirects, self.d)
+                entity = entities[key](page_title, key, self.get_link(page_title), extracted, langmap, ent_redirects, ent_sentence, self.d)
                 entity.assign_values()
                 return repr(entity)
 
         # TODO: log unidentified
         return None
 
+    ##
+    # @brief tries to extract infobox, first paragraph, categories and coordinates
+    # @param content - string containing page content 
+    # @return dictionary of extracted entity data
+    #
+    # uses the mwparserfromhell library
     def extract_entity_data(self, content):
         content = self.remove_not_improtant(content)
 
@@ -492,6 +565,19 @@ class WikiExtract(object):
         
         return result
 
+    ##
+    # @brief uses patterns to score the entity, prefix with the highest score is later chosen as the entity identification
+    # @param title - string containing page title 
+    # @param extracted - dictionary with extracted entity data (infobox, categories, ...)
+    # @param patterns - dictionary containing identification patterns
+    # @return Counter instance with identification scores
+    #
+    # entity is given a point for each matched pattern
+    # it looks at categories, infobox names, titles and infobox fields
+    # these patterns are located in a en/json/identification.json file
+    #
+    # @todo better algorithm for faster performance
+    # @todo score weight system
     @staticmethod
     def identify_entity(title, extracted, patterns):
         counter = Counter({key: 0 for key in patterns.keys()})
@@ -527,18 +613,20 @@ class WikiExtract(object):
 
         return counter
 
+    ##
+    # @brief creates a wikipedia link given the page name
+    # @param page - string containing page title
+    # @return wikipedia link
     @staticmethod
     def get_link(page):
-        '''
-        Vrátí url dokaz wikipedie dané stránky.
-        '''
         wiki_link = page.replace(" ", "_")
         return f"https://en.wikipedia.org/wiki/{wiki_link}"
 
+    ##
+    # @brief deletes references, comments, etc. from a page content
+    # @param page_content - string containing page_content
+    # @return page content withou reference tags, comments, etc...
     def remove_not_improtant(self, page_content):
-        '''
-        Odstraní referencí a HTML komentáře.
-        '''
         clean_content = page_content
 
         # remove comments
@@ -557,11 +645,13 @@ class WikiExtract(object):
 
         return clean_content
 
+    ##
+    # @brief removes a specific references from a string
+    # @param string - input string
+    # @param ref_pattern - specific reference pattern
+    # @return string without the references
     @staticmethod
     def remove_references(string, ref_pattern):
-        '''
-        Odstraní typ reference.
-        '''
         clean_content = string
         arr = []
         for m in re.finditer(ref_pattern, clean_content):
@@ -583,6 +673,7 @@ if __name__ == "__main__":
     wiki_extract = WikiExtract()
     
     wiki_extract.parse_args()
+    wiki_extract.get_config()
     wiki_extract.create_head_kb()
     wiki_extract.assign_version()
     

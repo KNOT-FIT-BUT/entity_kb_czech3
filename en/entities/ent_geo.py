@@ -1,35 +1,51 @@
-"""
-Projekt: entity_kb_english5
-Autor: Jan Kapsa (xkapsa00)
-Popis souboru: Soubor obsahuje třídu 'EntGeo', která uchovává údaje o geografických entitách.
-Poznámka: inspirováno projektem entity_kb_czech3
-"""
+##
+# @file ent_geo.py
+# @brief contains EntGeo class - entity used for mountains, islands, waterfalls, peninsulas and continents
+#
+# @section ent_information entity information
+# general:
+# - latitude
+# - longtitude
+#
+# waterfalls:
+# - continent
+# - total height
+#
+# islands:
+# - continent
+# - area
+# - population
+#
+# continents:
+# - area
+# - population
+# 
+# reliefs: 
+# - continent
+#
+# @author created by Jan Kapsa (xkapsa00)
+# @date 15.07.2022
 
 import re
 
 from entities.ent_core import EntCore
 
+##
+# @class EntGeo
+# @brief entity used for mountains, islands, waterfalls, peninsulas and continents
 class EntGeo(EntCore):
-	"""
-    třída určená pro vodní toky
-    instanční atributy:
-        title       	- jméno geografické entity
-        prefix      	- prefix entity
-        eid         	- ID entity
-        link        	- odkaz na Wikipedii
-        area			- rozloha
-		populatio		- populace
-		latitude		- zeměpisná šířka
-		longtitude		- zeměpisná délka
-		continent 		- kontinenty
-		total_height 	- výška 
-	"""
-	def __init__(self, title, prefix, link, data, langmap, redirects, debugger):
-		"""
-        inicializuje třídu EntGeo
-        """
-
-		super(EntGeo, self).__init__(title, prefix, link, data, langmap, redirects, debugger)
+	##
+    # @brief initializes the geo entity
+    # @param title - page title (entity name) <string>
+    # @param prefix - entity type <string>
+    # @param link - link to the wikipedia page <string>
+    # @param data - extracted entity data (infobox data, categories, ...) <dictionary>
+    # @param langmap - language abbreviations <dictionary>
+    # @param redirects - redirects to the wikipedia page <array of strings>
+    # @param sentence - first sentence of the page <string>
+    # @param debugger - instance of the Debugger class used for debugging <Debugger>
+	def __init__(self, title, prefix, link, data, langmap, redirects, sentence, debugger):
+		super(EntGeo, self).__init__(title, prefix, link, data, langmap, redirects, sentence, debugger)
 
 		self.continent = ""
 		self.latitude = ""
@@ -38,6 +54,9 @@ class EntGeo(EntCore):
 		self.population = ""
 		self.total_height = ""
 
+	##
+    # @brief serializes entity data for output (tsv format)
+    # @return tab separated values containing all of entity data <string>
 	def __repr__(self):
 		"""
         serializuje parametry třídy EntGeo
@@ -53,11 +72,9 @@ class EntGeo(EntCore):
 
 		return self.serialize(f"{self.latitude}\t{self.longitude}")
 
+	##
+    # @brief tries to assign entity information (calls the appropriate functions) and assigns prefix
 	def assign_values(self):
-		"""
-        pokusí se extrahovat parametry z infoboxů
-        """
-
 		self.prefix += f":{self.get_prefix(self.infobox_name)}"
 
 		if self.prefix == "geo:":
@@ -67,18 +84,13 @@ class EntGeo(EntCore):
 		if self.prefix == "geo:waterfall":
 			# assign continent
 			self.assign_height()
-		elif self.prefix == "geo:island":
-			self.assign_area()
-			self.assign_population()		
-		elif self.prefix == "geo:continent":
+		elif self.prefix in ["geo:island", "geo:continent"]:
 			self.assign_area()
 			self.assign_population()
 
+	##
+    # @brief extracts and assigns latitude and longtitude from infobox
 	def assign_coordinates(self):
-		"""
-        pokusí se extrahovat souřadnice z infoboxů coords a coordinates
-		využívá funkci get_coordinates třídy EntCore
-        """
 		if "coordinates" in self.infobox_data and self.infobox_data["coordinates"] != "":
 			coords = self.get_coordinates(self.infobox_data["coordinates"])
 			if all(coords):
@@ -91,11 +103,9 @@ class EntGeo(EntCore):
 				self.latitude, self.longitude = coords
 				return
 
+	##
+    # @brief extracts and assigns height from infobox
 	def assign_height(self):
-		"""
-        pokusí se extrahovat výšku z infoboxu height
-		využívá funkce convert_units z entity core
-        """
 		if "height" in self.infobox_data and self.infobox_data["height"] != "":
 			height = self.infobox_data["height"]
 
@@ -113,11 +123,9 @@ class EntGeo(EntCore):
 					if match:
 						self.total_height = self.convert_units(match.group(1), match.group(2))			
 	
+	##
+    # @brief extracts and assigns area from infobox
 	def assign_area(self):
-		"""
-        pokusí se extrahovat rozlohu z infoboxu area nebo area_km2
-		využívá funkce convert_units z entity core
-        """
 		area_infoboxes = ["area_km2", "area"]
 		for a in area_infoboxes:
 			if a in self.infobox_data and self.infobox_data[a]:
@@ -143,10 +151,9 @@ class EntGeo(EntCore):
 						return
 				break
 
+	##
+    # @brief extracts and assigns population from infobox
 	def assign_population(self):
-		"""
-        pokusí se extrahovat populaci z infoboxu population
-        """
 		if "population" in self.infobox_data and self.infobox_data["population"]:
 			population = self.infobox_data["population"]
 			population = re.sub(r",|\(.*\)", "", population).strip()
@@ -167,6 +174,10 @@ class EntGeo(EntCore):
 			if match:
 				self.population = match.group(1)			
 
+	##
+    # @brief assigns prefix based on infobox name
+    #
+    # geo:waterfall, geo:island, geo:relief, geo:peninsula or geo:continent
 	@staticmethod
 	def get_prefix(name):
 		prefix = ""

@@ -7,5 +7,7 @@ log
 out
 test.py
 
+html/
+
 *.out
 *.log

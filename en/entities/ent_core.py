@@ -1,52 +1,63 @@
-"""
-Projekt: entity_kb_english5
-Autor: Jan Kapsa (xkapsa00)
-Popis souboru: Soubor obsahuje třídu 'EntCore', jež je rodičovskou třídou pro podtřídy entit.
-Poznámka: inspirováno projektem entity_kb_czech3
-"""
+##
+# @file ent_core.py
+# @brief contains EntCore entity - parent core enitity with useful functions
+# 
+# see class for more information
+#
+# @section important_functions important functions
+# - image and alias extraction
+# - date extraction
+# - unit conversion
+# - latitude and longtitude extraction
+#
+# @section general_ent_information general entity information
+# - ID
+# - prefix
+# - title
+# - aliases
+# - redirects
+# - description
+# - original title
+# - images
+# - link
+#
+# description is first sentence extracted from a file passed to the core entity during initialization <br>
+# if first sentece is not found in the file it is extracted with the get_first_sentence function <br>
+# but first sentece with wikipedia formatting is also stored because it helps with extraction of other information
+# 
+# @section date_conversion date conversion 
+# main function extracting dates is the extract_date function <br>
+# other date functions are helper function to the main function and they are not ment to be called
+#
+# @author created by Jan Kapsa (xkapsa00)
+# @date 15.07.2022
 
 from abc import ABCMeta, abstractmethod
 import re
 from hashlib import md5, sha224
 import mwparserfromhell as parser
 
+## 
+# @class EntCore
+# @brief abstract parent entity
+# 
+# contains the general information that is shared across all entities and some useful functions
 class EntCore(metaclass=ABCMeta):
-    """
-    abstraktní rodičovská třída, ze které dědí všechny entity
-    instanční atributy:
-        title       - název entity
-        prefix      - prefix entity
-        eid         - ID entity
-        link        - odkaz na Wikipedii
-        aliases     - alternativní pojmenování entity
-        description - stručný popis entity
-        images      - absolutní cesty k obrázkům Wikimedia Commons
-    třídní atributy:
-        counter     - počítadlo instanciovaných objektů z odvozených tříd
-    metody:
-        serialize           - serializuje třídu k vytisknutí
-        get_data            - extrahuje infobox, paragraf a další hodnoty ze stránky
-        get_first_sentence  - extrahuje první větu
-        get_aliases         - extrahuje aliasy z první věty
-        get_lang_aliases    - extrahuje aliasy v cizích jazycích (formát {{lang...}})
-        extract_image       - extrahuje obrázky
-        get_image_path      - vrátí cesty k obrázkům Wikimedia Commons
-        get_coordinates     - pokusí se vrátit zeměpisnou šířku a výšku 
-        convert_units       - konverze jednotek
-    """
-
     # FIXME: this is a bad idea because of multiprocessing 
     counter = 0
 
+    ##
+    # @brief initializes the core entity
+    # @param title - page title (entity name) <string>
+    # @param prefix - entity type <string>
+    # @param link - link to the wikipedia page <string>
+    # @param data - extracted entity data (infobox data, categories, ...) <dictionary>
+    # @param langmap - language abbreviations <dictionary>
+    # @param redirects - redirects to the wikipedia page <array of strings>
+    # @param sentence - first sentence of the page <string>
+    # @param debugger - instance of the Debugger class used for debugging <Debugger>
     @abstractmethod
-    def __init__(self, title, prefix, link, data, langmap, redirects, debugger):
-        """
-        Inicializuje třídu EntCore
-        Parametry:
-        title   - název stránky
-        prefix  - prefix entity
-        link    - odkaz na Wikipedii
-        """
+    def __init__(self, title, prefix, link, data, langmap, redirects, sentence, debugger):
         EntCore.counter += 1
         self.d = debugger
 
@@ -65,7 +76,7 @@ class EntCore(metaclass=ABCMeta):
         self.categories = data["categories"]
         self.first_paragraph = data["paragraph"]
         self.first_sentence = ""
-        self.description = ""
+        self.description = sentence
         self.coords = data["coords"]
         self.aliases = []
 
@@ -75,10 +86,11 @@ class EntCore(metaclass=ABCMeta):
 
         self.extract_image()
     
+    ##
+    # @brief serializes entity data for output (tsv format)
+    # @param ent_data - child entity data that is merged with general data <tsv string>
+    # @return tab separated values containing all of entity data <string>
     def serialize(self, ent_data):
-        """
-        serializuj entitu pro výstup
-        """
         data = "\t".join([
             self.eid,
             self.prefix,
@@ -90,13 +102,18 @@ class EntCore(metaclass=ABCMeta):
             self.images,
             self.link,
             ent_data
-        ])
+        ]).replace("\n", "")
         return data
 
+    ##
+    # @brief tries to extract the first sentence from the first paragraph
+    # @param paragraph - first paragraph of the page <string>
+    #
+    # removes the wikipedia formatting and assigns the description variable if it is empty
+    # but first sentece with wikipedia formatting is also stored because it helps with extraction of other information
+    #
+    # e.g.: '''Vasily Vasilyevich Smyslov''' (24 March 1921 – 27 March 2010) was a [[Soviet people|Soviet]] ...
     def get_first_sentence(self, paragraph):
-        """
-        extrahuje první větu
-        """
         paragraph = paragraph.strip()
         paragraph = re.sub(r"\.({{.*?}})", ".", paragraph)
 
@@ -135,13 +152,19 @@ class EntCore(metaclass=ABCMeta):
             description = re.sub(r"\s+,", ",", description)
 
             # print(f"{description}\n")
-            self.description = description
+            if self.description == "":
+                self.description = description
             self.first_sentence = first_sentence
         else: 
             # print(self.first_paragraph)           
             # print(f"{self.original_title}: error\n")
             pass
 
+    ##
+    # @brief extracts an alias in a native language
+    # @param lags - aliases in a wikipedia format <array of strings>
+    # 
+    # e.g.: {{lang-rus|Васи́лий Васи́льевич Смысло́в|Vasíliy Vasíl'yevich Smyslóv}};
     def get_lang_aliases(self, langs):
         if len(langs) > 0:
             for lang in langs:
@@ -166,7 +189,9 @@ class EntCore(metaclass=ABCMeta):
                 if len(split) > 2:
                     if "{" not in alias:
                         self.aliases.append(f"{alias}#lang={code}")
-                
+
+    ##
+    # @brief extracts aliases from the first sentence         
     def get_aliases(self):
         if self.first_sentence:
             string = self.first_sentence
@@ -219,11 +244,9 @@ class EntCore(metaclass=ABCMeta):
             #print(f"{self.aliases}")
             pass
 
+    ##
+    # @brief extracts image data from the infobox
     def extract_image(self):
-        """
-        extrahuje obrázky
-        """
-
         keys = ["image", "photo", "image_name", "image_flag", "image_coat", "image_map", "map_image", "logo"]
 
         for key in keys:
@@ -233,14 +256,10 @@ class EntCore(metaclass=ABCMeta):
                     image = self.get_images(image)
                     self.images += image if not self.images else "|" + image
 
+    ##
+    # @brief removes wikipedia formatting and assigns image paths to the images variable
+    # @param image - image data with wikipedia formatting
     def get_images(self, image):
-        """
-        Převádí název obrázku na absolutní cestu Wikimedia Commons.
-
-        Parametry:
-        image - název obrázku
-        """
-
         result = []
 
         image = re.sub(r"file:", "", image, flags=re.I)
@@ -267,24 +286,22 @@ class EntCore(metaclass=ABCMeta):
 
         return "|".join(result)
 
+    ##
+    # @brief generates server path from an image name
+    # @param image - image name 
     @staticmethod
     def get_image_path(image):
-        """
-        Převádí název obrázku na absolutní cestu Wikimedia Commons.
-
-        Parametry:
-        image - název obrázku
-        """
         image_hash = md5(image.encode("utf-8")).hexdigest()[:2]
         image_link = f"wikimedia/commons/{image_hash[0]}/{image_hash}/{image}"
         return image_link
 
-    # returns latitude, longtitude
+    ##
+    # @brief extracts the latitude and longtitude from a wikipedia formated string
+    # @param format - wikipedia formated string
+    # @return latitude, longtitude
+    # 
+    # e.g.: {{Coord|59|56|N|10|41|E|type:city}}
     def get_coordinates(self, format):
-        """
-        pokusí se vrátit zeměpisnou šířku a výšku 
-        """
-
         # matching coords format with directions
         # {{Coord|59|56|N|10|41|E|type:city}}
         format = re.sub(r"\s", "", format)
@@ -321,12 +338,13 @@ class EntCore(metaclass=ABCMeta):
         self.d.log_message(f"coords format no match ({format}) [{self.link}]")
         return (None, None)
 
-    # converts units
+    ##
+    # @brief converts units to metric system
+    # @param number - number to be converted <string>
+    # @param unit - unit abbreviation
+    # @param round_to - to how many decimal points will be rounded to (default: 2)
+    # @return converted rounded number as a string
     def convert_units(self, number, unit, round_to=2):
-        """
-        konverze jednotek
-        """
-        
         try:
             number = float(number)
         except:
@@ -375,8 +393,16 @@ class EntCore(metaclass=ABCMeta):
 
         return str(number if number % 1 != 0 else int(number))
 
-    # should always return array with 2 ordered values
-    # e.g.: ["", ""], ["1952-07-23", ""], ["1952-07-23", "1999-04-27"]
+    ##
+    # @brief tries to conver a string to a date with YYYY-MM-DD
+    # @param data - string containing a date to be converted
+    # @return array with 2 ordered dates
+    # 
+    # e.g.: example of return values: ["", ""], ["1952-07-23", ""], ["1952-07-23", "1999-04-27"]
+    #
+    # if the date is BC a minus sign is added before the year <br>
+    # unknown values are substituted with question marks - e.g.: 1952-??-?? is a valid date (only the year was extracted) <br>
+    # fictional dates are not accounted for <br>
     def extract_date(self, data):
         wikicode = parser.parse(data)
         templates = wikicode.filter_templates()
@@ -419,7 +445,13 @@ class EntCore(metaclass=ABCMeta):
 
         return [self.parse_no_template(data), ""]
 
-    # return format: ["date1", "date2"]
+    ##
+    # @brief splits the date into 2 depending on the wikipedia format
+    # @param date - array of date values (year, month, day)
+    # @param name - wikipedia format name
+    # @return array with 2 values (value is either a date or left empty)
+    #
+    # date extraction helper function
     def get_date(self, date, name):
         result = []
 
@@ -435,8 +467,13 @@ class EntCore(metaclass=ABCMeta):
 
         return result
 
+    ##
+    # @brief determines the date format and calls the appropriate function
+    # @param date - array of date values
+    # @return date in YYYY-MM-DD format
+    #
+    # date extraction helper function
     def parse_date(self, date):
-        
         if len(date) < 1:
             return ""
         
@@ -445,6 +482,14 @@ class EntCore(metaclass=ABCMeta):
                 return self.parse_string_format(item)
         return self.parse_num_format(date)
 
+    ##
+    # @brief deals with the numerical date format
+    # @param array - array of date values
+    # @return date in YYYY-MM-DD format
+    # 
+    # e.g: {{Birth date|1962|1|16}}
+    #
+    # date extraction helper function
     def parse_num_format(self, array):
         # e.g.: ['1919', '5'] -> 1919-05-??
         if len(array) > 3:
@@ -461,8 +506,15 @@ class EntCore(metaclass=ABCMeta):
         
         return "-".join(array)
     
-    def parse_string_format(self, string):
-        
+    ##
+    # @brief deals with the string date format
+    # @param string - date
+    # @return date in YYYY-MM-DD format
+    # 
+    # e.g.: {{Birth date|January 16, 1962}}
+    #
+    # date extraction helper function
+    def parse_string_format(self, string):     
         months = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"]
 
         date = []
@@ -522,6 +574,14 @@ class EntCore(metaclass=ABCMeta):
         # TODO: log?
         return ""
 
+    ##
+    # @brief deals dates when no template was found
+    # @param string - date with no template
+    # @return date in YYYY-MM-DD format
+    # 
+    # e.g.: January 16, 1962 (extracted from the first sentence)
+    #
+    # date extraction helper function
     def parse_no_template(self, string):
         if re.search(r"[0-9]+/[0-9]+/[0-9]+", string):
             # invalid template
@@ -535,6 +595,12 @@ class EntCore(metaclass=ABCMeta):
 
         return self.parse_string_format(string.strip())
 
+    ##
+    # @brief orders dates (from oldest to newest)
+    # @param array - array with up to 2 dates
+    # @return ordered array of dates
+    #
+    # date extraction helper function
     @staticmethod
     def order_dates(array):
         reverse = True if array[0].startswith("-") and array[1].startswith("-") else False

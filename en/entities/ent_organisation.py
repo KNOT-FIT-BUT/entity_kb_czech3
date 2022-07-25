@@ -1,53 +1,56 @@
-"""
-Projekt: entity_kb_english5
-Autor: Jan Kapsa (xkapsa00)
-Popis souboru: Soubor obsahuje třídu 'EntOrganization', která uchovává údaje o organizacích.
-"""
+##
+# @file ent_organisation.py
+# @brief contains EntOrganisation class - entity used for organisations
+#
+# @section ent_information entity information
+# - founded
+# - cancelled
+# - location
+# - type
+#
+# @author created by Jan Kapsa (xkapsa00)
+# @date 15.07.2022
 
 import re
 
 from entities.ent_core import EntCore
-
+##
+# @class EntOrganisation
+# @brief entity used for organisations
 class EntOrganisation(EntCore):
-	"""
-    třída určená pro organizace
-    instanční atributy:
-        title       - jméno organizace
-        prefix      - prefix entity
-        eid         - ID entity
-        link        - odkaz na Wikipedii
-        founded		- datum založení
-		cancelled	- datum ukončení
-		location	- lokace
-		type 		- typ organizace
-    """
-	def __init__(self, title, prefix, link, data, langmap, redirects, debugger):
-		"""
-        inicializuje třídu EntOrganization
-        """
-
-		super(EntOrganisation, self).__init__(title, prefix, link, data, langmap, redirects, debugger)
+	##
+    # @brief initializes the organisation entity
+    # @param title - page title (entity name) <string>
+    # @param prefix - entity type <string>
+    # @param link - link to the wikipedia page <string>
+    # @param data - extracted entity data (infobox data, categories, ...) <dictionary>
+    # @param langmap - language abbreviations <dictionary>
+    # @param redirects - redirects to the wikipedia page <array of strings>
+    # @param sentence - first sentence of the page <string>
+    # @param debugger - instance of the Debugger class used for debugging <Debugger>
+	def __init__(self, title, prefix, link, data, langmap, redirects, sentence, debugger):
+		super(EntOrganisation, self).__init__(title, prefix, link, data, langmap, redirects, sentence, debugger)
 
 		self.founded = ""
 		self.cancelled = ""
 		self.location = ""
 		self.type = ""
 
+	##
+    # @brief serializes entity data for output (tsv format)
+    # @return tab separated values containing all of entity data <string>
 	def __repr__(self):
-		"""
-        serializuje parametry třídy EntOrganization
-        """
 		return self.serialize(f"{self.founded}\t{self.cancelled}\t{self.location}\t{self.type}")
 
+	##
+    # @brief tries to assign entity information (calls the appropriate functions)
 	def assign_values(self):
-		"""
-        pokusí se extrahovat parametry z infoboxů
-        """
-
 		self.assign_dates()
 		self.assign_location()
 		self.assign_type()
 
+	##
+    # @brief extracts and assigns founded and cancelled variables from infobox
 	def assign_dates(self):
 		
 		keys = ["formation", "foundation", "founded", "fouded_date", "established"]
@@ -86,6 +89,8 @@ class EntOrganisation(EntCore):
 						self.cancelled = date[0]
 					break
 
+	##
+    # @brief extracts and assigns location from infobox
 	def assign_location(self):
 		
 		location = ""
@@ -126,6 +131,8 @@ class EntOrganisation(EntCore):
 			else:
 				self.location = city
 
+	##
+    # @brief extracts and assigns type from infobox
 	def assign_type(self):
 		if "type" in self.infobox_data and self.infobox_data["type"] != "":
 			data = self.infobox_data["type"]
@@ -137,6 +144,10 @@ class EntOrganisation(EntCore):
 			if self.infobox_name.lower() != "organization":
 				self.type = self.infobox_name
 
+	##
+	# @brief removes wikipedia formatting
+	# @param data - string with wikipedia formatting
+	# @return string without wikipedia formatting
 	@staticmethod
 	def remove_templates(data):
 		data = re.sub(r"\{\{.*?\}\}", "", data)

@@ -1,36 +1,39 @@
-"""
-Projekt: entity_kb_english5
-Autor: Jan Kapsa (xkapsa00)
-Popis souboru: Soubor obsahuje třídu 'EntWaterCourse', která uchovává údaje o vodních tocích.
-Poznámka: inspirováno projektem entity_kb_czech3
-"""
+##
+# @file ent_watercourse.py
+# @brief contains EntWaterCourse class - entity used for rivers, creeks, streams, etc.
+#
+# @section ent_information entity information
+# - continents
+# - latitude
+# - longtitude
+# - length
+# - area
+# - streamflow
+# - source_loc
+#
+# @author created by Jan Kapsa (xkapsa00)
+# @date 15.07.2022
 
 import re
 
 from entities.ent_core import EntCore
 
+##
+# @class EntWaterCourse
+# @brief entity used for rivers, creeks, streams, etc.
 class EntWaterCourse(EntCore):
-	"""
-    třída určená pro vodní toky
-    instanční atributy:
-        title       - jméno vodní plochy
-        prefix      - prefix entity
-        eid         - ID entity
-        link        - odkaz na Wikipedii
-        area		- rozloha
-		latitude	- zeměpisná šířka
-		longtitude	- zeměpisná délka
-		continents 	- kontinenty
-		length 		- délka
-		source_loc 	- lokace pramene
-		streamflow 	- proudění
-    """
-	def __init__(self, title, prefix, link, data, langmap, redirects, debugger):
-		"""
-        inicializuje třídu EntWaterCourse
-        """
-
-		super(EntWaterCourse, self).__init__(title, prefix, link, data, langmap, redirects, debugger)
+	##
+    # @brief initializes the watercourse entity
+    # @param title - page title (entity name) <string>
+    # @param prefix - entity type <string>
+    # @param link - link to the wikipedia page <string>
+    # @param data - extracted entity data (infobox data, categories, ...) <dictionary>
+    # @param langmap - language abbreviations <dictionary>
+    # @param redirects - redirects to the wikipedia page <array of strings>
+    # @param sentence - first sentence of the page <string>
+    # @param debugger - instance of the Debugger class used for debugging <Debugger>
+	def __init__(self, title, prefix, link, data, langmap, redirects, sentence, debugger):
+		super(EntWaterCourse, self).__init__(title, prefix, link, data, langmap, redirects, sentence, debugger)
 
 		self.continents = ""
 		self.latitude = ""
@@ -40,16 +43,15 @@ class EntWaterCourse(EntCore):
 		self.streamflow = ""
 		self.source_loc = ""
 
+	##
+    # @brief serializes entity data for output (tsv format)
+    # @return tab separated values containing all of entity data <string>
 	def __repr__(self):
-		"""
-        serializuje parametry třídy EntWaterCourse
-        """
 		return self.serialize(f"{self.continents}\t{self.latitude}\t{self.longitude}\t{self.length}\t{self.area}\t{self.streamflow}\t{self.source_loc}")
 
+	##
+    # @brief tries to assign entity information (calls the appropriate functions)
 	def assign_values(self):
-		"""
-        pokusí se extrahovat parametry z infoboxů
-        """
 		#print(self.title)
 		# self.assign_continents()
 		self.assign_coordinates()
@@ -62,21 +64,17 @@ class EntWaterCourse(EntCore):
 	# 	# cant match from infobox
 	# 	pass
 
+	##
+    # @brief extracts and assigns latitude and longtitude from infobox
 	def assign_coordinates(self):
-		"""
-        pokusí se extrahovat souřadnice z infoboxů coords a coordinates
-		využívá funkci get_coordinates třídy EntCore
-        """
 		if "source1_coordinates" in self.infobox_data and self.infobox_data["source1_coordinates"] != "":
 			coords = self.get_coordinates(self.infobox_data["source1_coordinates"])
 			if all(coords):
 				self.latitude, self.longitude = coords
 
+	##
+    # @brief extracts and assigns length from infobox
 	def assign_length(self):
-		"""
-        pokusí se extrahovat délku  z infoboxu length
-		využívá funkce convert_units z entity core
-        """
 		# | length = {{convert|352|km|mi|abbr=on}}
 		if "length" in self.infobox_data:
 			length = self.infobox_data["length"]
@@ -89,11 +87,9 @@ class EntWaterCourse(EntCore):
 		#print(f"{self.title}: did not find length")
 		pass
 		
+	##
+    # @brief extracts and assigns area from infobox
 	def assign_area(self):
-		"""
-        pokusí se extrahovat razlohu z infoboxu basin_size
-		využívá funkce convert_units z entity core
-        """
 		# | basin_size        = {{convert|4506|km2|abbr=on}}
 		if "basin_size" in self.infobox_data:
 			area = self.infobox_data["basin_size"]
@@ -109,11 +105,9 @@ class EntWaterCourse(EntCore):
 		#print(f"\narea empty or not found ({self.link})")
 		pass
 
+	##
+    # @brief extracts and assigns streamflow from infobox
 	def assign_streamflow(self):
-		"""
-        pokusí se extrahovat streamflow z infoboxu discharge1_avg
-		využívá funkce convert_units z entity core
-        """
 		# | discharge1_avg     = {{convert|593000|cuft/s|m3/s|abbr=on}}
 		if "discharge1_avg" in self.infobox_data:
 			streamflow = self.infobox_data["discharge1_avg"]
@@ -128,10 +122,9 @@ class EntWaterCourse(EntCore):
 		#print(f"{self.title}: streamflow empty or not found")
 		pass
 
+	##
+    # @brief extracts and assigns source location from infobox
 	def assign_source_loc(self):
-		"""
-        pokusí se extrahovat lokaci pramene z infoboxu source1_location
-        """
 		# format: source1_location = near [[Hollenthon, Austria|Hollenthon]], [[Lower Austria]]
 		if "source1_location" in self.infobox_data:
 			source = self.infobox_data["source1_location"]

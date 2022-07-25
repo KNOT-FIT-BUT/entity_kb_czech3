@@ -1,36 +1,50 @@
-"""
-Projekt: entity_kb_english5
-Autor: Jan Kapsa (xkapsa00)
-Popis souboru: Soubor obsahuje třídu 'EntPerson', která uchovává údaje o osobách.
-Poznámka: inspirováno projektem entity_kb_czech3
-"""
+##
+# @file ent_person.py
+# @brief contains EntPerson class - entity used for people, artists and groups
+#
+# @section ent_information entity information
+# person and person:fictional:
+# - birth_date
+# - birth_place
+# - death_date
+# - death_place 
+# - gender
+# - jobs
+# - nationality
+#
+# person:artist
+# - art_forms
+# - urls
+#
+# person:group - same as person but the values are arrays separated by |
+#
+# @todo finish artist
+# @todo add group extraction
+#
+# @author created by Jan Kapsa (xkapsa00)
+# @date 15.07.2022
 
 import re
 
 from entities.ent_core import EntCore
 
+##
+# @class EntPerson
+# @brief entity used for people, artists and groups
 class EntPerson(EntCore):
-    """
-    třída určená pro osoby
-    instanční atributy:
-        title       - jméno osoby
-        prefix      - prefix entity
-        eid         - ID entity
-        link        - odkaz na Wikipedii
-        birth_date  - datum narození osoby
-        birth_place - místo narození osoby
-        death_date  - datum úmrtí osoby
-        death_place - místo úmrtí osoby
-        gender      - pohlaví osoby
-        jobs        - zaměstnání osoby
-        nationality - národnost osoby
-    """
-    def __init__(self, title, prefix, link, data, langmap, redirects, debugger):
-        """
-        inicializuje třídu EntPerson
-        """
+    ##
+    # @brief initializes the person entity
+    # @param title - page title (entity name) <string>
+    # @param prefix - entity type <string>
+    # @param link - link to the wikipedia page <string>
+    # @param data - extracted entity data (infobox data, categories, ...) <dictionary>
+    # @param langmap - language abbreviations <dictionary>
+    # @param redirects - redirects to the wikipedia page <array of strings>
+    # @param sentence - first sentence of the page <string>
+    # @param debugger - instance of the Debugger class used for debugging <Debugger>
+    def __init__(self, title, prefix, link, data, langmap, redirects, sentence, debugger):
         # vyvolání inicializátoru nadřazené třídy
-        super(EntPerson, self).__init__(title, prefix, link, data, langmap, redirects, debugger)
+        super(EntPerson, self).__init__(title, prefix, link, data, langmap, redirects, sentence, debugger)
 
         # inicializace údajů specifických pro entitu
         self.birth_date = ""
@@ -45,10 +59,10 @@ class EntPerson(EntCore):
         self.art_forms = ""
         self.urls = ""
 
+    ##
+    # @brief serializes entity data for output (tsv format)
+    # @return tab separated values containing all of entity data <string>
     def __repr__(self):
-        """
-        serializuje parametry třídy EntPerson
-        """
         data = [
             self.gender,
             self.birth_date,
@@ -60,11 +74,9 @@ class EntPerson(EntCore):
         ]
         return self.serialize("\t".join(data))
     
+    ##
+    # @brief tries to assign entity information (calls the appropriate functions)
     def assign_values(self):
-        """
-        pokusí se extrahovat parametry z infoboxů
-        """
-
         self.assign_prefix()
         
         # if self.prefix != "person:fictional":
@@ -80,11 +92,9 @@ class EntPerson(EntCore):
             self.assign_art_forms()
             self.assign_urls()
     
+    ##
+    # @brief extracts and assigns dates from infobox or from the first sentence
     def assign_dates(self):
-        """
-        Pokusí se extrahovat datumy úmrtí a narození z infoboxů death_date a birth_date.
-        """
-
         if "birth_date" in self.infobox_data and self.infobox_data["birth_date"] != "":
             date = self.infobox_data["birth_date"].strip()
             extracted = self.extract_date(date)
@@ -129,21 +139,20 @@ class EntPerson(EntCore):
                     else:
                         self.birth_date = self.extract_date(date)[0]
 
-    def assign_places(self):
-        """
-        pokusí se extrahovat místo narození a úmrtí z infoboxů birth_place a death_place
-        """       
+    ##
+    # @brief extracts and assigns places from infobox, removes wikipedia formatting
+    def assign_places(self):   
         if "birth_place" in self.infobox_data:
             self.birth_place = self.fix_place(self.infobox_data["birth_place"])
 
         if "death_place" in self.infobox_data:
             self.death_place = self.fix_place(self.infobox_data["death_place"])
     
-    # @staticmethod
+    ##
+    # @brief removes wikiepdia formatting from places
+    # @param place - wikipedia formatted string
+    # @return string result without formatting
     def fix_place(self, place):
-        """
-        upraví místa do vyhovujícího tvaru
-        """
         p = place
 
         if p == "":
@@ -158,11 +167,10 @@ class EntPerson(EntCore):
             p = re.sub(r"\[\[.*?\|([^\|]*?)\]\]", r"\1", p)
             p = re.sub(r"\[|\]", "", p)
         return p
-        
+    
+    ##
+    # @brief extracts and assigns nationality from infobox, removes wikipedia formatting
     def assign_nationality(self):
-        """
-        extrakce národnosti z infoboxu nationality
-        """
         if "nationality" in self.infobox_data and self.infobox_data["nationality"] != "":
             nationalities = []
             string = self.infobox_data["nationality"]
@@ -200,10 +208,9 @@ class EntPerson(EntCore):
             
             self.nationality = " | ".join(nationalities)
 
+    ##
+    # @brief extracts and assigns gender from infobox and the first paragraph
     def assign_gender(self):
-        """
-        extrakce pohlaví z infoboxu gender
-        """
         if "gender" in self.infobox_data and self.infobox_data["gender"] != "":
             gender = self.infobox_data["gender"].lower()
             self.gender = gender
@@ -235,10 +242,9 @@ class EntPerson(EntCore):
             #     print(f"{self.title}: undefined")
                 self.gender = "female"
     
+    ##
+    # @brief extracts and assigns jobs from infobox
     def assign_jobs(self):
-        """
-        extrakce prací z infoboxu occupation
-        """
         if "occupation" in self.infobox_data and self.infobox_data["occupation"] != "":
             string = self.infobox_data["occupation"]
             string = re.sub("\[|\]|\{|\}", "", string)
@@ -259,6 +265,8 @@ class EntPerson(EntCore):
             
             self.jobs = "|".join(occupation).replace("\n", " ")
 
+    ##
+    # @brief extracts and assigns art forms from infobox
     def assign_art_forms(self):
         
         keys = ["movement", "field"]
@@ -287,6 +295,8 @@ class EntPerson(EntCore):
                     else:
                         self.art_forms += f"|{value}"
 
+    ##
+    # @brief extracts and assigns urls from infobox
     def assign_urls(self):
         if "website" in self.infobox_data and self.infobox_data["website"] != "":
             value = self.infobox_data["website"]
@@ -296,6 +306,10 @@ class EntPerson(EntCore):
 
             self.urls = value
 
+    ##
+    # @brief assigns prefix based on entity categories or infobox names
+    #
+    # person, person:fictional, person:artist or person:group
     def assign_prefix(self):
         
         if "character" in self.infobox_name or "fictional" in self.first_sentence:
