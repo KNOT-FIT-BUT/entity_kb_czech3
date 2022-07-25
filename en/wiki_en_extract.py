@@ -181,8 +181,30 @@ class WikiExtract(object):
         else:
             self.console_args._kb_stability = ""
 
-    def get_config():
-        pass
+    ##
+    # @brief gets arguments from a config file
+    def get_config(self):
+
+        try:    
+            with open(os.path.join(os.path.dirname(sys.argv[0]), "kb.config"), "r") as file:
+                lines = file.readlines()
+                config = dict()
+                for line in lines:
+                    if line.startswith("="):
+                        continue
+                    if "=" in line:
+                        key, value = line.split("=")
+                        config[key.strip()] = value.strip()
+                
+                # fails if config file is not properly setup
+                if config["USE_CONFIG"].strip() == "TRUE":
+                    sys.argv = [
+                        sys.argv[0], 
+                        "-d", config["DUMP_NAME"],
+                        "-I", config["DUMP_PATH"]
+                    ]
+        except:
+            pass
 
     ##
     # @brief creates a path to the dump file
@@ -460,8 +482,8 @@ class WikiExtract(object):
     def process_entity(self, page_title, page_content, langmap, ent_redirects, ent_sentence, patterns):
         self.d.update(f"processing {page_title}")
 
-        if ent_sentence != "":
-            self.d.log_message(f"sentence: {ent_sentence}")
+        # if ent_sentence != "":
+        #     self.d.log_message(f"sentence: {ent_sentence}")            
         
         extracted = self.extract_entity_data(page_content)
 
@@ -672,11 +694,11 @@ class WikiExtract(object):
 if __name__ == "__main__":
     wiki_extract = WikiExtract()
     
-    wiki_extract.parse_args()
     wiki_extract.get_config()
+    wiki_extract.parse_args()
     wiki_extract.create_head_kb()
     wiki_extract.assign_version()
     
     wiki_extract.parse_xml_dump()
 
-    wiki_extract.d.stats()
+    wiki_extract.d.log()

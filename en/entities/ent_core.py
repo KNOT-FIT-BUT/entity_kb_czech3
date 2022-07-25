@@ -194,6 +194,7 @@ class EntCore(metaclass=ABCMeta):
     # @brief extracts aliases from the first sentence         
     def get_aliases(self):
         if self.first_sentence:
+            self.d.log_message(f"{self.title}: {self.first_sentence}")
             string = self.first_sentence
             name = ""
             aliases = []
@@ -241,7 +242,7 @@ class EntCore(metaclass=ABCMeta):
                     aliases.remove(a)
                 self.aliases.append(a)
 
-            #print(f"{self.aliases}")
+            # self.d.log_message(f"{self.aliases}")
             pass
 
     ##

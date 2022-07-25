@@ -16,7 +16,7 @@
 # - art_forms
 # - urls
 #
-# person:group - same as person but the values are arrays separated by |
+# person:group - same as person but the values are arrays separated by "|"
 #
 # @todo finish artist
 # @todo add group extraction
@@ -312,6 +312,14 @@ class EntPerson(EntCore):
     # person, person:fictional, person:artist or person:group
     def assign_prefix(self):
         
+        # self.d.log_message(self.title)
+
+        if re.search(r".*\s(?:,|and|&)\s.*", self.title):
+            self.prefix += "group:"
+            return
+
+        # self.d.log_message(self.first_sentence)
+
         if "character" in self.infobox_name or "fictional" in self.first_sentence:
             self.prefix += ":fictional"
             return
