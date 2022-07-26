@@ -162,7 +162,7 @@ class EntCore(metaclass=ABCMeta):
 
     ##
     # @brief extracts an alias in a native language
-    # @param lags - aliases in a wikipedia format <array of strings>
+    # @param langs - aliases in a wikipedia format <array of strings>
     # 
     # e.g.: {{lang-rus|Васи́лий Васи́льевич Смысло́в|Vasíliy Vasíl'yevich Smyslóv}};
     def get_lang_aliases(self, langs):
@@ -191,59 +191,91 @@ class EntCore(metaclass=ABCMeta):
                         self.aliases.append(f"{alias}#lang={code}")
 
     ##
-    # @brief extracts aliases from the first sentence         
+    # @brief extracts aliases from the first sentence
     def get_aliases(self):
-        if self.first_sentence:
-            self.d.log_message(f"{self.title}: {self.first_sentence}")
-            string = self.first_sentence
-            name = ""
-            aliases = []
-            
-            string = re.sub(r"\[\[[^\[\]]*?\|([^\[\]]*?)\]\]", r"\1", string)
-            string = re.sub(r"\[|\]", "", string)
+        title = self.title
+        sentence = self.first_sentence
 
-            # "alias" in the name
-            m = re.search(r"'''(.*\"(.*)\"\s+[\w'\.\s]+?)'''", string)
-            if m:
-                alias = m.group(2)
-                alias = re.sub(r"\'", "", alias)
-                name = m.group(1)
-                name = re.sub(r"\".*?\"|'", "", name)
-                name = re.sub(r"\s+", " ", name)
-                split = name.split(" ")
-                i = -1
-                surname = split[i]
-                while "." in surname and abs(i) != len(split):
-                    i -= 1
-                    surname = split[i]
-                alias += f" {surname}"
-                aliases.append(alias)
-                string = string[m.end():]
-            
-            # normal name
-            if not name:
-                m = re.search(r"'''(.*?)'''", string)
+        sentence = re.sub(r"\[\[.*?\|(.*?)\]\]", r"\1", sentence)
+        sentence = re.sub(r"\[|\]", "", sentence)
+        
+        aliases = []
+    
+        split = title.split(" ")
+        name = split[0]
+        surname = split[-1] if len(split) > 1 else ""
+        
+        # finds all names in triple quates and removes those that match the title 
+        aliases = re.findall(r"(?:\"|\()?'''.*?'''(?:\"|\))?", sentence)
+        aliases = [re.sub(r"'{3,5}", "", a) for a in aliases]
+        aliases = [a for a in aliases if a != title]
+        
+        title_data = title.split(" ")
+        
+        # handles born surnames (née)
+        born_name = ""
+        m = re.search(r".*née\s'''(.*?)'''.*", sentence)
+        if m:
+            born_name = m.group(1)
+        
+        # handles aliases in double quotes and brackets
+        # surname is added to nicknames as a rule
+        patterns = [r"\"(.*?)\"", r"\((.*?)\)"]
+        nicknames = []
+        for pattern in patterns:
+            for i in range(len(aliases)):
+                m = re.search(pattern, aliases[i])
                 if m:
-                    name = m.group(1)
-                    string = string[m.end():]
-            
-            # all other aliases in the sentence
-            string = string.strip()
-            if len(string) > 0:
-                arr = re.findall(r"'''(.*?)'''", string)
-                for s in arr:
-                    aliases.append(s)
-            
-            if name != self.title:
-                aliases.append(name)
+                    if m.start():
+                        cut = f"{aliases[i][:m.start()].strip()} {aliases[i][m.end():].strip()}"
+                        aliases[i] = cut
+                    else:
+                        if i-1 >= 0 and i+1 < len(aliases):
+                            cut = f"{aliases[i-1]} {aliases[i+1]}"
+                            aliases[i-1] = cut
+                            aliases[i+1] = ""
+                    nicknames.append(m.group(1))
+        
+        nicknames = [
+            f"{nick} {surname}" for nick in nicknames 
+            if f"{nick} {surname}" != title 
+            and nick != title
+        ]
+        
+        # remove previously handeled nicknames and born surname
+        aliases = [
+            item for item in aliases 
+            if item 
+            and item not in title_data 
+            and '"' not in item
+            and "(" not in item
+            and item != title
+        ]
+        if born_name and born_name != title:
+            aliases = [item for item in aliases if item != born_name]
+        
+        aliases = [re.sub(r"\(|\)", "", a).strip() for a in aliases]
 
-            for a in aliases:
-                if a == self.title:
-                    aliases.remove(a)
-                self.aliases.append(a)
+        aliases += nicknames
+        if born_name and born_name != title:
+            aliases.append(f"{name} {born_name}")
+        
+        self.aliases += aliases
+        
+        # TODO: get aliases from infoboxes
+        # keys = ["name", "birth_name", "birthname", "native_name", "nativename", "aliases"]
+        # for key in keys:
+        #     if key in self.infobox_data and self.infobox_data[key]:
+        #         value = self.infobox_data[key]
+        #         if value != title and value not in self.aliases:
+        #             self.d.log_message(f"{key} -> {value}")
 
-            # self.d.log_message(f"{self.aliases}")
-            pass
+        self.aliases = [re.sub(r"\{\{.*?\}\}", "", a).strip() for a in self.aliases]
+        self.aliases = [a for a in self.aliases if a != title]
+
+        # if self.aliases:
+        #     self.d.log_message(f"{'|'.join(self.aliases)}")
+        pass
 
     ##
     # @brief extracts image data from the infobox

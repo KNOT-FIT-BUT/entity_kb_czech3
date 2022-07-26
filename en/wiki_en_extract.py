@@ -449,6 +449,7 @@ class WikiExtract(object):
                 "portal:",
                 "module:",
                 "draft:",
+                "user:",
                 "list of",
                 "geography of",
                 "history of",
