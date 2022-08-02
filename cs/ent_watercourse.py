@@ -1,369 +1,294 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-"""
-Projekt: entity_kb_czech3 (https://knot.fit.vutbr.cz/wiki/index.php/Entity_kb_czech3)
-Autoři:
-    Michal Planička (xplani02)
-    Tomáš Volf (ivolf)
-
-Popis souboru:
-Soubor obsahuje třídu 'EntWatercourse', která uchovává údaje o vodních tocích.
-
-Poznámky:
-- typy vodních toků: bystřina|potok|říčka|řeka|veletok|průtok
-"""
 
 import re
 from ent_core import EntCore
 
 
 class EntWatercourse(EntCore):
-    """
-    Třída určená pro vodní toky.
 
-    Instanční atributy:
-    title - název vodního toku (str)
-    prefix - prefix entity (str)
-    eid - ID entity (str)
-    link - odkaz na Wikipedii (str)
-    aliases - alternativní pojmenování vodního toku (str)
-    description - stručný popis vodního toku (str)
-    images - absolutní cesty k obrázkům Wikimedia Commons (str)
+	def __init__(self, title, prefix, link, data, langmap, redirects, sentence, debugger):
 
-    area - plocha povodí vodního toku v kilometrech čtverečních (str)
-    continent - světadíl, kterým vodní tok protéká (str)
-    length - délka vodního toku v kilometrech (str)
-    source_loc - umístění pramene vodního toku (str)
-    streamflow - průtok vodního toku (str)
-    """
+		super(EntWatercourse, self).__init__(title, prefix, link, data, langmap, redirects, sentence, debugger)
 
-    def __init__(self, title, prefix, link, redirects, langmap):
-        """
-        Inicializuje třídu 'EntWatercourse'.
+		self.continent = ""
+		self.latitude = ""
+		self.longitude = ""
+		self.area = ""
+		self.length = ""
+		self.source_loc = ""
+		self.streamflow = ""
 
-        Parametry:
-        title - název stránky (str)
-        prefix - prefix entity (str)
-        link - odkaz na Wikipedii (str)
-        redirects - přesměrování Wiki stránek (dict)
-        """
-        super(EntWatercourse, self).__init__(title, prefix, link, redirects, langmap)
+	##
+	# @brief serializes entity data for output (tsv format)
+	# @return tab separated values containing all of entity data <string>
+	def __repr__(self):
+		data = [
+			self.continent,
+			str(self.latitude),
+			str(self.longitude),
+			self.length,
+			self.area,
+			self.streamflow,
+			self.source_loc
+		]
+		return self.serialize("\t".join(data))
 
-        self.area = ""
-        self.continent = ""
-        self.length = ""
-        self.source_loc = ""
-        self.streamflow = ""
+	def assign_values(self):
+		
+		self.assign_aliases()
+		
+		self.get_wiki_api_location(self.title)
+		self.assign_coordinates()
+		self.assign_continent()
+		self.assign_area()
+		self.assign_length()
+		self.assign_source()
+		self.assign_streamflow()
 
-        self.re_infobox_kw_img = r"(?:obrázek|mapa)"
+		self.extract_text()
 
-        self.get_wiki_api_location(title)
+	def assign_continent(self):
+		# světadíl
+		key = "světadíl"
+		if key in self.infobox_data and self.infobox_data[key]:
+			value = self.infobox_data[key]
+			self.get_continent(self.del_redundant_text(value))
+	
+	def assign_coordinates(self):
+		# zeměpisná šířka
+		keys = ["zeměpisná šířka", "zeměpisná_šířka"]
+		for key in keys:
+			if key in self.infobox_data and self.infobox_data[key]:
+				value = self.infobox_data[key]
+				self.get_latitude(self.del_redundant_text(value))
+				break
 
-    @staticmethod
-    def is_watercourse(title, content):
-        """
-        Na základě názvu a obsahu stránky určuje, zda stránka pojednává o vodním toku, či nikoliv.
+		# zeměpisná délka
+		keys = ["zeměpisná délka", "zeměpisná_délka"]
+		for key in keys:
+			if key in self.infobox_data and self.infobox_data[key]:
+				value = self.infobox_data[key]
+				self.get_longitude(self.del_redundant_text(value))
+				break
 
-        Parametry:
-        title - název stránky (str)
-        content - obsah stránky (str)
+	def assign_area(self):
+		# plocha
+		key = "plocha"
+		if key in self.infobox_data and self.infobox_data[key]:
+			value = self.infobox_data[key]
+			self.get_area(self.del_redundant_text(value))
 
-        Návratové hodnoty:
-        Dvojice hodnot (level, type); level určuje, zda stránka pojednává o vodním toku, type určuje způsob, kterým byla stránka identifikována. (Tuple[int, str])
-        """
-        # kontrola šablon
-        if re.search(r"{{\s*Infobox\s*-\s*vodní\s+tok", content, re.I):
-            return 1, "Infobox 'vodní tok'"
+	def assign_length(self):
+		# délka toku
+		key = "délka"
+		if key in self.infobox_data and self.infobox_data[key]:
+			value = self.infobox_data[key]
+			self.get_length(self.del_redundant_text(value))
 
-        # kontrola kategorií
-        for kw in (
-            "Potoky",
-            "Řeky",
-        ):  # žádná další klíčová slova nejsou vhodná, zejména ne "Říčky"
-            if re.search(
-                r"\[\[\s*Kategorie:\s*" + kw + r"\s+(?:na|ve?)\s+.+?\]\]", content, re.I
-            ):
-                return 2, "Kategorie '" + kw + "'"
+	def assign_source(self):
+		# pramen
+		key = "pramen"
+		if key in self.infobox_data and self.infobox_data[key]:
+			value = self.infobox_data[key]
+			self.get_source_loc(self.del_redundant_text(value))
 
-        # kontrola názvu
-        rexp = re.search(r"\((?:bystřina|potok|říčka|řeka|veletok|průtok)\)$", title)
-        if rexp:
-            return 3, "Název '" + rexp.group(0) + "'"
+	def assign_streamflow(self):
+		# průtok
+		key = "průtok"
+		if key in self.infobox_data and self.infobox_data[key]:
+			value = self.infobox_data[key]
+			self.get_streamflow(self.del_redundant_text(value))
 
-        return 0, ""
+	def assign_aliases(self):
+		# aliasy
+		key = "řeka"
+		if key in self.infobox_data and self.infobox_data[key]:
+			value = self.del_redundant_text(self.infobox_data[key])
+			self.aliases_infobox.update(self.get_aliases(value))
 
-    def data_preprocess(self, content):
-        """
-        Předzpracování dat o vodním toku z obsahu stránky.
+	def extract_text(self):
 
-        Parametry:
-        content - obsah stránky (str)
-        """
-        content = content.replace("&nbsp;", " ")
-        content = re.sub(r"m\sn\.\s*", "metrů nad ", content)
+		content = self.first_paragraph
+		content = content.replace("&nbsp;", " ")
+		content = re.sub(r"m\sn\.\s*", "metrů nad ", content)
 
-    def line_process_infobox(self, ln, is_infobox_block):
-        # aliasy
-        rexp = re.search(r"řeka\s*=(?!=)\s*(.*)", ln, re.I)
-        if rexp and rexp.group(1):
-            self.aliases_infobox.update(
-                self.get_aliases(self.del_redundant_text(rexp.group(1)))
-            )
-            if is_infobox_block == True:
-                return
+		abbrs = "".join(
+			(
+				r"(?<!\s(?:tzv|at[pd]))",
+				r"(?<!\s(?:apod|(?:ku|na|po)př|příp))",
+				r"(?<!\s(?:[amt]j|fr))",
+				r"(?<!\d)",
+				r"(?<!nad m)",
+			)
+		)
+		rexp = re.search(
+			r".*?'''.+?'''.*?\s(?:byl[aiy]?|je|jsou|nacház(?:í|ejí)|patř(?:í|il)|stal|rozprostír|lež(?:í|el)|pramen(?:í|il)).*?"
+			+ abbrs
+			+ "\.(?![^[]*?\]\])",
+			content,
+		)
+		if rexp:
+			
+			if not self.description:
+				self.get_first_sentence(self.del_redundant_text(rexp.group(0), ", "))
+			
+			tmp_first_sentence = rexp.group(0)
 
-        # zeměpisná šířka
-        rexp = re.search(r"zeměpisná[\s_]šířka\s*=(?!=)\s*(.*)", ln, re.I)
-        if rexp and rexp.group(1):
-            self.get_latitude(self.del_redundant_text(rexp.group(1)))
-            if is_infobox_block == True:
-                return
+			# extrakce alternativních pojmenování z první věty
+			fs_aliases_lang_links = []
+			for link_lang_alias in re.findall(
+				r"\[\[(?:[^\[]* )?([^\[\] |]+)(?:\|(?:[^\]]* )?([^\] ]+))?\]\]\s*('{3}.+?'{3})",
+				tmp_first_sentence,
+				flags=re.I,
+			):
+				for i_group in [0, 1]:
+					if (
+						link_lang_alias[i_group]
+						and link_lang_alias[i_group] in self.langmap
+					):
+						fs_aliases_lang_links.append(
+							"{{{{Vjazyce|{}}}}} {}".format(
+								self.langmap[link_lang_alias[i_group]],
+								link_lang_alias[2],
+							)
+						)
+						tmp_first_sentence = tmp_first_sentence.replace(
+							link_lang_alias[2], ""
+						)
+						break
+			fs_aliases = re.findall(
+				r"((?:{{(?:Cj|Cizojazyčně|Vjazyce2?)[^}]+}}\s+)?(?<!\]\]\s)'{3}.+?'{3})",
+				tmp_first_sentence,
+				flags=re.I,
+			)
+			fs_aliases += fs_aliases_lang_links
+			if fs_aliases:
+				for fs_alias in fs_aliases:
+					self.aliases.update(
+						self.get_aliases(
+							self.del_redundant_text(fs_alias).strip("'")
+						)
+					)
 
-        # zeměpisná výška
-        rexp = re.search(r"zeměpisná[\s_]délka\s*=(?!=)\s*(.*)", ln, re.I)
-        if rexp and rexp.group(1):
-            self.get_longitude(self.del_redundant_text(rexp.group(1)))
-            if is_infobox_block == True:
-                return
+	def custom_transform_alias(self, alias):
+		"""
+		Vlastní transformace aliasu.
 
-        # délka toku
-        rexp = re.search(r"(?<!zeměpisná[\s_])délka\s*=(?!=)\s*(.*)", ln, re.I)
-        if rexp and rexp.group(1):
-            self.get_length(self.del_redundant_text(rexp.group(1)))
-            if is_infobox_block == True:
-                return
+		Parametry:
+		alias - alternativní pojmenování entity (str)
+		"""
 
-        # plocha
-        rexp = re.search(r"plocha\s*=(?!=)\s*(.*)", ln, re.I)
-        if rexp and rexp.group(1):
-            self.get_area(self.del_redundant_text(rexp.group(1)))
-            if is_infobox_block == True:
-                return
+		return self.transform_geo_alias(alias)
 
-        # světadíl
-        rexp = re.search(r"světadíl\s*=(?!=)\s*(.*)", ln, re.I)
-        if rexp and rexp.group(1):
-            self.get_continent(self.del_redundant_text(rexp.group(1)))
-            if is_infobox_block == True:
-                return
+	def get_area(self, area):
+		"""
+		Převádí plochu vodního toku do jednotného formátu.
 
-        # průtok
-        rexp = re.search(r"průtok\s*=(?!=)\s*(.*)", ln, re.I)
-        if rexp and rexp.group(1):
-            self.get_streamflow(self.del_redundant_text(rexp.group(1)))
-            if is_infobox_block == True:
-                return
+		Parametry:
+		area - plocha vodního toku v kilometrech čtverečních (str)
+		"""
+		area = re.sub(r"\(.*?\)", "", area)
+		area = re.sub(r"\[.*?\]", "", area)
+		area = re.sub(r"<.*?>", "", area)
+		area = re.sub(r"{{.*?}}", "", area).replace("{", "").replace("}", "")
+		area = re.sub(r"(?<=\d)\s(?=\d)", "", area).strip()
+		area = re.sub(r"(?<=\d)\.(?=\d)", ",", area)
+		area = re.sub(r"^\D*(?=\d)", "", area)
+		area = re.sub(r"^(\d+(?:,\d+)?)[^\d,]+.*$", r"\1", area)
+		area = "" if not re.search(r"\d", area) else area
 
-        # pramen
-        rexp = re.search(r"pramen\s*=(?!=)\s*(.*)", ln, re.I)
-        if rexp and rexp.group(1):
-            self.get_source_loc(self.del_redundant_text(rexp.group(1)))
-            if is_infobox_block == True:
-                return
+		self.area = area
 
-    def line_process_1st_sentence(self, ln):
-        abbrs = "".join(
-            (
-                r"(?<!\s(?:tzv|at[pd]))",
-                r"(?<!\s(?:apod|(?:ku|na|po)př|příp))",
-                r"(?<!\s(?:[amt]j|fr))",
-                r"(?<!\d)",
-                r"(?<!nad m)",
-            )
-        )
-        rexp = re.search(
-            r".*?'''.+?'''.*?\s(?:byl[aiy]?|je|jsou|nacház(?:í|ejí)|patř(?:í|il)|stal|rozprostír|lež(?:í|el)|pramen(?:í|il)).*?"
-            + abbrs
-            + "\.(?![^[]*?\]\])",
-            ln,
-        )
-        if rexp:
-            if not self.description:
-                self.get_first_sentence(self.del_redundant_text(rexp.group(0), ", "))
-                tmp_first_sentence = rexp.group(0)
+	def get_continent(self, continent):
+		"""
+		Převádí světadíl, kterým vodní tok protéká, do jednotného formátu.
 
-                # extrakce alternativních pojmenování z první věty
-                fs_aliases_lang_links = []
-                for link_lang_alias in re.findall(
-                    r"\[\[(?:[^\[]* )?([^\[\] |]+)(?:\|(?:[^\]]* )?([^\] ]+))?\]\]\s*('{3}.+?'{3})",
-                    tmp_first_sentence,
-                    flags=re.I,
-                ):
-                    for i_group in [0, 1]:
-                        if (
-                            link_lang_alias[i_group]
-                            and link_lang_alias[i_group] in self.langmap
-                        ):
-                            fs_aliases_lang_links.append(
-                                "{{{{Vjazyce|{}}}}} {}".format(
-                                    self.langmap[link_lang_alias[i_group]],
-                                    link_lang_alias[2],
-                                )
-                            )
-                            tmp_first_sentence = tmp_first_sentence.replace(
-                                link_lang_alias[2], ""
-                            )
-                            break
-                fs_aliases = re.findall(
-                    r"((?:{{(?:Cj|Cizojazyčně|Vjazyce2?)[^}]+}}\s+)?(?<!\]\]\s)'{3}.+?'{3})",
-                    tmp_first_sentence,
-                    flags=re.I,
-                )
-                fs_aliases += fs_aliases_lang_links
-                if fs_aliases:
-                    for fs_alias in fs_aliases:
-                        self.aliases.update(
-                            self.get_aliases(
-                                self.del_redundant_text(fs_alias).strip("'")
-                            )
-                        )
+		Parametry:
+		continent - světadíl, kterým vodní tok protéká (str)
+		"""
+		continent = re.sub(r"\(.*?\)", "", continent)
+		continent = re.sub(r"\[.*?\]", "", continent)
+		continent = re.sub(r"<.*?>", "", continent)
+		continent = re.sub(r"{{.*?}}", "", continent)
+		continent = re.sub(r"\s+", " ", continent).strip()
+		continent = re.sub(r", ?", "|", continent).replace("/", "|")
 
-    def custom_transform_alias(self, alias):
-        """
-        Vlastní transformace aliasu.
+		self.continent = continent
 
-        Parametry:
-        alias - alternativní pojmenování entity (str)
-        """
+	def get_first_sentence(self, fs):
+		"""
+		Převádí první větu stránky do jednotného formátu a získává z ní popis.
 
-        return self.transform_geo_alias(alias)
+		Parametry:
+		fs - první věta stránky (str)
+		"""
+		# TODO: refactorize
+		fs = re.sub(r"\(.*?\)", "", fs)
+		fs = re.sub(r"\[.*?\]", "", fs)
+		fs = re.sub(r"<.*?>", "", fs)
+		fs = re.sub(
+			r"{{(?:cj|cizojazyčně|vjazyce\d?)\|\w+\|(.*?)}}", r"\1", fs, flags=re.I
+		)
+		fs = re.sub(r"{{PAGENAME}}", self.title, fs, flags=re.I)
+		fs = re.sub(r"{{.*?}}", "", fs).replace("{", "").replace("}", "")
+		fs = re.sub(r"/.*?/", "", fs)
+		fs = re.sub(r"\s+", " ", fs).strip()
+		fs = re.sub(r"^\s*}}", "", fs)  # Eliminate the end of a template
+		fs = re.sub(r"[()<>\[\]{}/]", "", fs).replace(" ,", ",").replace(" .", ".")
 
-    def get_area(self, area):
-        """
-        Převádí plochu vodního toku do jednotného formátu.
+		self.description = fs
 
-        Parametry:
-        area - plocha vodního toku v kilometrech čtverečních (str)
-        """
-        area = re.sub(r"\(.*?\)", "", area)
-        area = re.sub(r"\[.*?\]", "", area)
-        area = re.sub(r"<.*?>", "", area)
-        area = re.sub(r"{{.*?}}", "", area).replace("{", "").replace("}", "")
-        area = re.sub(r"(?<=\d)\s(?=\d)", "", area).strip()
-        area = re.sub(r"(?<=\d)\.(?=\d)", ",", area)
-        area = re.sub(r"^\D*(?=\d)", "", area)
-        area = re.sub(r"^(\d+(?:,\d+)?)[^\d,]+.*$", r"\1", area)
-        area = "" if not re.search(r"\d", area) else area
+	def get_length(self, length):
+		"""
+		Převádí délku vodního toku do jenotného formátu.
 
-        self.area = area
+		Parametry:
+		length - délka vodního toku v kilometrech (str)
+		"""
+		length = re.sub(r"\(.*?\)", "", length)
+		length = re.sub(r"\[.*?\]", "", length)
+		length = re.sub(r"<.*?>", "", length)
+		length = re.sub(r"{{.*?}}", "", length).replace("{", "").replace("}", "")
+		length = re.sub(r"(?<=\d)\s(?=\d)", "", length).strip()
+		length = re.sub(r"(?<=\d)\.(?=\d)", ",", length)
+		length = re.sub(r"^\D*(?=\d)", "", length)
+		length = re.sub(r"^(\d+(?:,\d+)?)[^\d,]+.*$", r"\1", length)
+		length = "" if not re.search(r"\d", length) else length
 
-    def get_continent(self, continent):
-        """
-        Převádí světadíl, kterým vodní tok protéká, do jednotného formátu.
+		self.length = length
 
-        Parametry:
-        continent - světadíl, kterým vodní tok protéká (str)
-        """
-        continent = re.sub(r"\(.*?\)", "", continent)
-        continent = re.sub(r"\[.*?\]", "", continent)
-        continent = re.sub(r"<.*?>", "", continent)
-        continent = re.sub(r"{{.*?}}", "", continent)
-        continent = re.sub(r"\s+", " ", continent).strip()
-        continent = re.sub(r", ?", "|", continent).replace("/", "|")
+	def get_source_loc(self, source_loc):
+		"""
+		Převádí umístění pramene vodního toku do jednotného formátu.
 
-        self.continent = continent
+		Parametry:
+		source_loc - místo, kde vodní tok pramení (str)
+		"""
+		source_loc = re.sub(r"\[.*?\]", "", source_loc)
+		source_loc = re.sub(r"<.*?>", "", source_loc)
+		source_loc = (
+			re.sub(r"{{.*?}}", "", source_loc).replace("()", "").strip().strip(",")
+		)
+		source_loc = re.sub(r"\s+", " ", source_loc).strip()
 
-    def get_first_sentence(self, fs):
-        """
-        Převádí první větu stránky do jednotného formátu a získává z ní popis.
+		self.source_loc = source_loc
 
-        Parametry:
-        fs - první věta stránky (str)
-        """
-        # TODO: refactorize
-        fs = re.sub(r"\(.*?\)", "", fs)
-        fs = re.sub(r"\[.*?\]", "", fs)
-        fs = re.sub(r"<.*?>", "", fs)
-        fs = re.sub(
-            r"{{(?:cj|cizojazyčně|vjazyce\d?)\|\w+\|(.*?)}}", r"\1", fs, flags=re.I
-        )
-        fs = re.sub(r"{{PAGENAME}}", self.title, fs, flags=re.I)
-        fs = re.sub(r"{{.*?}}", "", fs).replace("{", "").replace("}", "")
-        fs = re.sub(r"/.*?/", "", fs)
-        fs = re.sub(r"\s+", " ", fs).strip()
-        fs = re.sub(r"^\s*}}", "", fs)  # Eliminate the end of a template
-        fs = re.sub(r"[()<>\[\]{}/]", "", fs).replace(" ,", ",").replace(" .", ".")
+	def get_streamflow(self, streamflow):
+		"""
+		Převádí průtok vodního toku do jednotného formátu.
 
-        self.description = fs
+		Parametry:
+		streamflow - průtok vodního toku v metrech krychlových za sekundu (str)
+		"""
+		streamflow = re.sub(r"\(.*?\)", "", streamflow)
+		streamflow = re.sub(r"\[.*?\]", "", streamflow)
+		streamflow = re.sub(r"<.*?>", "", streamflow)
+		streamflow = (
+			re.sub(r"{{.*?}}", "", streamflow).replace("{", "").replace("}", "")
+		)
+		streamflow = re.sub(r"(?<=\d)\s(?=\d)", "", streamflow).strip()
+		streamflow = re.sub(r"(?<=\d)\.(?=\d)", ",", streamflow)
+		streamflow = re.sub(r"^\D*(?=\d)", "", streamflow)
+		streamflow = re.sub(r"^(\d+(?:,\d+)?)[^\d,]+.*$", r"\1", streamflow)
+		streamflow = "" if not re.search(r"\d", streamflow) else streamflow
 
-    def get_length(self, length):
-        """
-        Převádí délku vodního toku do jenotného formátu.
-
-        Parametry:
-        length - délka vodního toku v kilometrech (str)
-        """
-        length = re.sub(r"\(.*?\)", "", length)
-        length = re.sub(r"\[.*?\]", "", length)
-        length = re.sub(r"<.*?>", "", length)
-        length = re.sub(r"{{.*?}}", "", length).replace("{", "").replace("}", "")
-        length = re.sub(r"(?<=\d)\s(?=\d)", "", length).strip()
-        length = re.sub(r"(?<=\d)\.(?=\d)", ",", length)
-        length = re.sub(r"^\D*(?=\d)", "", length)
-        length = re.sub(r"^(\d+(?:,\d+)?)[^\d,]+.*$", r"\1", length)
-        length = "" if not re.search(r"\d", length) else length
-
-        self.length = length
-
-    def get_source_loc(self, source_loc):
-        """
-        Převádí umístění pramene vodního toku do jednotného formátu.
-
-        Parametry:
-        source_loc - místo, kde vodní tok pramení (str)
-        """
-        source_loc = re.sub(r"\[.*?\]", "", source_loc)
-        source_loc = re.sub(r"<.*?>", "", source_loc)
-        source_loc = (
-            re.sub(r"{{.*?}}", "", source_loc).replace("()", "").strip().strip(",")
-        )
-        source_loc = re.sub(r"\s+", " ", source_loc).strip()
-
-        self.source_loc = source_loc
-
-    def get_streamflow(self, streamflow):
-        """
-        Převádí průtok vodního toku do jednotného formátu.
-
-        Parametry:
-        streamflow - průtok vodního toku v metrech krychlových za sekundu (str)
-        """
-        streamflow = re.sub(r"\(.*?\)", "", streamflow)
-        streamflow = re.sub(r"\[.*?\]", "", streamflow)
-        streamflow = re.sub(r"<.*?>", "", streamflow)
-        streamflow = (
-            re.sub(r"{{.*?}}", "", streamflow).replace("{", "").replace("}", "")
-        )
-        streamflow = re.sub(r"(?<=\d)\s(?=\d)", "", streamflow).strip()
-        streamflow = re.sub(r"(?<=\d)\.(?=\d)", ",", streamflow)
-        streamflow = re.sub(r"^\D*(?=\d)", "", streamflow)
-        streamflow = re.sub(r"^(\d+(?:,\d+)?)[^\d,]+.*$", r"\1", streamflow)
-        streamflow = "" if not re.search(r"\d", streamflow) else streamflow
-
-        self.streamflow = streamflow
-
-    def serialize(self):
-        """
-        Serializuje údaje o vodním toku.
-        """
-        return "\t".join(
-            [
-                self.eid,
-                self.prefix,
-                self.title,
-                self.serialize_aliases(),
-                "|".join(self.redirects),
-                self.description,
-                self.original_title,
-                self.images,
-                self.link,
-                self.continent,
-                self.latitude,
-                self.longitude,
-                self.length,
-                self.area,
-                self.streamflow,
-                self.source_loc,
-            ]
-        )
+		self.streamflow = streamflow

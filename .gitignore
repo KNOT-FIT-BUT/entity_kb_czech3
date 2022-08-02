@@ -25,3 +25,5 @@ push.sh
 metrics/bad_lines.log
 log
 
+new/
+cs_rewrite/

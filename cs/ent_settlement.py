@@ -4,8 +4,8 @@
 """
 Projekt: entity_kb_czech3 (https://knot.fit.vutbr.cz/wiki/index.php/Entity_kb_czech3)
 Autoři:
-    Michal Planička (xplani02)
-    Tomáš Volf (ivolf)
+	Michal Planička (xplani02)
+	Tomáš Volf (ivolf)
 
 Popis souboru:
 Soubor obsahuje třídu 'EntSettlement', která uchovává údaje o sídlech.
@@ -19,415 +19,263 @@ Infobox anglické město
 """
 
 import re
-import sys
 from ent_core import EntCore
 
 
 class EntSettlement(EntCore):
-    """
-    Třída určená pro sídla.
 
-    Instanční atributy:
-    title - název sídla (str)
-    prefix - prefix entity (str)
-    eid - ID entity (str)
-    link - odkaz na Wikipedii (str)
-    aliases - alternativní pojmenování sídla (str)
-    description - stručný popis sídla (str)
-    images - absolutní cesty k obrázkům Wikimedia Commons (str)
+	def __init__(self, title, prefix, link, data, langmap, redirects, sentence, debugger):
+		
+		super(EntSettlement, self).__init__(title, prefix, link, data, langmap, redirects, sentence, debugger)
 
-    area - rozloha sídla v kilometrech čtverečních (str)
-    country - stát, ke kterému sídlo patří (str)
-    population - počet obyvatel sídla (str)
-    """
+		self.latitude = ""
+		self.longitude = ""
+		self.area = ""
+		self.country = ""
+		self.population = ""
 
-    def __init__(self, title, prefix, link, redirects, langmap):
-        """
-        Inicializuje třídu 'EntSettlement'.
+	##
+	# @brief serializes entity data for output (tsv format)
+	# @return tab separated values containing all of entity data <string>
+	def __repr__(self):
+		data = [
+			str(self.latitude),
+			str(self.longitude),
+			self.area,
+			self.country,
+			self.population
+		]
+		return self.serialize("\t".join(data))
 
-        Parametry:
-        title - název stránky (str)
-        prefix - prefix entity (str)
-        link - odkaz na Wikipedii (str)
-        redirects - přesměrování Wiki stránek (dict)
-        """
-        super(EntSettlement, self).__init__(title, prefix, link, redirects, langmap)
+	def assign_values(self):
+		
+		self.assign_aliases()
 
-        self.area = ""
-        self.country = ""
-        self.population = ""
+		self.get_wiki_api_location(self.title)
+		self.assign_country()
+		self.assign_area()
+		self.assign_population()
 
-        self.re_infobox_kw_img = r"(?:obrázek|vlajka|znak|logo)"
+		self.extract_text()
 
-        self.get_wiki_api_location(title)
+	def assign_country(self):
+		# země
+		keys = ["česká obec", "statutární město"]
+		if self.infobox_name in keys:
+			self.country = "Česká republika"
+			return
 
-    @classmethod
-    def is_settlement(cls, title, content):
-        """
-        Na základě názvu a obsahu stránky určuje, zda stránka pojednává o sídlu, či nikoliv.
+		key = "anglické město"
+		if self.infobox_name == key:
+			self.country = "Spojené království"
+			return
 
-        Parametry:
-        title - název stránky (str)
-        content - obsah stránky (str)
+		keys = ["země", "stát"]
+		for key in keys:
+			if key in self.infobox_data and self.infobox_data[key]:
+				value = self.infobox_data[key]
+				self.get_country(self.del_redundant_text(value))				
+				break
 
-        Návratové hodnoty:
-        Dvojice hodnot (level, type); level určuje, zda stránka pojednává o sídlu, type určuje způsob, kterým byla stránka identifikována. (Tuple[int, str])
-        """
-        id_level = 0
-        id_type = ""
+	def assign_area(self):
+		# rozloha
+		keys = ["rozloha", "výměra"]
+		for key in keys:
+			if key in self.infobox_data and self.infobox_data[key]:
+				value = self.infobox_data[key]
+				self.get_area(self.del_redundant_text(value))
 
-        # kontrola šablon
-        id_level, id_type = cls._contains_settlement_infoboxes(
-            content, id_level, id_type
-        )
+	def assign_population(self):
+		# počet obyvatel
+		keys = ["počet obyvatel", "počet_obyvatel", "pocet obyvatel", "pocet_obyvatel"]
+		for key in keys:
+			if key in self.infobox_data and self.infobox_data[key]:
+				value = self.infobox_data[key]
+				self.get_population(self.del_redundant_text(value))
 
-        # kontrola kategorií
-        id_level, id_type = cls._contains_settlement_categories(
-            title, content, id_level, id_type
-        )
+	def assign_aliases(self):
+		# aliasy
 
-        return id_level, id_type
+		key = "jméno"
+		if key in self.infobox_data and self.infobox_data[key]:
+			value = self.del_redundant_text(self.infobox_data[key])
+			self.aliases_infobox_cz.update(self.get_aliases(value, marked_czech=True))
 
-    @staticmethod
-    def _contains_settlement_infoboxes(content, id_level, id_type):
-        """
-        Kontroluje, zda obsah stránky obsahuje některý z infoboxů, které identifikují stránky o sídlech.
+		keys = ["název", "jméno"]
+		for key in keys:
+			if key in self.infobox_data and self.infobox_data[key]:
+				value = self.del_redundant_text(self.infobox_data[key], langmap=self.langmap)
+				self.aliases_infobox.update(self.get_aliases(value))
 
-        Parametry:
-        content - obsah stránky (str)
-        id_level - nerovná-li se nule, kontrola se již neprovádí (int)
-        id_type - způsob identifikace sídla (str)
+		keys = ["originální jméno", "originální_jméno"]
+		for key in keys:
+			if key in self.infobox_data and self.infobox_data[key]:
+				value = self.del_redundant_text(self.infobox_data[key], langmap=self.langmap)
+				self.aliases_infobox_orig.update(self.get_aliases(value))
+				if not len(self.aliases) and not len(self.aliases_infobox):
+					self.first_alias = None
 
-        Návratová hodnota:
-        Dvojice hodnot (level, type); level určuje, zda stránka pojednává o sídlu, type určuje způsob, kterým byla stránka identifikována. (Tuple[int, str])
-        """
-        # není-li id_level roven nule, kontrola se již neprovádí
-        if id_level:
-            return id_level, id_type
+	def extract_text(self):
 
-        # kontrola probíhá dál
-        ib_prefix = r"{{\s*Infobox\s+"
+		content = self.first_paragraph
+		content = content.replace("&nbsp;", " ")
+		content = re.sub(r"m\sn\.\s*", "metrů nad ", content)
 
-        if re.search(ib_prefix + r"-\s+sídlo", content, re.I) or re.search(
-            r"{\|.*?\|\s*sídlo.*?\|}", content, re.I | re.S
-        ):
-            return 1, "Sídlo (světa)"
-        if re.search(ib_prefix + r"-\s+česká\s+obec", content, re.I):
-            return 1, "Česká obec"
-        if re.search(ib_prefix + r"-\s+katastrální\s+území\s+Prahy", content, re.I):
-            return 1, "Česká obec"
-        if re.search(ib_prefix + r"-\s+statutární\s+město", content, re.I):
-            return 1, "Statutární město"
-        if re.search(ib_prefix + r"anglické\s+město", content, re.I):
-            return 1, "Anglické město"
-        return 0, ""
+		abbrs = "".join(
+			(
+				r"(?<!\s(?:tzv|at[pd]))",
+				r"(?<!\s(?:apod|(?:ku|na|po)př|příp))",
+				r"(?<!\s(?:[amt]j|fr))",
+				r"(?<!\d)",
+				r"(?<!nad m)",
+			)
+		)
+		rexp = re.search(
+			r".*?'''.+?'''.*?\s(?:byl[aiy]?|je|jsou|nacház(?:í|ejí)|patř(?:í|il)|stal|rozprostír|lež(?:í|el)).*?"
+			+ abbrs
+			+ "\.(?![^[]*?\]\])",
+			content,
+		)
+		if rexp:
+			if not self.description:
+				self.get_first_sentence(self.del_redundant_text(rexp.group(0), ", "))
+			
+			tmp_first_sentence = rexp.group(0)
 
-    @staticmethod
-    def _contains_settlement_categories(title, content, id_level, id_type):
-        """
-        Kontroluje, zda obsah stránky obsahuje některou z kategorií, které identifikují stránky o sídlech.
+			# extrakce alternativních pojmenování z první věty
+			fs_aliases_lang_links = []
+			for link_lang_alias in re.findall(
+				r"\[\[(?:[^\[]* )?([^\[\] |]+)(?:\|(?:[^\]]* )?([^\] ]+))?\]\]\s*('{3}.+?'{3})",
+				tmp_first_sentence,
+				flags=re.I,
+			):
+				for i_group in [0, 1]:
+					if (
+						link_lang_alias[i_group]
+						and link_lang_alias[i_group] in self.langmap
+					):
+						fs_aliases_lang_links.append(
+							"{{{{Vjazyce|{}}}}} {}".format(
+								self.langmap[link_lang_alias[i_group]],
+								link_lang_alias[2],
+							)
+						)
+						tmp_first_sentence = tmp_first_sentence.replace(
+							link_lang_alias[2], ""
+						)
+						break
+			fs_aliases = re.findall(
+				r"((?:{{(?:Cj|Cizojazyčně|Vjazyce2?)[^}]+}}\s+)?(?<!\]\]\s)'{3}.+?'{3})",
+				tmp_first_sentence,
+				flags=re.I,
+			)
+			fs_aliases += fs_aliases_lang_links
+			if fs_aliases:
+				for fs_alias in fs_aliases:
+					self.aliases.update(
+						self.get_aliases(
+							self.del_redundant_text(fs_alias).strip("'")
+						)
+					)
 
-        Parametry:
-        title - název stránky (str)
-        content - obsah stránky (str)
-        id_level - nerovná-li se nule, kontrola se již neprovádí (int)
-        id_type - způsob identifikace sídla (str)
+	def custom_transform_alias(self, alias):
+		"""
+		Vlastní transformace aliasu.
 
-        Návratová hodnota:
-        Pravděpodobnost, že je stránka o sídlu. (int)
-        """
-        # není-li id_level roven nule, kontrola se již neprovádí
-        if id_level:
-            return id_level, id_type
+		Parametry:
+		alias - alternativní pojmenování entity (str)
+		"""
 
-        # kontrola probíhá dál
-        id_level, id_type = 0, ""
-        content = content.replace("[ ", "[").replace(" ]", "]")
+		return self.transform_geo_alias(alias)
 
-        if re.search(r"\[\[Kategorie:Města\s+(?:na|ve?)\s+.+?\]\]", content, re.I):
-            id_level, id_type = 2, "Kategorie Města..."
-        elif re.search(r"\[\[Kategorie:Obce\s+(?:na|ve?)\s+.+?\]\]", content, re.I):
-            id_level, id_type = 2, "Kategorie Obce..."
+	def get_area(self, area):
+		"""
+		Převádí rozlohu sídla do jednotného formátu.
 
-        if any(
-            x in title.lower()
-            for x in (
-                "obec",
-                "obc",
-                "měst",
-                "metro",
-                "sídel",
-                "sídl",
-                "komun",
-                "muze",
-                "místo",
-                "vesnic",
-            )
-        ):
-            id_level, id_type = 0, ""
+		Parametry:
+		area - rozloha/výměra sídla (str)
+		"""
+		area = re.sub(r"\(.*?\)", "", area)
+		area = re.sub(r"\[.*?\]", "", area)
+		area = re.sub(r"<.*?>", "", area)
+		area = re.sub(r"{{.*?}}", "", area).replace("{", "").replace("}", "")
+		area = re.sub(r"(?<=\d)\s(?=\d)", "", area).strip()
+		area = re.sub(r"(?<=\d)\.(?=\d)", ",", area)
+		area = re.sub(r"^\D*(?=\d)", "", area)
+		area = re.sub(r"^(\d+(?:,\d+)?)[^\d,]+.*$", r"\1", area)
+		area = "" if not re.search(r"\d", area) else area
 
-        return id_level, id_type
+		self.area = area
 
-    def data_preprocess(self, content):
-        """
-        Předzpracování dat o sídlu.
+	def get_country(self, country):
+		"""
+		Převádí stát, ke kterému sídlo patří, do jednotného formátu.
 
-        Parametry:
-        content - obsah stránky (str)
-        """
-        content = content.replace("&nbsp;", " ")
-        content = re.sub(r"m\sn\.\s*", "metrů nad ", content)
+		Parametry:
+		country - země, ke které sídlo patří (str)
+		"""
+		country = re.sub(r"{{vlajka\s+a\s+název\|(.*?)}}", r"\1", country, flags=re.I)
+		country = re.sub(r"{{.*?}}", "", country)
+		country = (
+			"Česká republika"
+			if re.search(r"Čechy|Morava|Slezsko", country, re.I)
+			else country
+		)
+		country = re.sub(r",?\s*\(.*?\)", "", country)
+		country = re.sub(r"\s+", " ", country).strip().replace("'", "")
 
-    def line_process_infobox(self, ln, is_infobox_block):
-        # aliasy
-        rexp_format = r"\|\s*jméno\s*=(?!=)\s*(.*)"
-        rexp = re.search(rexp_format, ln, re.I)
-        if rexp and rexp.group(1):
-            self.aliases_infobox_cz.update(
-                self.get_aliases(
-                    self.del_redundant_text(rexp.group(1)), marked_czech=True
-                )
-            )
-            if is_infobox_block == True:
-                return
+		self.country = country
 
-        rexp_format = r"(?:název|jméno)\s*=(?!=)\s*(.*)"
-        rexp = re.search(rexp_format, ln, re.I)
-        if rexp and rexp.group(1):
-            self.aliases_infobox.update(
-                self.get_aliases(
-                    self.del_redundant_text(rexp.group(1), langmap=self.langmap)
-                )
-            )
-            if is_infobox_block == True:
-                return
+	def get_first_sentence(self, fs):
+		"""
+		Převádí první větu stránky do jednotného formátu a získává z ní popis.
 
-        rexp_format = r"(?:originální[\s_]+jméno)\s*=(?!=)\s*(.*)"
-        rexp = re.search(rexp_format, ln, re.I)
-        if rexp and rexp.group(1):
-            self.aliases_infobox_orig.update(
-                self.get_aliases(
-                    self.del_redundant_text(rexp.group(1), langmap=self.langmap)
-                )
-            )
-            if not len(self.aliases) and not len(self.aliases_infobox):
-                self.first_alias = None
+		Parametry:
+		fs - první věta stránky (str)
+		"""
+		# TODO: refactorize
+		fs = re.sub(r"\(.*?\)", "", fs)
+		fs = re.sub(r"\[.*?\]", "", fs)
+		fs = re.sub(r"<.*?>", "", fs)
+		fs = re.sub(
+			r"{{(?:cj|cizojazyčně|vjazyce\d?)\|\w+\|(.*?)}}", r"\1", fs, flags=re.I
+		)
+		fs = re.sub(r"{{PAGENAME}}", self.title, fs, flags=re.I)
+		fs = re.sub(r"{{.*?}}", "", fs).replace("{", "").replace("}", "")
+		fs = re.sub(r"/.*?/", "", fs)
+		fs = re.sub(r"\s+", " ", fs).strip()
+		fs = re.sub(r"^\s*}}", "", fs)  # Eliminate the end of a template
+		fs = re.sub(r"[()<>\[\]{}/]", "", fs).replace(" ,", ",")
 
-            if is_infobox_block == True:
-                return
+		self.description = fs
 
-        # země
-        if not self.country and re.search(
-            r"{{\s*Infobox\s+-\s+(?:česká\s+obec|statutární\s+město)", ln, re.I
-        ):
-            self.country = "Česká republika"
-            if is_infobox_block == True:
-                return
+	def get_population(self, population):
+		"""
+		Převádí počet obyvatel sídla do jednotného formátu.
 
-        if not self.country and re.search(r"{{\s*Infobox\s+anglické\s+město", ln, re.I):
-            self.country = "Spojené království"
-            if is_infobox_block == True:
-                return
+		Parametry:
+		population - počet obyvatel sídla (str)
+		"""
+		coef = (
+			1000000
+			if re.search(r"mil\.|mili[oó]n", population, re.I)
+			else 1000
+			if re.search(r"tis\.|tis[ií]c", population, re.I)
+			else 0
+		)
 
-        if not self.country:
-            rexp = re.search(r"(?:země|stát)\s*=(?!=)\s*(.*)", ln, re.I)
-            if rexp and rexp.group(1):
-                self.get_country(self.del_redundant_text(rexp.group(1)))
-                if is_infobox_block == True:
-                    return
+		population = re.sub(r"\(.*?\)", "", population)
+		population = re.sub(r"\[.*?\]", "", population)
+		population = re.sub(r"<.*?>", "", population)
+		population = (
+			re.sub(r"{{.*?}}", "", population).replace("{", "").replace("}", "")
+		)
+		population = re.sub(r"(?<=\d)[,.\s](?=\d)", "", population).strip()
+		population = re.sub(r"^\D*(?=\d)", "", population)
+		population = re.sub(r"^(\d+)\D.*$", r"\1", population)
+		population = "" if not re.search(r"\d", population) else population
 
-        # počet obyvatel
-        rexp = re.search(r"po[cč]et[\s_]obyvatel\s*=(?!=)\s*(.*)", ln, re.I)
-        if rexp and rexp.group(1):
-            self.get_population(self.del_redundant_text(rexp.group(1)))
-            if is_infobox_block == True:
-                return
+		if coef and population:
+			population = str(int(population) * coef)
 
-        # rozloha
-        rexp = re.search(r"(?:rozloha|výměra)\s*=(?!=)\s*(.*)", ln, re.I)
-        if rexp and rexp.group(1):
-            self.get_area(self.del_redundant_text(rexp.group(1)))
-            if is_infobox_block == True:
-                return
-
-    def line_process_1st_sentence(self, ln):
-        abbrs = "".join(
-            (
-                r"(?<!\s(?:tzv|at[pd]))",
-                r"(?<!\s(?:apod|(?:ku|na|po)př|příp))",
-                r"(?<!\s(?:[amt]j|fr))",
-                r"(?<!\d)",
-                r"(?<!nad m)",
-            )
-        )
-        rexp = re.search(
-            r".*?'''.+?'''.*?\s(?:byl[aiy]?|je|jsou|nacház(?:í|ejí)|patř(?:í|il)|stal|rozprostír|lež(?:í|el)).*?"
-            + abbrs
-            + "\.(?![^[]*?\]\])",
-            ln,
-        )
-        if rexp:
-            if not self.description:
-                self.get_first_sentence(self.del_redundant_text(rexp.group(0), ", "))
-                tmp_first_sentence = rexp.group(0)
-
-                # extrakce alternativních pojmenování z první věty
-                fs_aliases_lang_links = []
-                for link_lang_alias in re.findall(
-                    r"\[\[(?:[^\[]* )?([^\[\] |]+)(?:\|(?:[^\]]* )?([^\] ]+))?\]\]\s*('{3}.+?'{3})",
-                    tmp_first_sentence,
-                    flags=re.I,
-                ):
-                    for i_group in [0, 1]:
-                        if (
-                            link_lang_alias[i_group]
-                            and link_lang_alias[i_group] in self.langmap
-                        ):
-                            fs_aliases_lang_links.append(
-                                "{{{{Vjazyce|{}}}}} {}".format(
-                                    self.langmap[link_lang_alias[i_group]],
-                                    link_lang_alias[2],
-                                )
-                            )
-                            tmp_first_sentence = tmp_first_sentence.replace(
-                                link_lang_alias[2], ""
-                            )
-                            break
-                fs_aliases = re.findall(
-                    r"((?:{{(?:Cj|Cizojazyčně|Vjazyce2?)[^}]+}}\s+)?(?<!\]\]\s)'{3}.+?'{3})",
-                    tmp_first_sentence,
-                    flags=re.I,
-                )
-                fs_aliases += fs_aliases_lang_links
-                if fs_aliases:
-                    for fs_alias in fs_aliases:
-                        self.aliases.update(
-                            self.get_aliases(
-                                self.del_redundant_text(fs_alias).strip("'")
-                            )
-                        )
-
-    def custom_transform_alias(self, alias):
-        """
-        Vlastní transformace aliasu.
-
-        Parametry:
-        alias - alternativní pojmenování entity (str)
-        """
-
-        return self.transform_geo_alias(alias)
-
-    def get_area(self, area):
-        """
-        Převádí rozlohu sídla do jednotného formátu.
-
-        Parametry:
-        area - rozloha/výměra sídla (str)
-        """
-        area = re.sub(r"\(.*?\)", "", area)
-        area = re.sub(r"\[.*?\]", "", area)
-        area = re.sub(r"<.*?>", "", area)
-        area = re.sub(r"{{.*?}}", "", area).replace("{", "").replace("}", "")
-        area = re.sub(r"(?<=\d)\s(?=\d)", "", area).strip()
-        area = re.sub(r"(?<=\d)\.(?=\d)", ",", area)
-        area = re.sub(r"^\D*(?=\d)", "", area)
-        area = re.sub(r"^(\d+(?:,\d+)?)[^\d,]+.*$", r"\1", area)
-        area = "" if not re.search(r"\d", area) else area
-
-        self.area = area
-
-    def get_country(self, country):
-        """
-        Převádí stát, ke kterému sídlo patří, do jednotného formátu.
-
-        Parametry:
-        country - země, ke které sídlo patří (str)
-        """
-        country = re.sub(r"{{vlajka\s+a\s+název\|(.*?)}}", r"\1", country, flags=re.I)
-        country = re.sub(r"{{.*?}}", "", country)
-        country = (
-            "Česká republika"
-            if re.search(r"Čechy|Morava|Slezsko", country, re.I)
-            else country
-        )
-        country = re.sub(r",?\s*\(.*?\)", "", country)
-        country = re.sub(r"\s+", " ", country).strip().replace("'", "")
-
-        self.country = country
-
-    def get_first_sentence(self, fs):
-        """
-        Převádí první větu stránky do jednotného formátu a získává z ní popis.
-
-        Parametry:
-        fs - první věta stránky (str)
-        """
-        # TODO: refactorize
-        fs = re.sub(r"\(.*?\)", "", fs)
-        fs = re.sub(r"\[.*?\]", "", fs)
-        fs = re.sub(r"<.*?>", "", fs)
-        fs = re.sub(
-            r"{{(?:cj|cizojazyčně|vjazyce\d?)\|\w+\|(.*?)}}", r"\1", fs, flags=re.I
-        )
-        fs = re.sub(r"{{PAGENAME}}", self.title, fs, flags=re.I)
-        fs = re.sub(r"{{.*?}}", "", fs).replace("{", "").replace("}", "")
-        fs = re.sub(r"/.*?/", "", fs)
-        fs = re.sub(r"\s+", " ", fs).strip()
-        fs = re.sub(r"^\s*}}", "", fs)  # Eliminate the end of a template
-        fs = re.sub(r"[()<>\[\]{}/]", "", fs).replace(" ,", ",")
-
-        self.description = fs
-
-    def get_population(self, population):
-        """
-        Převádí počet obyvatel sídla do jednotného formátu.
-
-        Parametry:
-        population - počet obyvatel sídla (str)
-        """
-        coef = (
-            1000000
-            if re.search(r"mil\.|mili[oó]n", population, re.I)
-            else 1000
-            if re.search(r"tis\.|tis[ií]c", population, re.I)
-            else 0
-        )
-
-        population = re.sub(r"\(.*?\)", "", population)
-        population = re.sub(r"\[.*?\]", "", population)
-        population = re.sub(r"<.*?>", "", population)
-        population = (
-            re.sub(r"{{.*?}}", "", population).replace("{", "").replace("}", "")
-        )
-        population = re.sub(r"(?<=\d)[,.\s](?=\d)", "", population).strip()
-        population = re.sub(r"^\D*(?=\d)", "", population)
-        population = re.sub(r"^(\d+)\D.*$", r"\1", population)
-        population = "" if not re.search(r"\d", population) else population
-
-        if coef and population:
-            population = str(int(population) * coef)
-
-        self.population = population
-
-    def serialize(self):
-        """
-        Serializuje údaje o sídlu.
-        """
-        return "\t".join(
-            [
-                self.eid,
-                self.prefix,
-                self.title,
-                self.serialize_aliases(),
-                "|".join(self.redirects),
-                self.description,
-                self.original_title,
-                self.images,
-                self.link,
-                self.country,
-                self.latitude,
-                self.longitude,
-                self.area,
-                self.population,
-            ]
-        )
+		self.population = population

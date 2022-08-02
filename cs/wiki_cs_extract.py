@@ -1,30 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""
-Projekt: entity_kb_czech3 (https://knot.fit.vutbr.cz/wiki/index.php/Entity_kb_czech3)
-Autoři:
-    Michal Planička (xplani02)
-    Tomáš Volf (ivolf)
-
-Popis souboru:
-Soubor obsahuje třídu 'WikiExtract', jež uchovává metody pro parsování argumentů příkazové řádky, parsování XML dumpu Wikipedie, vytvoření znalostní báze a hlavičkového souboru a správu entit a jejich údajů.
-
-Poznámky:
-[\-–—−]
-[^\W\d_] - pouze písmena
-"""
-
-import json
-import os
-import sys
-import argparse
-import datetime
-import time
+import json, os, sys, argparse, time
+from datetime import datetime
 import xml.etree.cElementTree as CElTree
-
 from multiprocessing import Pool
-from itertools import repeat, tee
+from itertools import repeat
+import mwparserfromhell as parser
+from collections import Counter
+
+from debugger import Debugger
 
 from ent_person import *
 from ent_country import *
@@ -33,618 +18,616 @@ from ent_watercourse import *
 from ent_waterarea import *
 from ent_geo import *
 
-
-LANG_MAP = {"cz": "cs"}
-WIKI_LANG_FILE = "languages.json"
-LANG_TRANSFORMATIONS = {
-    "aština": "ašsky",
-    "ština": "sky",
-    "čtina": "cky",
-    "atina": "atinsky",
-    "o": "u",
-}
-
-
 class WikiExtract(object):
-    """
-    Hlavní třída uchovávající metody pro parsování argumentů příkazové řádky, parsování XML dumpu Wikipedie, vytvoření znalostní báze a hlavičkového souboru a správu entit a jejich údajů.
+	def __init__(self):
+		self.console_args = None
+		self.d = Debugger()
+		# self.entities = dict()
 
-    Instanční atributy:
-    console_args - jmenný prostor s argumenty zadanými v konzoli (Namespace)
-    entities - seznam entit, u nichž mají být získány údaje; prozatím nevyužito (dict)
+	@staticmethod
+	def create_head_kb():
+		entities = [
+			"<person>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tGENDER\t{e}DATE OF BIRTH\tPLACE OF BIRTH\t{e}DATE OF DEATH\tPLACE OF DEATH\t{m}JOBS\t{m}NATIONALITY\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+			"<person:fictional>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tGENDER\t{e}DATE OF BIRTH\tPLACE OF BIRTH\t{e}DATE OF DEATH\tPLACE OF DEATH\t{m}JOBS\t{m}NATIONALITY\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+			"<person:group>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tGENDER\t{e}DATE OF BIRTH\tPLACE OF BIRTH\t{e}DATE OF DEATH\tPLACE OF DEATH\t{m}JOBS\t{m}NATIONALITY\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+			"<country>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tLATITUDE\tLONGITUDE\tAREA\tPOPULATION\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+			"<country:former>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tLATITUDE\tLONGITUDE\tAREA\tPOPULATION\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+			"<settlement>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tCOUNTRY\tLATITUDE\tLONGITUDE\tAREA\tPOPULATION\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+			"<watercourse>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\t{m}CONTINENT\tLATITUDE\tLONGITUDE\tLENGTH\tAREA\tSTREAMFLOW\tSOURCE_LOC\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+			"<waterarea>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\t{m}CONTINENT\tLATITUDE\tLONGITUDE\tAREA\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+			"<geo:relief>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\t{m}CONTINENT\tLATITUDE\tLONGITUDE\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+			"<geo:waterfall>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\t{m}CONTINENT\tLATITUDE\tLONGITUDE\tTOTAL HEIGHT\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+			"<geo:island>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\t{m}CONTINENT\tLATITUDE\tLONGITUDE\tAREA\tPOPULATION\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+			"<geo:peninsula>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tLATITUDE\tLONGITUDE\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+			"<geo:continent>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tLATITUDE\tLONGITUDE\tAREA\tPOPULATION\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+			# <organisation>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tFOUNDED\tCANCELLED\tORGANIZATION TYPE\tLOCATION\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+			# "<event>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tSTART\tEND\tLOCATION\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n"
+		]
 
-    Metody:
-    create_head_kb() - vytváří hlavičkový soubor HEAD-KB
-    del_knowledge_base(kb_name) - odstraní zadanou znalostní bázi
-    parse_args() - parsuje argumenty zadané při spuštění skriptu
-    parse_xml_dump() - parsuje XML dump Wikipedie, prochází jednotlivé stránky a vyhledává entity
+		with open("HEAD-KB", "w", encoding="utf-8") as fl:
+			for entity in entities:
+				fl.write(entity)
 
-    _get_url(title) - vygeneruje URL stránky
-    _is_entity(title) - z názvu stránky určuje, zda stránka pojednává o entitě, či nikoliv
-    _load_entities() - načte entity ze složky, jež byla zadána jako argument při spuštění skriptu; prozatím nevyužito
-    """
+	@staticmethod
+	def get_url(title):
+		wiki_url = "https://cs.wikipedia.org/wiki/" + title.replace(" ", "_")
 
-    def __init__(self):
-        """
-        Inicializuje třídu 'WikiExtract'.
-        """
-        self.console_args = None
-        # self.entities = dict()
+		return wiki_url
 
-    @staticmethod
-    def create_head_kb():
-        """
-        Vytváří hlavičkový soubor HEAD-KB, který upřesňuje množinu záznamů znalostní báze.
-        """
-        entities = [
-            "<person>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tGENDER\t{e}DATE OF BIRTH\tPLACE OF BIRTH\t{e}DATE OF DEATH\tPLACE OF DEATH\t{m}JOBS\t{m}NATIONALITY\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
-            "<person:fictional>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tGENDER\t{e}DATE OF BIRTH\tPLACE OF BIRTH\t{e}DATE OF DEATH\tPLACE OF DEATH\t{m}JOBS\t{m}NATIONALITY\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
-            "<person:group>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tGENDER\t{e}DATE OF BIRTH\tPLACE OF BIRTH\t{e}DATE OF DEATH\tPLACE OF DEATH\t{m}JOBS\t{m}NATIONALITY\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
-            "<country>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tLATITUDE\tLONGITUDE\tAREA\tPOPULATION\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
-            "<country:former>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tLATITUDE\tLONGITUDE\tAREA\tPOPULATION\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
-            "<settlement>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tCOUNTRY\tLATITUDE\tLONGITUDE\tAREA\tPOPULATION\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
-            "<watercourse>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\t{m}CONTINENT\tLATITUDE\tLONGITUDE\tLENGTH\tAREA\tSTREAMFLOW\tSOURCE_LOC\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
-            "<waterarea>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\t{m}CONTINENT\tLATITUDE\tLONGITUDE\tAREA\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
-            "<geo:relief>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\t{m}CONTINENT\tLATITUDE\tLONGITUDE\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
-            "<geo:waterfall>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\t{m}CONTINENT\tLATITUDE\tLONGITUDE\tTOTAL HEIGHT\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
-            "<geo:island>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\t{m}CONTINENT\tLATITUDE\tLONGITUDE\tAREA\tPOPULATION\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
-            "<geo:peninsula>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tLATITUDE\tLONGITUDE\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
-            "<geo:continent>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tLATITUDE\tLONGITUDE\tAREA\tPOPULATION\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
-            # <organisation>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tFOUNDED\tCANCELLED\tORGANIZATION TYPE\tLOCATION\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
-            # "<event>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tSTART\tEND\tLOCATION\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n"
-        ]
+	@staticmethod
+	def is_entity(title):
+		# speciální stránky Wikipedie nepojednávají o entitách
+		if title.startswith(
+			(
+				"wikipedie:",
+				"redaktor:",
+				"soubor:",
+				"mediawiki:",
+				"šablona:",
+				"pomoc:",
+				"kategorie:",
+				"speciální:",
+				"portál:",
+				"modul:",
+				"seznam",
+				"geografie",
+				"společenstvo",
+			)
+		):
+			return False
 
-        with open("HEAD-KB", "w", encoding="utf-8") as fl:
-            for entity in entities:
-                fl.write(entity)
+		# stránky pro data (datumy) nepojednávají o entitách
+		if re.search(r"^\d{1,2}\. [^\W\d_]+$", title):
+			return False
 
-    @staticmethod
-    def del_knowledge_base(kb_name):
-        """
-        Odstraní zadanou znalostní bázi před začátkem extrakce, pokud existuje.
+		# ostatní stránky mohou pojednávat o entitách
+		return True
 
-        Parametry:
-        kb_name - název znalostní báze, která má být odstraněna (str)
-        """
-        try:
-            os.remove(kb_name)
-        except OSError:
-            pass
+	def get_dump_fpath(self, dump_file, dump_file_mask):
+		if dump_file is None:
+			dump_file = dump_file_mask.format(
+				self.console_args.lang, self.console_args.dump
+			)
+		elif dump_file[0] == "/":
+			return dump_file
+		elif dump_file[0] == "." and (dump_file[1] == "/" or dump_file[1:3] == "./"):
+			return os.path.join(os.getcwd(), dump_file)
 
-    @staticmethod
-    def _get_url(title):
-        """
-        Vygeneruje  URL stránky.
+		return os.path.join(self.console_args.indir, dump_file)
 
-        Parametry:
-        title - původní název stránky (str)
+	def parse_args(self):
+		parser = argparse.ArgumentParser()
+		parser.add_argument(
+			"-I",
+			"--indir",
+			default="/mnt/minerva1/nlp/corpora_datasets/monolingual/czech/wikipedia/",
+			type=str,
+			help="Directory, where input files are located (applied for files withoud directory location only).",
+		)
+		parser.add_argument(
+			"-l",
+			"--lang",
+			default="cs",
+			type=str,
+			help="Language of processing also used for input files, when defined by version (by default) and not by files (default: %(default)s).",
+		)
+		parser.add_argument(
+			"-d",
+			"--dump",
+			default="latest",
+			type=str,
+			help='Dump version to process (in format "yyyymmdd"; default: %(default)s).',
+		)
+		parser.add_argument(
+			"-m",
+			default=2,
+			type=int,
+			help="Number of processors of multiprocessing.Pool() for entity processing.",
+		)
+		parser.add_argument(
+			"-g",
+			"--geotags",
+			action="store",
+			type=str,
+			help="Source file of wiki geo tags (with GPS locations) dump.",
+		)
+		parser.add_argument(
+			"-p",
+			"--pages",
+			action="store",
+			type=str,
+			help="Source file of wiki pages dump.",
+		)
+		parser.add_argument(
+			"-r",
+			"--redirects",
+			action="store",
+			type=str,
+			help="Source file of wiki redirects dump.",
+		)
+		parser.add_argument(
+			"--dev",
+			action="store_true",
+			help="Development version of KB",
+		)
+		parser.add_argument(
+			"--test",
+			action="store_true",
+			help="Test version of KB",
+		)
+		self.console_args = parser.parse_args()
 
-        Návratové hodnoty:
-        str obsahující URL stránky.
-        """
-        wiki_url = "https://cs.wikipedia.org/wiki/" + title.replace(" ", "_")
+		if self.console_args.m < 1:
+			self.console_args.m = 1
 
-        return wiki_url
+		self.console_args.lang = self.console_args.lang.lower()
 
-    @staticmethod
-    def _is_entity(title):
-        """
-        Na základě názvu stránky určuje, zda stránka pojednává o entitě, či nikoliv.
+		self.pages_dump_fpath = self.get_dump_fpath(
+			self.console_args.pages, "{}wiki-{}-pages-articles.xml"
+		)
+		self.geotags_dump_fpath = self.get_dump_fpath(
+			self.console_args.geotags, "{}wiki-{}-geo_tags.sql"
+		)
+		self.redirects_dump_fpath = self.get_dump_fpath(
+			self.console_args.redirects, "redirects_from_{}wiki-{}-pages-articles.xml"
+		)
+		if self.console_args.dev:
+			self.console_args._kb_stability = "dev"
+		elif self.console_args.test:
+			self.console_args._kb_stability = "test"
+		else:
+			self.console_args._kb_stability = ""
 
-        Parametry:
-        title - název stránky (str)
+	def assign_version(self):
+		str_kb_stability = ""
+		if self.console_args._kb_stability:
+			str_kb_stability = f"-{self.console_args._kb_stability}"
+			
+		try:
+			target = os.readlink(self.pages_dump_fpath)
+			matches = re.search(self.console_args.lang + r"wiki-([0-9]{8})-", target)
+			if matches:
+				dump_version = matches[1]
+		except OSError:
+			try:
+				target = os.readlink(self.redirects_dump_fpath)
+				matches = re.search(
+					self.console_args.lang + r"wiki-([0-9]{8})-", target
+				)
+				if matches:
+					dump_version = matches[1]
+			except OSError:
+				dump_version = self.console_args.dump
 
-        Návratové hodnoty:
-        True, pokud stránka pojednává o entitě, jinak False. (bool)
-        """
-        # speciální stránky Wikipedie nepojednávají o entitách
-        if title.startswith(
-            (
-                "Wikipedie:",
-                "Redaktor:",
-                "Soubor:",
-                "MediaWiki:",
-                "Šablona:",
-                "Pomoc:",
-                "Kategorie:",
-                "Speciální:",
-                "Portál:",
-                "Modul:",
-                "Seznam",
-                "Geografie",
-                "Společenstvo",
-            )
-        ):
-            return False
+		with open("VERSION", "w") as f:
+			f.write("{}_{}-{}{}".format(
+				self.console_args.lang,
+				dump_version,
+				int(round(time.time())),
+				str_kb_stability,
+			))
 
-        # stránky pro data (datumy) nepojednávají o entitách
-        if re.search(r"^\d{1,2}\. [^\W\d_]+$", title):
-            return False
+	##
+	# @brief loads redirects
+	# @param redirects_fpath path to the file with extracted redirects
+	# @return dictionary with redirects
+	def load_redirects(self, redirects_fpath):
+		redirects = dict()
+		
+		try:
+			with open(redirects_fpath, "r") as f:
+				self.d.print("loading redirects")
+				i = 0
+				for line in f:
+					i += 1
+					self.d.update(i)
+					redirect_from, redirect_to = line.strip().split("\t")
 
-        # ostatní stránky mohou pojednávat o entitách
-        return True
+					if redirect_to not in redirects:
+						redirects[redirect_to] = [redirect_from]
+					else:
+						redirects[redirect_to].append(redirect_from)
 
-    # def _load_entities(self):
-    #     """
-    #     Načte entity ze složky, jež byla zadána jako argument při spuštění skriptu.
-    #     """
-    #     try:
-    #         with open(self.console_args.dir + "people/wp_list") as fl:
-    #             self.entities["people"] = fl.read().splitlines()
-    #
-    #         with open(self.console_args.dir + "countries/wp_list") as fl:
-    #             self.entities["countries"] = fl.read().splitlines()
-    #
-    #         with open(self.console_args.dir + "settlements/wp_list") as fl:
-    #             self.entities["settlements"] = fl.read().splitlines()
-    #
-    #         with open(self.console_args.dir + "watercourses/wp_list") as fl:
-    #             self.entities["watercourses"] = fl.read().splitlines()
-    #
-    #         with open(self.console_args.dir + "waterareas/wp_list") as fl:
-    #             self.entities["waterareas"] = fl.read().splitlines()
-    #
-    #         with open(self.console_args.dir + "geos/wp_list") as fl:
-    #             self.entities["geos"] = fl.read().splitlines()
-    #     except FileNotFoundError:
-    #         print("[[ CHYBA ]] Zadaná složka s entitami je neplatná nebo některé soubory v ní neexistují")
-    #         exit(1)
+				self.d.print(f"loaded redirects ({i})")
+		except OSError:            
+			self.d.print("redirect file was not found - skipping...")
+		
+		return redirects
 
-    def get_dump_fpath(self, dump_file, dump_file_mask):
-        if dump_file is None:
-            dump_file = dump_file_mask.format(
-                self.console_args.lang, self.console_args.dump
-            )
-        elif dump_file[0] == "/":
-            return dump_file
-        elif dump_file[0] == "." and (dump_file[1] == "/" or dump_file[1:3] == "./"):
-            return os.path.join(os.getcwd(), dump_file)
+	##
+	# @brief loads langmap
+	# @param langmap_fpath path to the file with langmap
+	# @return dictionary with langmap
+	def load_langmap(self, langmap_fpath):
+		langmap = dict()
+		
+		try:
+			with open(langmap_fpath, "r") as file:
+				self.d.print("loading langmap")
+				langmap = json.load(file)
+				self.d.print("loaded langmap")
+		except OSError:
+			self.d.print(f"langmap file 'langmap.json' was not found")
+			self.d.print(f"please generate langmap.json (use generate_langmap.json)")
+			# exit(1)
 
-        return os.path.join(self.console_args.indir, dump_file)
+		return langmap
 
-    def parse_args(self):
-        """
-        Parsuje argumenty zadané při spuštění skriptu.
-        """
-        parser = argparse.ArgumentParser()
-        parser.add_argument(
-            "-I",
-            "--indir",
-            default="/mnt/minerva1/nlp/corpora_datasets/monolingual/czech/wikipedia/",
-            type=str,
-            help="Directory, where input files are located (applied for files withoud directory location only).",
-        )
-        parser.add_argument(
-            "-l",
-            "--lang",
-            default="cs",
-            type=str,
-            help="Language of processing also used for input files, when defined by version (by default) and not by files (default: %(default)s).",
-        )
-        parser.add_argument(
-            "-d",
-            "--dump",
-            default="latest",
-            type=str,
-            help='Dump version to process (in format "yyyymmdd"; default: %(default)s).',
-        )
-        parser.add_argument(
-            "-m",
-            default=2,
-            type=int,
-            help="Number of processors of multiprocessing.Pool() for entity processing.",
-        )
-        parser.add_argument(
-            "-g",
-            "--geotags",
-            action="store",
-            type=str,
-            help="Source file of wiki geo tags (with GPS locations) dump.",
-        )
-        parser.add_argument(
-            "-p",
-            "--pages",
-            action="store",
-            type=str,
-            help="Source file of wiki pages dump.",
-        )
-        parser.add_argument(
-            "-r",
-            "--redirects",
-            action="store",
-            type=str,
-            help="Source file of wiki redirects dump.",
-        )
-        parser.add_argument(
-            "--dev",
-            action="store_true",
-            help="Development version of KB",
-        )
-        parser.add_argument(
-            "--test",
-            action="store_true",
-            help="Test version of KB",
-        )
-        self.console_args = parser.parse_args()
+	##
+	# @brief loads first sentences
+	# @param senteces_fpath path to the file with extracted first sentences
+	# @return dictionary with first sentences
+	def load_first_sentences(self, senteces_fpath):
+		first_sentences = dict()
 
-        if self.console_args.m < 1:
-            self.console_args.m = 1
+		try:
+			with open(senteces_fpath, "r") as f:
+				self.d.print("loading first sentences")
+				i = 0
+				for line in f:
+					i += 1
+					self.d.update(i)
+					split = line.strip().split("\t")
+					link = split[0]
+					sentence = split[1] if len(split) > 1 else ""
+					first_sentences[link] = sentence
 
-        self.console_args.lang = self.console_args.lang.lower()
-        if self.console_args.lang in LANG_MAP:
-            self.console_args.lang = LANG_MAP[self.console_args.lang]
+				self.d.print(f"loaded first sentences ({i})")
+		except OSError:            
+			self.d.print("first sentence file was not found - skipping...")
+		
+		return first_sentences
 
-        self.pages_dump_fpath = self.get_dump_fpath(
-            self.console_args.pages, "{}wiki-{}-pages-articles.xml"
-        )
-        self.geotags_dump_fpath = self.get_dump_fpath(
-            self.console_args.geotags, "{}wiki-{}-geo_tags.sql"
-        )
-        self.redirects_dump_fpath = self.get_dump_fpath(
-            self.console_args.redirects, "redirects_from_{}wiki-{}-pages-articles.xml"
-        )
-        if self.console_args.dev:
-            self.console_args._kb_stability = "dev"
-        elif self.console_args.test:
-            self.console_args._kb_stability = "test"
-        else:
-            self.console_args._kb_stability = ""
+	##
+	# @brief loads patterns for entity recognition
+	# @param patterns_fpath path to the file with patterns
+	# @return dictionary with patterns
+	def load_patterns(self, patterns_fpath):
+		patterns = dict()
 
-    def parse_xml_dump(self):
-        """
-        Parsuje XML dump Wikipedie, prochází jednotlivé stránky a vyhledává entity.
+		try:
+			with open(patterns_fpath, "r") as file:
+				patterns = json.load(file)
+		except OSError:
+			self.d.print("entity identification patterns were not found - exiting...")
+			# exit(1)
 
-        Poznámky:
-        - založeno na: http://effbot.org/zone/element-iterparse.htm
-        """
-        # # načtení entit
-        # self._load_entities()
+		return patterns
 
-        redirects = dict()
-        try:
-            with open(self.redirects_dump_fpath, "r") as f:
-                for line in f:
-                    redirect_from, redirect_to = line.strip().split("\t")
-                    if not redirect_to in redirects:
-                        redirects[redirect_to] = set()
-                    redirects[redirect_to].add(redirect_from)
-        except OSError:
-            print(f'File "{self.redirects_dump_fpath}" was not found - skipping...')
+	def parse_xml_dump(self):
 
-        langmap = dict()
-        try:
-            with open(WIKI_LANG_FILE, "r", encoding="utf8") as f:
-                try:
-                    langmap = json.load(f)
-                except (ValueError, UnicodeDecodeError):
-                    pass  # File is not valid -> we generate new one
-        except OSError:
-            pass  # Do nothing - it does not matter, because in this case we generate new one
+		redirects = self.load_redirects(self.redirects_dump_fpath)
+		langmap = self.load_langmap("langmap_fpath")
+		first_sentences = self.load_first_sentences("sentence_fpath")
+		patterns = self.load_patterns(os.path.join(os.path.dirname(sys.argv[0]), "json/identification.json"))
 
-        # parsování XML souboru
-        context = CElTree.iterparse(self.pages_dump_fpath, events=("start", "end"))
+		# xml parser
+		context = CElTree.iterparse(self.pages_dump_fpath, events=("start", "end"))
 
-        it_context_langmap, it_context_pages = tee(context)
-        event, root = next(it_context_langmap)
+		ent_data = []
 
-        if len(langmap) == 0:
-            pg_languages = None
-            found_639_2 = False
-            for event, elem in it_context_langmap:
-                if event == "end" and "page" in elem.tag:
-                    for child in elem:
-                        if (
-                            "title" in child.tag
-                            and child.text == "Seznam kódů ISO 639-2"
-                        ):
-                            found_639_2 = True
-                        if found_639_2 and "revision" in child.tag:
-                            for grandchild in child:
-                                if "text" in grandchild.tag:
-                                    pg_languages = grandchild.text
-                                    break
-                            break
-                    if found_639_2:
-                        break
-            if found_639_2:
-                tbl_languages = re.search(r"{\|(.*?)\|}", pg_languages, flags=re.S)
-                if tbl_languages:
-                    tbl_languages = tbl_languages.group(1)
-                    tbl_lang_header = re.search(
-                        r"^\s*!([^!]+(?:!![^!]+)+)$", tbl_languages, flags=re.M
-                    )
-                    if tbl_lang_header:
-                        tbl_lang_header = tbl_lang_header.group(1).split("!!")
-                        i_639_1 = tbl_lang_header.index("ISO 639-1")
-                        i_639_2 = tbl_lang_header.index("ISO 639-2")
-                        i_langname = tbl_lang_header.index("Název jazyka")
+		curr_page_cnt = 0
+		all_page_cnt = 0
+		ent_count = 0
 
-                        for lang_row in re.findall(
-                            r"^\s*\|(.+?(?:\|\|.+?)+)$", tbl_languages, flags=re.M
-                        ):
-                            i_lang_col = None
-                            lang_cols = lang_row.split("||")
-                            langnames = re.sub(r"\(.*?\)", "", lang_cols[i_langname])
-                            if (
-                                lang_cols[i_639_1].strip()
-                                and lang_cols[i_639_1].strip() != "&nbsp;"
-                            ):
-                                i_lang_col = i_639_1
-                            else:
-                                i_lang_col = i_639_2
+		# LOOP_CYCLE = skript bude číst a extrahovat data po blocích o velikosti [LOOP_CYCLE]
+		LOOP_CYCLE = 4000
+		debug_limit_hit = False
 
-                            for langnames2 in langnames.split(","):
-                                for langname in langnames2.split(" a "):
-                                    langname_normalized = None
-                                    langname = (
-                                        re.sub(r"\[\[(.*?)\]\]", r"\1", langname)
-                                        .strip()
-                                        .lower()
-                                    )
-                                    if not langname:
-                                        continue
-                                    for langname in langname.split("|"):
-                                        for (
-                                            suffix,
-                                            replacement,
-                                        ) in LANG_TRANSFORMATIONS.items():
-                                            if langname.endswith(suffix):
-                                                langname_normalized = (
-                                                    langname[: -len(suffix)]
-                                                    + replacement
-                                                )
-                                                break
+		with open("kb", "a+", encoding="utf-8") as file:
+			file.truncate(0)
+			event, root = next(context)
+			for event, elem in context:
 
-                                        lang_abbr = re.sub(
-                                            r"{{.*?}}", "", lang_cols[i_lang_col]
-                                        ).strip()
-                                        langmap[langname] = lang_abbr
-                                        if langname_normalized:
-                                            langmap[langname_normalized] = lang_abbr
+				if debug_limit_hit:
+					break
 
-                        if len(langmap):
-                            langmap["krymskotatarština"] = "crh"
-                            with open(WIKI_LANG_FILE, "w", encoding="utf8") as f:
-                                json.dump(langmap, f, ensure_ascii=False)
+				# hledá <page> element
+				if event == "end" and "page" in elem.tag:
+					# xml -> <page> -> <title>
+					# xml -> <page> -> <revision>
+					is_entity = False
+					title = ""
 
-        ent_titles = []
-        ent_pages = []
-        # context = CElTree.iterparse(self.pages_dump_fpath, events=("start", "end"))
-        event, root = next(it_context_pages)
-        with open("kb", "a", encoding="utf-8") as fl:
-            for event, elem in it_context_pages:
-                if event == "end" and "page" in elem.tag:
-                    is_entity = True
-                    et_full_title = ""
+					for child in elem:
+						# získá title stránky
+						if "title" in child.tag:
+							is_entity = self.is_entity(child.text.lower())
+							if is_entity:
+								title = child.text
+						# získá text stránky
+						elif "revision" in child.tag:
+							for grandchild in child:
+								if "text" in grandchild.tag and is_entity and grandchild.text:
+									if re.search(r"{{[^}]*?(?:rozcestník)(?:\|[^}]*?)?}}", grandchild.text, re.I):
+										self.d.update("found disambiguation")
+										break                    
 
-                    for child in elem:
-                        # na základě názvu stránky rozhodne, zda se jedná o entitu, či nikoliv
-                        if "title" in child.tag:
-                            is_entity = self._is_entity(child.text)
-                            et_full_title = child.text
+									# nalezení nové entity
+									link = self.get_url(title)
+									ent_data.append((
+										title, 
+										grandchild.text, 
+										redirects[link] if link in redirects else [], 
+										first_sentences[link] if link in first_sentences else ""
+									))
 
-                        # získá obsah stránky
-                        elif "revision" in child.tag:
-                            for grandchild in child:
-                                if "text" in grandchild.tag:
-                                    if is_entity and grandchild.text:
-                                        # přeskakuje stránky s přesměrováním a rozcestníkové stránky
-                                        if re.search(
-                                            r"#(?:redirect|přesměruj)|{{\s*Rozcestník",
-                                            grandchild.text,
-                                            flags=re.I,
-                                        ):
-                                            print(
-                                                "[{}] skipping {}".format(
-                                                    str(datetime.datetime.now().time()),
-                                                    et_full_title,
-                                                ),
-                                                file=sys.stderr,
-                                                flush=True,
-                                            )
-                                            continue
+									curr_page_cnt += 1
+									all_page_cnt += 1
 
-                                        ent_titles.append(et_full_title)
-                                        ent_pages.append(grandchild.text)
-                                        """
-                                        pools[cur_pool] = pool.apply_async(self.process_entity, (et_full_title, grandchild.text, redirects, langmap))
-                                        cur_pool = (cur_pool + 1) % max_pool
-                                        if pools[cur_pool] == None:
-                                            continue
+									self.d.update(f"found new page ({all_page_cnt})")
 
-                                        serialized_entity = pools[cur_pool].get()
-                                        if serialized_entity:
-                                            fl.write(serialized_entity + "\n")
-                                        """
-                    root.clear()
+									if self.d.debug_limit is not None and all_page_cnt >= self.d.debug_limit:
+										self.d.print(f"debug limit hit (number of pages: {all_page_cnt})")
+										debug_limit_hit = True
+										break
 
-            if len(ent_titles) > 0:
-                pool = Pool(processes=self.console_args.m)
-                serialized_entities = pool.starmap(
-                    self.process_entity,
-                    zip(ent_titles, ent_pages, repeat(redirects), repeat(langmap)),
-                )
-                fl.write("\n".join(filter(None, serialized_entities)))
-                pool.close()
-                pool.join()
+									if curr_page_cnt == LOOP_CYCLE:
+										ent_count += self.output(file, ent_data, langmap, patterns)
+										ent_data.clear()
+										curr_page_cnt = 0    
+						elif "redirect" in child.tag:
+							self.d.update(f"found redirect ({all_page_cnt})")
+							break
 
-    def process_entity(self, et_full_title, page_content, redirects, langmap):
-        # odstraňuje citace, reference a HTML poznámky
-        print(
-            "[{}] processing {}".format(
-                str(datetime.datetime.now().time()), et_full_title
-            ),
-            file=sys.stderr,
-            flush=True,
-        )
-        delimiter = "<"
-        text_parts = page_content.split(delimiter)
-        re_tag = r"^/?[^ />]+(?=[ />])"
-        delete_mode = False
-        tag_close = None
+					root.clear()
 
-        for i_part, text_part in enumerate(
-            text_parts[1:], 1
-        ):  # skipping first one which is not begin of tag
-            if delete_mode and tag_close:
-                if text_part.startswith(tag_close):
-                    text_parts[i_part] = text_part[len(tag_close) :]
-                    delete_mode = False
-                else:
-                    text_parts[i_part] = ""
-            else:
-                matched_tag = re.search(re_tag, text_part)
-                if matched_tag:
-                    matched_tag = matched_tag.group(0)
-                    if matched_tag in ["nowiki", "ref", "refereces"]:
-                        tag_close = "/" + matched_tag + ">"
-                        text_len = len(text_part)
-                        text_part = re.sub(r"^.*?/>", "", text_part, 1)
-                        if text_len == len(text_part):
-                            delete_mode = True
-                        text_parts[i_part] = "" if delete_mode else text_part
-                    else:
-                        tag_close = None
-                        text_parts[i_part] = delimiter + text_part
+			if len(ent_data):
+				ent_count += self.output(file, ent_data, langmap, patterns)
 
-        et_cont = "".join(text_parts)
-        et_cont = re.sub(r"{{citace[^}]+?}}", "", et_cont, flags=re.I | re.S)
-        et_cont = re.sub(r"{{cite[^}]+?}}", "", et_cont, flags=re.I)
-        et_cont = re.sub(
-            r"{{#tag:ref\s*\|(?:[^\|\[{]|\[\[[^\]]+\]\]|(?<!\[)\[[^\[\]]+\]|{{[^}]+}})*(\|[^}]+)?}}",
-            "",
-            et_cont,
-            flags=re.I | re.S,
-        )
-        et_cont = re.sub(r"<!--.+?-->", "", et_cont, flags=re.DOTALL)
+		self.d.print("----------------------------", print_time=False)
+		self.d.print(f"parsed xml dump (number of pages: {all_page_cnt})", print_time=False)
+		self.d.print(f"processed {ent_count} entities", print_time=False)
 
-        link_multilines = re.findall(
-            r"\[\[(?:Soubor|File)(?:(?:[^\[\]\n{]|{{[^}]+}}|\[\[[^\]]+\]\])*\n)+(?:[^\[\]\n{]|{{[^}]+}}|\[\[[^\]]+\]\])*\]\]",
-            et_cont,
-            flags=re.S,
-        )
-        for link_multiline in link_multilines:
-            fixed_link_multiline = link_multiline.replace("\n", " ")
-            et_cont = et_cont.replace(link_multiline, fixed_link_multiline)
-        et_cont = re.sub(r"(<br(?:\s*/)?>)\n", r"\1", et_cont, flags=re.S)
-        et_cont = re.sub(
-            r"{\|(?!\s+class=(?:\"|')infobox(?:\"|')).*?\|}", "", et_cont, flags=re.S
-        )
-        ent_redirects = redirects[et_full_title] if et_full_title in redirects else []
+	##
+	# @brief extracts the entities with multiprocessing and outputs the data to a file
+	# @param file - output file ("kb" file)
+	# @param ent_data - ordered array of tuples with entity data
+	# @param langmap - dictionary of language abbreviations
+	# @param patterns - dictionary containing identification patterns
+	# @return number of pages that were identified as entities (count of extracted entities)
+	def output(self, file, ent_data, langmap, patterns):
+		if len(ent_data):
+			start_time = datetime.now()
 
-        # stránka pojednává o osobě
-        if EntPerson.is_person(et_cont) >= 2:
-            et_url = self._get_url(et_full_title)
-            et_person = EntPerson(
-                et_full_title, "person", et_url, ent_redirects, langmap
-            )
-            return et_person.get_data(et_cont)
+			pool = Pool(processes=self.console_args.m)
+			serialized_entities = pool.starmap(
+				self.process_entity,
+				zip(ent_data, repeat(langmap), repeat(patterns))                    
+			)
+			l = list(filter(None, serialized_entities))
+			file.write("\n".join(l) + "\n")
+			pool.close()
+			pool.join()
+			count = len(l)
 
-        # stránka pojednává o státu
-        if EntCountry.is_country(et_cont):
-            et_url = self._get_url(et_full_title)
-            et_country = EntCountry(
-                et_full_title, "country", et_url, ent_redirects, langmap
-            )
-            return et_country.get_data(et_cont)
+			end_time = datetime.now()
+			tdelta = end_time - start_time
+			self.d.print(f"processed {count} entities (in {self.d.pretty_time_delta(tdelta.total_seconds())})")
+			self.d.log_message(f"time_avg,{tdelta},{len(ent_data)};")
+			return count
 
-        min_level = None
-        ent_type = None
+	def process_entity(self, ent_data, langmap, patterns):
+		title, content, redirects, sentence = ent_data
 
-        # kontrola pojednávání o sídle
-        id_level, id_subtype = EntSettlement.is_settlement(et_full_title, et_cont)
-        if id_level:
-            ent_type = "settlement"
-            min_level = id_level
+		self.d.update(f"processing {title}")
 
-        # kontrola pojednávání o vodním toku
-        id_level, tmp_subtype = EntWatercourse.is_watercourse(et_full_title, et_cont)
-        if id_level and (min_level == None or id_level < min_level):
-            ent_type = "watercourse"
-            min_level = id_level
-            id_subtype = tmp_subtype
+		extraction = self.extract_entity_data(content)
+		identification = self.identify_entity(title, extraction, patterns).most_common()
 
-        # kontrola pojednávání o vodní ploše
-        id_level, tmp_subtype = EntWaterArea.is_water_area(et_full_title, et_cont)
-        if id_level and (min_level == None or id_level < min_level):
-            ent_type = "waterarea"
-            min_level = id_level
-            id_subtype = tmp_subtype
+		count = 0
+		for _, value in identification:
+			count += value
 
-        # kontrola pojednávání o geografické entitě
-        id_level, tmp_subtype = EntGeo.is_geo(et_full_title, et_cont)
-        if id_level and (min_level == None or id_level < min_level):
-            ent_type = "geo"
-            min_level = id_level
-            id_subtype = tmp_subtype
+		entities = {
+			"person":       EntPerson,
+			"country":      EntCountry,
+			"settlement":   EntSettlement,
+			"waterarea":    EntWaterArea,
+			"watercourse":  EntWatercourse,
+			"geo":          EntGeo
+			# "organisation": None,
+			# "event":        None
+		}
 
-        # stránka pojednává o sídle
-        if ent_type == "settlement":
-            et_url = self._get_url(et_full_title)
-            et_settlement = EntSettlement(
-                et_full_title, ent_type, et_url, ent_redirects, langmap
-            )
-            return et_settlement.get_data(et_cont)
+		if count != 0:
+			key = identification[0][0]
+			if key in entities:
+				entity = entities[key](title, key, self.get_url(title), extraction, langmap, redirects, sentence, self.d)
+				entity.assign_values()
+				return repr(entity)
 
-        # stránka pojednává o vodním toku
-        if ent_type == "watercourse":
-            et_url = self._get_url(et_full_title)
-            et_watercourse = EntWatercourse(
-                et_full_title, ent_type, et_url, ent_redirects, langmap
-            )
-            return et_watercourse.get_data(et_cont)
+		# TODO: log unidentified
+		return None
 
-        # stránka pojednává o vodní ploše
-        if ent_type == "waterarea":
-            et_url = self._get_url(et_full_title)
-            et_water_area = EntWaterArea(
-                et_full_title, ent_type, et_url, ent_redirects, langmap
-            )
-            return et_water_area.get_data(et_cont)
+	##
+	# @brief tries to extract infobox, first paragraph, categories and coordinates
+	# @param content - string containing page content 
+	# @return dictionary of extracted entity data
+	#
+	# uses the mwparserfromhell library
+	def extract_entity_data(self, content):
 
-        # stránka pojednává o geografické entitě
-        if ent_type == "geo":
-            et_url = self._get_url(et_full_title)
-            et_geo = EntGeo(et_full_title, ent_type, et_url, ent_redirects, langmap)
-            et_geo.set_entity_subtype(id_subtype)
-            return et_geo.get_data(et_cont)
+		content = self.remove_references(content)
+		# content = self.remove_not_improtant(content)
 
-    def assign_version(self):
-        str_kb_stability = ""
-        if self.console_args._kb_stability:
-            str_kb_stability = f"-{self.console_args._kb_stability}"
-        try:
-            target = os.readlink(self.pages_dump_fpath)
-            matches = re.search(self.console_args.lang + r"wiki-([0-9]{8})-", target)
-            if matches:
-                dump_version = matches[1]
-        except OSError:
-            try:
-                target = os.readlink(self.redirects_dump_fpath)
-                matches = re.search(
-                    self.console_args.lang + r"wiki-([0-9]{8})-", target
-                )
-                if matches:
-                    dump_version = matches[1]
-            except OSError:
-                dump_version = self.console_args.dump
-        with open("VERSION", "w") as f:
-            f.write(
-                "{}_{}-{}{}".format(
-                    self.console_args.lang,
-                    dump_version,
-                    int(round(time.time())),
-                    str_kb_stability,
-                )
-            )
+		result = {
+			"found": False,
+			"name": "",
+			"data": dict(),
+			"paragraph": "",
+			"categories": [],
+			"coords": ""
+		}
 
+		wikicode = parser.parse(content)
+		templates = wikicode.filter_templates()
+
+		infobox = None
+
+		# look for infobox
+		for t in templates:
+			name = t.name.lower().strip()
+			if name.startswith("infobox") and infobox is None:
+				infobox = t
+				name = name.split()
+				name.pop(0)
+				name = " ".join(name)
+				result["found"] = True
+				# TODO: fix names e.g.: "- spisovatel"
+				name = name.strip()
+				if name and name[0] == '-':
+					name = name[1:].strip()								
+				result["name"] = name
+			elif "coord" in name or "coords" in name:
+				result["coords"] = str(t)
+
+		# extract infobox
+		if result["found"]:
+			for p in infobox.params:
+				field = p.strip()
+				field = [item.strip() for item in field.split("=")]
+				key = field.pop(0).lower()
+				value = "=".join(field)
+				result["data"][key] = value
+
+		# extract first paragraph
+		sections = wikicode.get_sections()
+		if len(sections):
+			section = sections[0]
+			templates = section.filter_templates()
+			
+			for t in templates:
+				if t.name.lower().startswith("infobox"):
+					section.remove(t)
+					break
+			
+			split = [s for s in section.strip().split("\n") if s != ""]
+			for s in split:
+				if s.startswith("'''") or s.startswith("The '''"):
+					result["paragraph"] = s.strip()
+					break
+
+		# extract categories
+		lines = content.splitlines()
+		for line in lines:
+			if line.startswith("[[Kategorie:"):
+				result["categories"].append(line[12:-2].strip())
+		
+		return result
+
+	##
+	# @brief uses patterns to score the entity, prefix with the highest score is later chosen as the entity identification
+	# @param title - string containing page title 
+	# @param extracted - dictionary with extracted entity data (infobox, categories, ...)
+	# @param patterns - dictionary containing identification patterns
+	# @return Counter instance with identification scores
+	#
+	# entity is given a point for each matched pattern
+	# it looks at categories, infobox names, titles and infobox fields
+	# these patterns are located in a en/json/identification.json file
+	#
+	# @todo better algorithm for faster performance
+	# @todo score weight system
+	@staticmethod
+	def identify_entity(title, extracted, patterns):
+		counter = Counter({key: 0 for key in patterns.keys()})
+
+		# categories
+		for c in extracted["categories"]:
+			for entity in patterns.keys():
+				for p in patterns[entity]["categories"]:
+					if re.search(p, c, re.I):
+						# print("matched category")
+						counter[entity] += 1
+
+		# infobox names
+		for entity in patterns.keys():
+			for p in patterns[entity]["names"]:
+				if re.search(p, extracted["name"], re.I):
+					# print("matched name")
+					counter[entity] += 1
+
+		# titles
+		for entity in patterns.keys():
+			for p in patterns[entity]["titles"]:
+				if re.search(p, title, re.I):
+					# print("matched title")
+					counter[entity] += 1
+
+		# infobox fields
+		for entity in patterns.keys():
+			for field in patterns[entity]["fields"]:
+				if field in extracted["data"]:
+					# print("matched field")
+					counter[entity] += 1
+
+		return counter
+
+	@staticmethod
+	def remove_references(content):
+		
+		delimiter = "<"
+		text_parts = content.split(delimiter)
+		re_tag = r"^/?[^ />]+(?=[ />])"
+		delete_mode = False
+		tag_close = None
+
+		for i_part, text_part in enumerate(text_parts[1:], 1):  # skipping first one which is not begin of tag
+			if delete_mode and tag_close:
+				if text_part.startswith(tag_close):
+					text_parts[i_part] = text_part[len(tag_close) :]
+					delete_mode = False
+				else:
+					text_parts[i_part] = ""
+			else:
+				matched_tag = re.search(re_tag, text_part)
+				if matched_tag:
+					matched_tag = matched_tag.group(0)
+					if matched_tag in ["nowiki", "ref", "refereces"]:
+						tag_close = "/" + matched_tag + ">"
+						text_len = len(text_part)
+						text_part = re.sub(r"^.*?/>", "", text_part, 1)
+						if text_len == len(text_part):
+							delete_mode = True
+						text_parts[i_part] = "" if delete_mode else text_part
+					else:
+						tag_close = None
+						text_parts[i_part] = delimiter + text_part
+
+		et_cont = "".join(text_parts)
+		et_cont = re.sub(r"{{citace[^}]+?}}", "", et_cont, flags=re.I | re.S)
+		et_cont = re.sub(r"{{cite[^}]+?}}", "", et_cont, flags=re.I)
+		et_cont = re.sub(
+			r"{{#tag:ref\s*\|(?:[^\|\[{]|\[\[[^\]]+\]\]|(?<!\[)\[[^\[\]]+\]|{{[^}]+}})*(\|[^}]+)?}}",
+			"",
+			et_cont,
+			flags=re.I | re.S,
+		)
+		et_cont = re.sub(r"<!--.+?-->", "", et_cont, flags=re.DOTALL)
+
+		link_multilines = re.findall(
+			r"\[\[(?:Soubor|File)(?:(?:[^\[\]\n{]|{{[^}]+}}|\[\[[^\]]+\]\])*\n)+(?:[^\[\]\n{]|{{[^}]+}}|\[\[[^\]]+\]\])*\]\]",
+			et_cont,
+			flags=re.S,
+		)
+		for link_multiline in link_multilines:
+			fixed_link_multiline = link_multiline.replace("\n", " ")
+			et_cont = et_cont.replace(link_multiline, fixed_link_multiline)
+		et_cont = re.sub(r"(<br(?:\s*/)?>)\n", r"\1", et_cont, flags=re.S)
+		et_cont = re.sub(
+			r"{\|(?!\s+class=(?:\"|')infobox(?:\"|')).*?\|}", "", et_cont, flags=re.S
+		)
+		
+		return et_cont
 
 # hlavní část programu
 if __name__ == "__main__":
-    wiki_extract = WikiExtract()
+	wiki_extract = WikiExtract()
 
-    wiki_extract.parse_args()
-    wiki_extract.create_head_kb()
-    wiki_extract.del_knowledge_base("kb_cs")
-    wiki_extract.parse_xml_dump()
-    wiki_extract.assign_version()
+	wiki_extract.parse_args()
+	wiki_extract.create_head_kb()
+	wiki_extract.parse_xml_dump()
+	wiki_extract.assign_version()
+
+	wiki_extract.d.log()

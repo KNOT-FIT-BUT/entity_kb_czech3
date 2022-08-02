@@ -54,7 +54,7 @@ LANG_MAP = {"cz": "cs"}
 
 ##
 # @class WikiExtract
-# @brief main class of the project, one istanced is created to execute the main functions
+# @brief main class of the project, one istance is created to execute the main functions
 class WikiExtract(object):
     ##
     # @brief initializes the console_args variable and debugger class
