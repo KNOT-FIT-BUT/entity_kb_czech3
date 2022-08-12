@@ -10,13 +10,11 @@
 # @date 25.07.2022 
 
 import datetime
-import json
 from collections import Counter
 import sys
 import os
 
 SCORE = 10
-ENTITIES_FP	= "json/entities.json"
 
 ##
 # @class Debugger
@@ -39,9 +37,6 @@ class Debugger:
 		# identification
 		self.id_count = 0
 		self.id_sum = 0
-		self.entities = {}
-		with open(os.path.join(os.path.dirname(sys.argv[0]), ENTITIES_FP), "r") as f:
-			self.entities = json.load(f)
 
 	##
 	# @brief clears currently updating message and prints a message with a new line 
@@ -67,19 +62,19 @@ class Debugger:
 
 	##
 	# @brief logs entity information
-	def log_entity(self, entity, prefix):
-		data = []
+	# def log_entity(self, entity, prefix):
+	# 	data = []
 
-		entity_data = entity.split("\t")
-		data.append(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] logging entity")
-		empty = []
-		for i in range(len(entity_data)):
-			if entity_data[i] != "":
-				data.append(f"  {self.entities[prefix][i]}: {entity_data[i]}")
-			else:
-				empty.append(self.entities[prefix][i])
-		data.append(f"  empty: {', '.join(empty)}")
-		self.log_message("\n".join(data))
+	# 	entity_data = entity.split("\t")
+	# 	data.append(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] logging entity")
+	# 	empty = []
+	# 	for i in range(len(entity_data)):
+	# 		if entity_data[i] != "":
+	# 			data.append(f"  {self.entities[prefix][i]}: {entity_data[i]}")
+	# 		else:
+	# 			empty.append(self.entities[prefix][i])
+	# 	data.append(f"  empty: {', '.join(empty)}")
+	# 	self.log_message("\n".join(data))
 	
 	##
 	# @brief checks if entity is mostly empty (implies badly identified entity)
@@ -147,7 +142,7 @@ class Debugger:
 
 		log = []
 
-		with open(os.path.join(os.path.dirname(sys.argv[0]), "out/kb.out"), "r") as f:
+		with open(os.path.join(os.path.dirname(sys.argv[0]), "outputs/kb.out"), "r") as f:
 			lines = f.readlines()
 			for line in lines:
 				msg = line.split(";")[0]
@@ -155,7 +150,7 @@ class Debugger:
 				if msg[0] not in ["id_stats", "time_avg", "time_total"]:
 					log.append(line)
 
-		with open(os.path.join(os.path.dirname(sys.argv[0]), "log/kb.log"), "w") as f:
+		with open(os.path.join(os.path.dirname(sys.argv[0]), "outputs/kb.log"), "w") as f:
 			f.writelines(log)
 
 	##

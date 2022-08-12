@@ -424,7 +424,7 @@ class WikiExtract(object):
 			"country":      EntCountry,
 			"settlement":   EntSettlement,
 			"waterarea":    EntWaterArea,
-			"watercourse":  EntWatercourse,
+			"watercourse":  EntWaterCourse,
 			"geo":          EntGeo
 			# "organisation": None,
 			# "event":        None
