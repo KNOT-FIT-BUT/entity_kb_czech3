@@ -1,5 +1,6 @@
 #!/bin/bash
 # Author: Tomas Volf, ivolf@fit.vutbr.cz
+# Contributor: Jan Kapsa, xkapsa00@fit.vutbr.cz
 
 # TODO: -g, -p, -r processing
 
@@ -133,6 +134,68 @@ if $LOG; then
 	exec > start.sh.fifo.stdout 2> start.sh.fifo.stderr
 fi
 
+# reading the config file
+use_config=false
+while read -r line; do
+    # Reading each line 
+    if [[ -n $line ]];
+    then
+        if [[ ${line:0:1} != "#" ]]; 
+        then 
+            IFS='=' read -ra ADDR <<< "$line"
+            for i in "${ADDR[@]}"; do
+                case $i in
+                USE_CONFIG)
+                    if [ ${ADDR[i+1]} = "TRUE" ] 
+                    then
+                        echo "using config file"
+                        use_config=true
+                    fi
+                    break
+                    ;;
+                LANG)
+                    if [ "$use_config" = true ] 
+                    then
+                        # echo ${ADDR[i+1]}
+                        LANG=${ADDR[i+1]}
+                    fi
+                    break
+                    ;;
+                IN_DIR)
+                    if [ "$use_config" = true ] 
+                    then
+                        # echo ${ADDR[i+1]}
+                        CUSTOM_DUMP_PATH=true
+                        DUMP_PATH=${ADDR[i+1]}
+                    fi
+                    break
+                    ;;
+                DUMP)
+                    if [ "$use_config" = true ] 
+                    then
+                        # echo ${ADDR[i+1]}
+                        DUMP_VERSION=${ADDR[i+1]}
+                    fi
+                    break
+                    ;;
+                PROCESSES)
+                    if [ "$use_config" = true ] 
+                    then
+                        # echo ${ADDR[i+1]}
+                        NPROC=${ADDR[i+1]}
+                        MULTIPROC_PARAMS="-m ${NPROC}"
+                    fi
+                    break
+                    ;;
+                *)
+                    echo "Infalid config argument"
+                    ;;
+                esac
+            done  
+        fi        
+    fi
+done < kb.config
+
 DUMP_DIR=`dirname "${DUMP_PATH}"`
 
 # If Wikipedia dump path is symlink, then read real path
@@ -173,11 +236,11 @@ EXTRACTION_ARGS+=(${MULTIPROC_PARAMS})
 # old code:
 # CMD="python3 wiki_cs_extract.py --lang ${LANG} --dump ${DUMP_VERSION} --indir \"${DUMP_PATH}\" ${EXTRACTION_ARGS[@]} 2>entities_processing.log"
 
-if [ $LANG == "en" ]; then
-    echo "GENERATING: langmap.json"
-    CMD="python3 generate_langmap.py"
-    eval $CMD
-fi
+# if [ $LANG == "en" ]; then
+#     echo "GENERATING: langmap.json"
+#     CMD="python3 generate_langmap.py"
+#     eval $CMD
+# fi
 
 CMD="python3 wiki_extract.py --lang ${LANG} --dump ${DUMP_VERSION} --indir \"${DUMP_PATH}\" ${EXTRACTION_ARGS[@]} 2>outputs/kb.out"
 echo "RUNNING COMMAND: ${CMD}"

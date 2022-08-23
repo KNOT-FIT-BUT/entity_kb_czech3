@@ -196,7 +196,10 @@ class EntCore(metaclass=ABCMeta):
                 alias = split[1]
                 if len(split) > 2:
                     if "{" not in alias:
-                        self.aliases.append(f"{alias}#lang={code}")
+                        if self.aliases:
+                            self.aliases += f"|{alias}#lang={code}"
+                        else:
+                            self.aliases = f"{alias}#lang={code}"
 
     ##
     # @brief extracts aliases from the first sentence
