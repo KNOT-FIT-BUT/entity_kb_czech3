@@ -9,6 +9,7 @@ class PersonUtils:
 	def extract_infobox(ent_data, debugger):
 		
 		extraction = {
+			"aliases": "",
 			"prefix": "",
 			"birth_date": "",
 			"death_date": "",

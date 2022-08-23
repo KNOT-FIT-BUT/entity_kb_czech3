@@ -3,7 +3,7 @@
 
 # Author: Tomáš Volf, ivolf(at)fit.vutbr.cz
 
-from libs.UniqueDict import *
+from lang_modules.cs.libs.UniqueDict import *
 
 
 class DictOfUniqueDict(dict):

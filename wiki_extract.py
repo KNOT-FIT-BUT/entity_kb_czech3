@@ -45,12 +45,14 @@ from ent_geo import EntGeo
 from ent_organisation import EntOrganisation
 from ent_event import EntEvent
 
-from lang_modules.en.core_utils import is_entity as is_en_entity
+from lang_modules.en.core_utils import CoreUtils as EnCoreUtils
+from lang_modules.cs.core_utils import CoreUtils as CsCoreUtils
 
 LANG_MAP = {"cz": "cs"}
 
 utils = {
-	"en": is_en_entity
+	"en": EnCoreUtils,
+	"cs": CsCoreUtils
 }
 
 ##
@@ -175,10 +177,9 @@ class WikiExtract(object):
 	# @brief creates a wikipedia link given the page name
 	# @param page - string containing page title
 	# @return wikipedia link
-	@staticmethod
-	def get_link(page):
+	def get_link(self, page):
 		wiki_link = page.replace(" ", "_")
-		return f"https://en.wikipedia.org/wiki/{wiki_link}"
+		return f"https://{self.console_args.lang}.wikipedia.org/wiki/{wiki_link}"
 
 	##
 	# @brief creates the HEAD-KB file
@@ -362,16 +363,14 @@ class WikiExtract(object):
 					for child in elem:
 						# získá title stránky
 						if "title" in child.tag:
-							is_entity = utils[self.console_args.lang](child.text.lower())
+							is_entity = utils[self.console_args.lang].is_entity(child.text.lower())
 							if is_entity:
 								title = child.text
 						# získá text stránky
 						elif "revision" in child.tag:
 							for grandchild in child:
 								if "text" in grandchild.tag and is_entity and grandchild.text:
-									
-									# TODO: lang specific
-									if re.search(r"{{[^}]*?(?:disambiguation|disambig|dab)(?:\|[^}]*?)?}}", grandchild.text, re.I):
+									if re.search(utils[self.console_args.lang].DISAMBIG_PATTERN, grandchild.text, re.I):
 										self.d.update("found disambiguation")
 										break                    
 
@@ -551,9 +550,10 @@ class WikiExtract(object):
 		# extract categories
 		lines = content.splitlines()
 		for line in lines:
-			# TODO: lang specific
-			if line.startswith("[[Category:"):
-				result["categories"].append(line[11:-2].strip())
+			pattern = utils[self.console_args.lang].CATEGORY_PATTERN
+			match = re.search(pattern, line, re.I)
+			if match:
+				result["categories"].append(match.group(1).strip())
 		
 		return result
 
@@ -633,6 +633,8 @@ class WikiExtract(object):
 	# @param string - input string
 	# @param ref_pattern - specific reference pattern
 	# @return string without the references
+	#
+	# TODO: lang specific
 	@staticmethod
 	def remove_references(string, ref_pattern):
 		clean_content = string

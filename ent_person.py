@@ -27,9 +27,11 @@
 from ent_core import EntCore
 
 from lang_modules.en.person_utils import PersonUtils as EnUtils
+from lang_modules.cs.person_utils import PersonUtils as CsUtils
 
 utils = {
-	"en": EnUtils
+	"en": EnUtils,
+	"cs": CsUtils
 }
 
 ##
@@ -98,6 +100,8 @@ class EntPerson(EntCore):
 		extraction = lang_utils.extract_text(extraction, ent_data, self.d)
 
 		self.prefix 		= extraction["prefix"]
+		if extraction["aliases"]:
+			self.aliases	= extraction["aliases"] if self.aliases == "" else f"{self.aliases}|{extraction['aliases']}"
 		
 		self.birth_date 	= extraction["birth_date"]
 		self.birth_place 	= extraction["birth_place"]

@@ -4,6 +4,49 @@ import mwparserfromhell as parser
 
 class CoreUtils:
 
+	DISAMBIG_PATTERN = r"{{[^}]*?(?:disambiguation|disambig|dab)(?:\|[^}]*?)?}}"
+	CATEGORY_PATTERN = r"\[\[Category:\s?(.*?)\]\]"
+
+	##
+	# @brief determines if page is an entity or not
+	#  
+	# filters out wikipedia special pages and date pages
+	def is_entity(title):
+		# special pages
+		if title.startswith(
+			(
+				"wikipedia:",
+				"file",
+				"mediawiki:",
+				"template:",
+				"help:",
+				"category:",
+				"special:",
+				"portal:",
+				"module:",
+				"draft:",
+				"user:",
+				"list of",
+				"geography of",
+				"history of",
+				"economy of",
+				"politics of",
+				"culture of",
+				"bibliography of",
+				"outline of",
+				"music of",
+				"flag of",
+				"index of",
+				"timeline of"
+			)
+		):
+			return False
+
+		if re.search(r"(?:january|february|march|april|may|june|july|august|september|october|november|december)(?:\s[0-9]+)?", title, re.I):
+			return False
+
+		return True
+
 	##
 	# @brief extracts the latitude and longtitude from a wikipedia formated string
 	# @param format - wikipedia formated string
@@ -322,43 +365,3 @@ class CoreUtils:
 	def order_dates(array):
 		reverse = True if array[0].startswith("-") and array[1].startswith("-") else False
 		return sorted(array, key=lambda x: x if x != "" else "z", reverse=reverse)
-
-##
-# @brief determines if page is an entity or not
-#  
-# filters out wikipedia special pages and date pages
-def is_entity(title):
-	# special pages
-	if title.startswith(
-		(
-			"wikipedia:",
-			"file",
-			"mediawiki:",
-			"template:",
-			"help:",
-			"category:",
-			"special:",
-			"portal:",
-			"module:",
-			"draft:",
-			"user:",
-			"list of",
-			"geography of",
-			"history of",
-			"economy of",
-			"politics of",
-			"culture of",
-			"bibliography of",
-			"outline of",
-			"music of",
-			"flag of",
-			"index of",
-			"timeline of"
-		)
-	):
-		return False
-
-	if re.search(r"(?:january|february|march|april|may|june|july|august|september|october|november|december)(?:\s[0-9]+)?", title, re.I):
-		return False
-
-	return True

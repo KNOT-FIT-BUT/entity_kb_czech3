@@ -65,7 +65,7 @@ class EntCore(metaclass=ABCMeta):
         self.eid = sha224(str(EntCore.counter).encode("utf-8")).hexdigest()[:10]
         self.prefix = prefix
         self.title = re.sub(r"\s+\(.+?\)\s*$", "", title)
-        self.aliases = []
+        self.aliases = ""
         self.redirects = redirects
         self.description = sentence
         self.original_title = title
@@ -82,11 +82,13 @@ class EntCore(metaclass=ABCMeta):
         
         self.first_sentence = ""
 
-        if self.first_paragraph:
-            self.get_first_sentence(self.first_paragraph)
-            self.get_aliases()
+        lang = link[8:10]
+        if lang == "en":
+            if self.first_paragraph:
+                self.get_first_sentence(self.first_paragraph)
+                self.get_aliases()
 
-        self.extract_image()
+            self.extract_image()
     
     ##
     # @brief serializes entity data for output (tsv format)
@@ -97,7 +99,7 @@ class EntCore(metaclass=ABCMeta):
             self.eid,
             self.prefix,
             self.title,
-            "|".join(self.aliases),
+            self.aliases,
             "|".join(self.redirects),
             self.description,
             self.original_title,
@@ -266,6 +268,7 @@ class EntCore(metaclass=ABCMeta):
         if born_name and born_name != title:
             aliases.append(f"{name} {born_name}")
         
+        self.aliases = self.aliases.split("|")
         self.aliases += aliases
         
         # TODO: get aliases from infoboxes
@@ -278,6 +281,9 @@ class EntCore(metaclass=ABCMeta):
 
         self.aliases = [re.sub(r"\{\{.*?\}\}", "", a).strip() for a in self.aliases]
         self.aliases = [a for a in self.aliases if a != title]
+        self.aliases = [a for a in self.aliases if a != ""]
+
+        self.aliases = "|".join(self.aliases)
 
         # if self.aliases:
         #     self.d.log_message(f"{'|'.join(self.aliases)}")

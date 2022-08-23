@@ -47,7 +47,7 @@ def gen_stats():
 					entities[entity][key][1] += 1
 
 	# get stats from out file
-	with open("en/out/kb.out", "r") as f:
+	with open("outputs/kb.out", "r") as f:
 		lines = f.readlines()
 		for line in lines:
 			split = line.split(";")[0]
