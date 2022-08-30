@@ -16,25 +16,11 @@ class WaterareaUtils:
 
 		infobox_data = ent_data["infobox_data"]
 
-		extraction["latitude"], extraction["longitude"] = WaterareaUtils.assign_coordinates(infobox_data, debugger)
+		extraction["latitude"], extraction["longitude"] = CoreUtils.assign_coordinates(infobox_data, debugger)
 		extraction["area"] = WaterareaUtils.assign_area(infobox_data, debugger)
 		extraction["continents"] = WaterareaUtils.assign_continents(infobox_data)
 
 		return extraction
-
-	##
-    # @brief extracts and assigns latitude and longtitude from infobox
-	@staticmethod
-	def assign_coordinates(infobox_data, debugger):		
-		latitude = ""
-		longitude = ""
-
-		if "coordinates" in infobox_data and infobox_data["coordinates"] != "":
-			coords = CoreUtils.get_coordinates(infobox_data["coordinates"], debugger)
-			if all(coords):
-				latitude, longitude = coords
-		
-		return (latitude, longitude)
 
 	##
     # @brief extracts and assigns area from infobox
@@ -58,8 +44,7 @@ class WaterareaUtils:
 	##
     # @brief extracts and assigns continents from infobox
 	@staticmethod
-	def assign_continents(infobox_data):
-		
+	def assign_continents(infobox_data):	
 		continents = ""
 
 		if "location" in infobox_data:

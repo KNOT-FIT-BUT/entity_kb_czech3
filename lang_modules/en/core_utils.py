@@ -92,6 +92,23 @@ class CoreUtils:
 		return (None, None)
 
 	##
+    # @brief extracts and assigns latitude and longitude from infobox
+	#
+	# general method for country, settlement, waterarea, watercourse and geo entities
+	@staticmethod
+	def assign_coordinates(infobox_data, debugger):
+
+		latitude = ""
+		longitude = ""
+
+		if "coordinates" in infobox_data and infobox_data["coordinates"]:
+			coords = CoreUtils.get_coordinates(infobox_data["coordinates"], debugger)
+			if all(coords):
+				latitude, longitude = coords
+		
+		return (latitude, longitude)
+
+	##
 	# @brief converts units to metric system
 	# @param number - number to be converted <string>
 	# @param unit - unit abbreviation

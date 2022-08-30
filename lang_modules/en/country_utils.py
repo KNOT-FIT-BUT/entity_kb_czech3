@@ -23,7 +23,7 @@ class CountryUtils:
 
 		extraction["prefix"] = CountryUtils.assign_prefix(categories)
 		
-		extraction["latitude"], extraction["longitude"] = CountryUtils.assign_coordinates(infobox_data, debugger)
+		extraction["latitude"], extraction["longitude"] = CoreUtils.assign_coordinates(infobox_data, debugger)
 		extraction["area"] = CountryUtils.assign_area(infobox_data, debugger)
 		extraction["population"] = CountryUtils.assign_population(infobox_data)
 
@@ -38,21 +38,6 @@ class CountryUtils:
 			if re.search(r"former.*?countries", category.lower(), re.I):
 				return "country:former"
 		return "country"
-
-	##
-    # @brief extracts and assigns latitude and longitude from infobox
-	@staticmethod
-	def assign_coordinates(infobox_data, debugger):
-
-		latitude = ""
-		longitude = ""
-
-		if "coordinates" in infobox_data and infobox_data["coordinates"] != "":
-			coords = CoreUtils.get_coordinates(infobox_data["coordinates"], debugger)
-			if all(coords):
-				latitude, longitude = coords
-		
-		return (latitude, longitude)
 
 	##
     # @brief extracts and assigns area from infobox

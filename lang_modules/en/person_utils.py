@@ -34,9 +34,9 @@ class PersonUtils:
 
 		extraction["prefix"] = PersonUtils.assign_prefix(title, sentence, infobox_name, categories)
 		
-		extraction["birth_date"], extraction["death_date"] = PersonUtils.assign_dates(infobox_data)
-		extraction["birth_place"], extraction["death_place"] = PersonUtils.assign_places(infobox_data)
-		extraction["nationality"] = PersonUtils.assign_nationality(infobox_data)
+		extraction["birth_date"], extraction["death_date"] = PersonUtils.assign_dates(infobox_data, debugger)
+		extraction["birth_place"], extraction["death_place"] = PersonUtils.assign_places(infobox_data, debugger)
+		extraction["nationality"] = PersonUtils.assign_nationality(infobox_data, debugger)
 		extraction["gender"] = PersonUtils.assign_gender(infobox_data)
 		extraction["jobs"] = PersonUtils.assign_jobs(infobox_data)        
 
@@ -81,7 +81,7 @@ class PersonUtils:
 	##
 	# @brief extracts and assigns dates from infobox or from the first sentence
 	@staticmethod
-	def assign_dates(infobox_data):
+	def assign_dates(infobox_data, debugger):
 		
 		birth_date = ""
 		death_date = ""
@@ -101,12 +101,13 @@ class PersonUtils:
 					birth_date = extracted[0]
 				death_date = extracted[1]
 		
+		# debugger.log_message((birth_date, death_date))
 		return (birth_date, death_date)
 
 	##
 	# @brief extracts and assigns places from infobox, removes wikipedia formatting
 	@staticmethod
-	def assign_places(infobox_data):
+	def assign_places(infobox_data, debugger):
 
 		birth_place = ""
 		death_place = ""
@@ -117,6 +118,7 @@ class PersonUtils:
 		if "death_place" in infobox_data:
 			death_place = PersonUtils.fix_place(infobox_data["death_place"])
 
+		# debugger.log_message((birth_place, death_place))
 		return (birth_place, death_place)
 
 	##
@@ -127,59 +129,56 @@ class PersonUtils:
 	def fix_place(place):
 		p = place
 
-		if p == "":
-			return p
-
-		p = re.sub(r"{{nowrap\|(.*?)}}", r"\1", p)
-		
-		if p.startswith("{{"):
-			# self.d.log_message(f"couldn't fix place: {place} [{self.link}]")
-			return ""
-		else:
+		if p:
+			p = re.sub(r"{{nowrap\|(.*?)}}", r"\1", p)
+			p = re.sub(r"\{\{.*?\}\}", "", p)
 			p = re.sub(r"\[\[.*?\|([^\|]*?)\]\]", r"\1", p)
 			p = re.sub(r"\[|\]", "", p)
-		return p
+			return p.strip()
+
+		return ""
 
 	##
 	# @brief extracts and assigns nationality from infobox, removes wikipedia formatting
 	@staticmethod
-	def assign_nationality(infobox_data):
+	def assign_nationality(infobox_data, debugger):
 		if "nationality" in infobox_data and infobox_data["nationality"] != "":
 			nationalities = []
 			string = infobox_data["nationality"]
 
-			# removing stuff in () and [] brackets 
-			# (e.g.: [[Belgium|Belgian]] (1949—2003), [[Chile]]an[[Mexico|Mexican]])
-			string = re.sub(r"\(.*\)|\[|\]", "", string).strip()
-			
-			# case splitting 
-			# (e.g.: GermanAmerican)
-			indexes = [m.start(0) for m in re.finditer(r"[a-z][A-Z]", string)]
-			x = 0
-			for i in indexes:
-				nationalities.append(string[x:i+1])
-				x = i+1
-			nationalities.append(string[x:])
-			
-			# other splitting 
-			# (e.g.: French-Moroccan)
-			splitters = ["/", "-", "–", ","]
-			for splitter in splitters:
-				tmp = []
-				for s in nationalities:
-					for a in s.split(splitter):
-						tmp.append(a)
+			if string:
+				# removing stuff in () and [] brackets 
+				# (e.g.: [[Belgium|Belgian]] (1949—2003), [[Chile]]an[[Mexico|Mexican]])
+				string = re.sub(r"\(.*\)|\[|\]", "", string).strip()
 				
-				nationalities = tmp
-			
-			# splitting redirects 
-			# (e.g.: [[Germans|German]]) -> German
-			for i in range(len(nationalities)):
-				bar_split = nationalities[i].split("|")
-				bar_split[-1] = re.sub(r"{|}", "", bar_split[-1]).strip()
-				nationalities[i] = bar_split[-1]
-			
-			return "|".join(nationalities)
+				# case splitting 
+				# (e.g.: GermanAmerican)
+				indexes = [m.start(0) for m in re.finditer(r"[a-z][A-Z]", string)]
+				x = 0
+				for i in indexes:
+					nationalities.append(string[x:i+1])
+					x = i+1
+				nationalities.append(string[x:])
+				
+				# other splitting 
+				# (e.g.: French-Moroccan)
+				splitters = ["/", "-", "–", ","]
+				for splitter in splitters:
+					tmp = []
+					for s in nationalities:
+						for a in s.split(splitter):
+							tmp.append(a)
+					
+					nationalities = tmp
+				
+				# splitting redirects 
+				# (e.g.: [[Germans|German]]) -> German
+				for i in range(len(nationalities)):
+					bar_split = nationalities[i].split("|")
+					bar_split[-1] = re.sub(r"{|}", "", bar_split[-1]).strip()
+					nationalities[i] = bar_split[-1]
+				
+				return "|".join(nationalities)
 		return ""
 
 	##
@@ -187,8 +186,13 @@ class PersonUtils:
 	@staticmethod
 	def assign_gender(infobox_data):
 		if "gender" in infobox_data and infobox_data["gender"] != "":
-			gender = infobox_data["gender"].lower()			
+			gender = infobox_data["gender"].lower()
+			if gender == "male":
+				return "M"
+			elif gender == "female":
+				return "F"		
 			return gender
+		
 		return ""
 
 	##
@@ -315,10 +319,10 @@ class PersonUtils:
 			if prefix != "person:fictional":
 				for c in categories:
 					if "women" in c.lower() or "female" in c.lower():
-						extracted["gender"] = "female"
+						extracted["gender"] = "F"
 						return extracted
 					if "male" in c.lower():
-						extracted["gender"] = "male"
+						extracted["gender"] = "M"
 						return extracted
 
 		# gender: if there is he/his/she/her in the second sentence
@@ -329,12 +333,12 @@ class PersonUtils:
 				#print(f"{self.title}: {paragraph_split[1].strip()}")
 				match = re.search(r"\b[Hh]e\b|\b[Hh]is\b", paragraph_split[1].strip())
 				if match:
-					extracted["gender"] = "male"
+					extracted["gender"] = "M"
 					return extracted
 				match = re.search(r"\b[Ss]he\b|\b[Hh]er\b", paragraph_split[1].strip())
 				if match:
 				# else:
 				#     print(f"{self.title}: undefined")
-					extracted["gender"] = "female"
+					extracted["gender"] = "F"
 
 		return extracted

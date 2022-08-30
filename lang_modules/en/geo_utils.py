@@ -25,7 +25,7 @@ class GeoUtils:
 
 		extraction["prefix"] = GeoUtils.assign_prefix(infobox_name)
 
-		extraction["latitude"], extraction["longitude"] = GeoUtils.assign_coordinates(infobox_data, debugger)
+		extraction["latitude"], extraction["longitude"] = CoreUtils.assign_coordinates(infobox_data, debugger)
 		if extraction["prefix"] == "geo:waterfall":
 			extraction["total_height"] = GeoUtils.assign_height(infobox_data, debugger)
 		elif extraction["prefix"] in ("geo:island", "geo:continent"):
@@ -33,20 +33,6 @@ class GeoUtils:
 			extraction["population"] = GeoUtils.assign_population(infobox_data)
 
 		return extraction
-
-	##
-    # @brief extracts and assigns latitude and longtitude from infobox
-	@staticmethod
-	def assign_coordinates(infobox_data, debugger):		
-		latitude = ""
-		longitude = ""
-
-		if "coordinates" in infobox_data and infobox_data["coordinates"] != "":
-			coords = CoreUtils.get_coordinates(infobox_data["coordinates"], debugger)
-			if all(coords):
-				latitude, longitude = coords
-		
-		return (latitude, longitude)
 
 	##
     # @brief extracts and assigns height from infobox

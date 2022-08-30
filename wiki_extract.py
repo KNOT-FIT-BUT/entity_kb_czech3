@@ -69,12 +69,6 @@ class WikiExtract(object):
 		self.first_sentences_path = f"testing_data/xml/1st_sentences_from_enwiki-20210101-pages-articles.tsv"
 
 	##
-	# @brief gets arguments from a config file
-	def get_config(self):
-		# TODO: redesign config
-		pass
-
-	##
 	# @brief parses the console arguments
 	def parse_args(self):
 		parser = argparse.ArgumentParser()
@@ -245,7 +239,7 @@ class WikiExtract(object):
 		
 		try:
 			with open(redirects_fpath, "r") as f:
-				self.d.print("loading redirects")
+				self.d.update("loading redirects")
 				i = 0
 				for line in f:
 					i += 1
@@ -272,7 +266,7 @@ class WikiExtract(object):
 		
 		try:
 			with open(langmap_fpath, "r") as file:
-				self.d.print("loading langmap")
+				self.d.update("loading langmap")
 				langmap = json.load(file)
 				self.d.print("loaded langmap")
 		except OSError:
@@ -291,7 +285,7 @@ class WikiExtract(object):
 
 		try:
 			with open(senteces_fpath, "r") as f:
-				self.d.print("loading first sentences")
+				self.d.update("loading first sentences")
 				i = 0
 				for line in f:
 					i += 1
@@ -317,6 +311,7 @@ class WikiExtract(object):
 		try:
 			with open(patterns_fpath, "r") as file:
 				patterns = json.load(file)
+			self.d.print("loaded identification patterns")
 		except OSError:
 			self.d.print("entity identification patterns were not found - exiting...")
 			# exit(1)
@@ -474,9 +469,8 @@ class WikiExtract(object):
 				entity = entities[key](title, key, self.get_link(title), extraction, langmap, redirects, sentence, self.d)
 				entity.assign_values(self.console_args.lang)
 				return repr(entity)
-
 		
-		# TODO: log unidentified
+		# self.d.log_message(f"Error: unidentified page: {title}")
 		return None
 
 	##
@@ -487,7 +481,6 @@ class WikiExtract(object):
 	# uses the mwparserfromhell library
 	def extract_entity_data(self, content):
 
-		# content = self.remove_references(content)
 		content = self.remove_not_improtant(content)
 
 		result = {
@@ -513,7 +506,7 @@ class WikiExtract(object):
 				name.pop(0)
 				name = " ".join(name)
 				result["found"] = True
-				# TODO: fix names e.g.: "- spisovatel"
+				# fix names e.g.: "- spisovatel"
 				name = name.strip()
 				if name and name[0] == '-':
 					name = name[1:].strip()								
@@ -546,6 +539,8 @@ class WikiExtract(object):
 				if s.startswith("'''") or s.startswith("The '''"):
 					result["paragraph"] = s.strip()
 					break
+		else:
+			self.d.log_message("Error: no first section found")
 
 		# extract categories
 		lines = content.splitlines()
@@ -634,7 +629,6 @@ class WikiExtract(object):
 	# @param ref_pattern - specific reference pattern
 	# @return string without the references
 	#
-	# TODO: lang specific
 	@staticmethod
 	def remove_references(string, ref_pattern):
 		clean_content = string
@@ -654,69 +648,9 @@ class WikiExtract(object):
 			clean_content = clean_content[:i[0]] + clean_content[i[1]:]
 		return clean_content
 
-	# TODO: lang specific
-	# @staticmethod
-	# def remove_references(content):
-		
-	# 	delimiter = "<"
-	# 	text_parts = content.split(delimiter)
-	# 	re_tag = r"^/?[^ />]+(?=[ />])"
-	# 	delete_mode = False
-	# 	tag_close = None
-
-	# 	for i_part, text_part in enumerate(text_parts[1:], 1):  # skipping first one which is not begin of tag
-	# 		if delete_mode and tag_close:
-	# 			if text_part.startswith(tag_close):
-	# 				text_parts[i_part] = text_part[len(tag_close) :]
-	# 				delete_mode = False
-	# 			else:
-	# 				text_parts[i_part] = ""
-	# 		else:
-	# 			matched_tag = re.search(re_tag, text_part)
-	# 			if matched_tag:
-	# 				matched_tag = matched_tag.group(0)
-	# 				if matched_tag in ["nowiki", "ref", "refereces"]:
-	# 					tag_close = "/" + matched_tag + ">"
-	# 					text_len = len(text_part)
-	# 					text_part = re.sub(r"^.*?/>", "", text_part, 1)
-	# 					if text_len == len(text_part):
-	# 						delete_mode = True
-	# 					text_parts[i_part] = "" if delete_mode else text_part
-	# 				else:
-	# 					tag_close = None
-	# 					text_parts[i_part] = delimiter + text_part
-
-	# 	et_cont = "".join(text_parts)
-	# 	et_cont = re.sub(r"{{citace[^}]+?}}", "", et_cont, flags=re.I | re.S)
-	# 	et_cont = re.sub(r"{{cite[^}]+?}}", "", et_cont, flags=re.I)
-	# 	et_cont = re.sub(
-	# 		r"{{#tag:ref\s*\|(?:[^\|\[{]|\[\[[^\]]+\]\]|(?<!\[)\[[^\[\]]+\]|{{[^}]+}})*(\|[^}]+)?}}",
-	# 		"",
-	# 		et_cont,
-	# 		flags=re.I | re.S,
-	# 	)
-	# 	et_cont = re.sub(r"<!--.+?-->", "", et_cont, flags=re.DOTALL)
-
-	# 	link_multilines = re.findall(
-	# 		r"\[\[(?:Soubor|File)(?:(?:[^\[\]\n{]|{{[^}]+}}|\[\[[^\]]+\]\])*\n)+(?:[^\[\]\n{]|{{[^}]+}}|\[\[[^\]]+\]\])*\]\]",
-	# 		et_cont,
-	# 		flags=re.S,
-	# 	)
-	# 	for link_multiline in link_multilines:
-	# 		fixed_link_multiline = link_multiline.replace("\n", " ")
-	# 		et_cont = et_cont.replace(link_multiline, fixed_link_multiline)
-	# 	et_cont = re.sub(r"(<br(?:\s*/)?>)\n", r"\1", et_cont, flags=re.S)
-	# 	et_cont = re.sub(
-	# 		r"{\|(?!\s+class=(?:\"|')infobox(?:\"|')).*?\|}", "", et_cont, flags=re.S
-	# 	)
-		
-	# 	return et_cont
-
-
 if __name__ == "__main__":
 	wiki_extract = WikiExtract()
 	
-	wiki_extract.get_config()
 	wiki_extract.parse_args()
 	wiki_extract.create_head_kb()
 	wiki_extract.assign_version()    

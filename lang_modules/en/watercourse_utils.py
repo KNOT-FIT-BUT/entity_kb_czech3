@@ -19,7 +19,7 @@ class WatercourseUtils:
 
 		infobox_data = ent_data["infobox_data"]
 
-		extraction["latitude"], extraction["longitude"] = WatercourseUtils.assign_coordinates(infobox_data, debugger)
+		extraction["latitude"], extraction["longitude"] = CoreUtils.assign_coordinates(infobox_data, debugger)
 		extraction["area"] = WatercourseUtils.assign_area(infobox_data, debugger)
 		extraction["length"] = WatercourseUtils.assign_length(infobox_data, debugger)
 		extraction["streamflow"] = WatercourseUtils.assign_streamflow(infobox_data, debugger)
@@ -31,20 +31,6 @@ class WatercourseUtils:
 	# def assign_continents(self):
 	# 	# cant match from infobox
 	# 	pass
-
-	##
-    # @brief extracts and assigns latitude and longtitude from infobox
-	@staticmethod
-	def assign_coordinates(infobox_data, debugger):		
-		latitude = ""
-		longitude = ""
-
-		if "coordinates" in infobox_data and infobox_data["coordinates"] != "":
-			coords = CoreUtils.get_coordinates(infobox_data["coordinates"], debugger)
-			if all(coords):
-				latitude, longitude = coords
-		
-		return (latitude, longitude)
 
 	##
     # @brief extracts and assigns length from infobox
