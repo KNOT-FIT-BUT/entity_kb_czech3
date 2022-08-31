@@ -37,6 +37,14 @@ import re
 from hashlib import md5, sha224
 import mwparserfromhell as parser
 
+from lang_modules.en.core_utils import CoreUtils as EnCoreUtils
+from lang_modules.cs.core_utils import CoreUtils as CsCoreUtils
+
+utils = {
+	"en": EnCoreUtils,
+	"cs": CsCoreUtils
+}
+
 ## 
 # @class EntCore
 # @brief abstract parent entity
@@ -73,22 +81,25 @@ class EntCore(metaclass=ABCMeta):
         self.link = link
         self.langmap = langmap
 
+        self.lang = link[8:10]
+
         # extracted data
         self.infobox_data       = data["data"]
         self.infobox_name       = data["name"]
         self.categories         = data["categories"]
         self.first_paragraph    = data["paragraph"]
         self.coords             = data["coords"]
+        self.extract_images     = data["images"]
         
         self.first_sentence = ""
+        
+        self.extract_image()
 
-        lang = link[8:10]
-        if lang == "en":
+        if self.lang == "en":
             if self.first_paragraph:
                 self.get_first_sentence(self.first_paragraph)
                 self.get_aliases()
 
-            self.extract_image()
     
     ##
     # @brief serializes entity data for output (tsv format)
@@ -108,6 +119,21 @@ class EntCore(metaclass=ABCMeta):
             ent_data
         ]).replace("\n", "")
         return data
+
+    ##
+    # @brief extracts data from infobox dictionary given an array of keys
+    # @return array of data found in the infobox dictionary
+    def get_infobox_data(self, keys, return_first=False):
+        data = []
+        for key in keys:
+            if key in self.infobox_data and self.infobox_data[key]:
+                value = self.infobox_data[key]
+                if return_first:
+                    return value
+                else:
+                    data.append(self.infobox_data[key])
+
+        return "" if return_first else data
 
     # get_aliases
     # get_images
@@ -290,19 +316,22 @@ class EntCore(metaclass=ABCMeta):
 
         # if self.aliases:
         #     self.d.log_message(f"{'|'.join(self.aliases)}")
-        pass
+        pass    
 
     ##
     # @brief extracts image data from the infobox
     def extract_image(self):
-        keys = ["image", "photo", "image_name", "image_flag", "image_coat", "image_map", "map_image", "logo"]
+        if len(self.extract_images):
+            extracted_images = [img.strip().replace(" ", "_") for img in self.extract_images]
+            extracted_images = [self.get_image_path(img) for img in extracted_images]
+            self.images = "|".join(extracted_images)
 
-        for key in keys:
-            if key in self.infobox_data and self.infobox_data[key] != "":
-                image = self.infobox_data[key].replace("\n", "")
-                if not image.startswith("http"):
-                    image = self.get_images(image)
-                    self.images += image if not self.images else "|" + image
+        data = self.get_infobox_data(utils[self.lang].KEYWORDS["image"])
+        for d in data:
+            image = d.replace("\n", "")
+            if not image.startswith("http"):
+                image = self.get_images(image)
+                self.images += image if not self.images else f"|{image}"
 
     ##
     # @brief removes wikipedia formatting and assigns image paths to the images variable
@@ -321,13 +350,13 @@ class EntCore(metaclass=ABCMeta):
                 params = t.params
                 for p in params:
                     if re.search(r"image|photo|[0-9]+", str(p.name), re.I):
-                        if re.search(r"\.jpg|\.svg", str(p.value), re.I):
+                        if re.search(r"\.(?:jpe?g|png|gif|bmp|ico|tif|tga|svg)", str(p.value), re.I):
                             images.append(str(p.value))
 
         if not len(images):
-            images.append(image)    
+            images.append(image)
         
-        images = [re.sub(r"^(?:\[\[(?:image:)?)?(.*?(?:\.jpg|\.png|\.svg)).*$", r"\1", img, flags=re.I) for img in images]
+        images = [re.sub(r"^(?:\[\[(?:image:)?)?(.*?(?:jpe?g|png|gif|bmp|ico|tif|tga|svg)).*$", r"\1", img, flags=re.I) for img in images]
         images = [img.strip().replace(" ", "_") for img in images]
 
         result = [self.get_image_path(img) for img in images]
@@ -340,5 +369,5 @@ class EntCore(metaclass=ABCMeta):
     @staticmethod
     def get_image_path(image):
         image_hash = md5(image.encode("utf-8")).hexdigest()[:2]
-        image_link = f"wikimedia/commons/{image_hash[0]}/{image_hash}/{image}"
-        return image_link
+        image_path = f"wikimedia/commons/{image_hash[0]}/{image_hash}/{image}"
+        return image_path

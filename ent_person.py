@@ -24,6 +24,8 @@
 # @author created by Jan Kapsa (xkapsa00)
 # @date 15.07.2022
 
+import re
+
 from ent_core import EntCore
 
 from lang_modules.en.person_utils import PersonUtils as EnUtils
@@ -104,13 +106,108 @@ class EntPerson(EntCore):
 			self.aliases	= extraction["aliases"] if self.aliases == "" else f"{self.aliases}|{extraction['aliases']}"
 		
 		self.birth_date 	= extraction["birth_date"]
-		self.birth_place 	= extraction["birth_place"]
 		self.death_date 	= extraction["death_date"]
-		self.death_place	= extraction["death_place"]
-		self.gender 		= extraction["gender"]
+		self.assign_places()
+		self.assign_gender()
 		self.jobs 			= extraction["jobs"]
 		self.nationality 	= extraction["nationality"]
 		
 		# artist
-		self.art_forms 		= extraction["art_forms"]
-		self.urls 			= extraction["urls"]
+		if self.prefix == "person:artist":
+			self.assign_art_forms()
+			self.assign_urls()
+
+	##
+	# @brief extracts and assigns places from infobox, removes wikipedia formatting
+	def assign_places(self):
+		birth_place = ""
+		death_place = ""
+
+		def fix_place(place):
+			p = re.sub(r"{{Vlajka a název\|(.*?)(?:\|.*?)?}}", r"\1", place, flags=re.I)
+			p = re.sub(r"{{flagicon\|(.*?)(?:\|.*?)?}}", r"\1", p, flags=re.I)
+			p = re.sub(r"{{malé\|(.*?)}}", r"\1", p, flags=re.I)
+			p = re.sub(r"{{nowrap\|(.*?)}}", r"\1", p)
+			p = re.sub(r"\{\{.*?\}\}", "", p)
+			p = re.sub(r"\[\[.*?\|([^\|]*?)\]\]", r"\1", p)
+			p = re.sub(r"\[|\]", "", p)
+			return p.strip()
+
+		value = self.get_infobox_data(utils[self.lang].KEYWORDS["birth_place"], return_first=True)
+		if value:
+			birth_place = fix_place(value)
+
+		value = self.get_infobox_data(utils[self.lang].KEYWORDS["birth_place"], return_first=True)
+		if value:
+			death_place = fix_place(value)
+
+		# debugger.log_message((birth_place, death_place))
+		self.birth_place = birth_place
+		self.death_place = death_place
+
+	#
+	# @brief extracts and assigns gender from the infobox
+	def assign_gender(self):
+		gender = ""		
+		
+		value = self.get_infobox_data(utils[self.lang].KEYWORDS["gender"], return_first=True)
+		if value:
+			if value == utils[self.lang].KEYWORDS["male"]:
+				gender = "M"
+			elif value == utils[self.lang].KEYWORDS["female"]:
+				gender = "F"
+			else:
+				self.d.log_message(f"Error: invalid gender - {value}")		
+		
+		self.gender = gender
+
+	# TODO: extract text
+	# extract gender from categories 
+
+	##
+	# @brief extracts and assigns art forms from the infobox
+	#
+	# NOT UNIFIED - cs version is not extracting artist entities yet
+	def assign_art_forms(self):
+		keys = ("movement", "field")
+
+		art_forms = ""
+
+		for key in keys:
+			if key in self.infobox_data and self.infobox_data[key] != "":
+				value = self.infobox_data[key].replace("\n", " ")
+				if "''" in value:
+					continue
+				value = re.sub(r"\[\[.*?\|([^\|]*?)\]\]", r"\1", value)
+				value = re.sub(r"\[|\]", "", value)
+				value = re.sub(r"\{\{.*?\}\}", "", value)
+				value = value.lower()
+			  
+				value = [item.strip() for item in value.split(",")]
+				
+				if len(value) == 1:
+					value = value[0]
+					value = [item.strip() for item in value.split("/")]
+				
+				value = "|".join(value)
+
+				if value != "":
+					if art_forms == "":
+						art_forms = value
+					else:
+						art_forms += f"|{value}"
+		
+		self.art_forms = art_forms
+
+	##
+	# @brief extracts and assigns urls from the infobox
+	#
+	# NOT UNIFIED - cs version is not extracting artist entities yet
+	def assign_urls(self):	
+		urls = ""	
+		if "website" in self.infobox_data and self.infobox_data["website"] != "":
+			value = self.infobox_data["website"]
+			value = re.sub(r"\{\{url\|(?:.*?=)?([^\|\}]+).*?\}\}", r"\1", value, flags=re.I)
+			value = re.sub(r"\[(.*?)\s.*?\]", r"\1", value)
+			urls = value
+		self.urls = urls

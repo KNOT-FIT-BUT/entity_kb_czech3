@@ -7,6 +7,11 @@ class CoreUtils:
 	DISAMBIG_PATTERN = r"{{[^}]*?(?:disambiguation|disambig|dab)(?:\|[^}]*?)?}}"
 	CATEGORY_PATTERN = r"\[\[Category:\s?(.*?)\]\]"
 
+	# lang specific keywords
+	KEYWORDS = {
+		"image": ["image", "photo", "image_name", "image_flag", "image_coat", "image_map", "map_image", "logo"]		
+	}
+
 	##
 	# @brief determines if page is an entity or not
 	#  

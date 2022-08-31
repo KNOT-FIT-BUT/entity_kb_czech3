@@ -489,7 +489,8 @@ class WikiExtract(object):
 			"data": dict(),
 			"paragraph": "",
 			"categories": [],
-			"coords": ""
+			"coords": "",
+			"images": []
 		}
 
 		wikicode = parser.parse(content)
@@ -545,10 +546,19 @@ class WikiExtract(object):
 		# extract categories
 		lines = content.splitlines()
 		for line in lines:
+			# categories
 			pattern = utils[self.console_args.lang].CATEGORY_PATTERN
 			match = re.search(pattern, line, re.I)
 			if match:
 				result["categories"].append(match.group(1).strip())
+				continue
+
+			# images
+			match = re.search(r"\[\[(?:file|soubor):([^\]]*?)\|[^\]]*?\]\]", line, re.I)
+			if match:
+				value = match.group(1).strip()
+				if re.search(r"\.(?:jpe?g|png|gif|bmp|ico|tif|tga|svg)$", value, re.I):
+					result["images"].append(value)
 		
 		return result
 

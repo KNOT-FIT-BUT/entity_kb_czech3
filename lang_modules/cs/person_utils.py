@@ -9,6 +9,14 @@ from lang_modules.cs.libs.UniqueDict import KEY_LANG, LANG_ORIG, LANG_UNKNOWN
 
 class PersonUtils:
 
+	KEYWORDS = {
+		"birth_place": ["místo narození", "místo_narození"],
+		"death_place": ["místo úmrtí", "místo_úmrtí"],
+		"gender": ["pohlaví"],
+		"male": ["muž"],
+		"female": ["žena"]
+	}
+
 	@classmethod
 	def extract_infobox(cls, ent_data, debugger):
 		extraction = {
@@ -22,10 +30,6 @@ class PersonUtils:
 			"gender": "",
 			"jobs": "",
 			"nationality": "",
-			
-			# artist data
-			"art_forms": "",
-			"urls": ""
 		}
 
 		title, categories, infobox_data, infobox_name = (
@@ -38,9 +42,7 @@ class PersonUtils:
 		extraction["prefix"] = cls.assign_prefix(title, categories)
 		extraction["aliases"] = cls.assign_aliases(infobox_data, infobox_name, title)
 
-		extraction["gender"] = cls.assign_gender(infobox_data, categories)
 		extraction["birth_date"], extraction["death_date"] = cls.assign_dates(infobox_data)
-		extraction["birth_place"], extraction["death_place"] = cls.assign_places(infobox_data)
 		extraction["jobs"] = cls.assign_jobs(infobox_data)
 		extraction["nationality"] = cls.assign_nationality(infobox_data)
 
@@ -69,27 +71,27 @@ class PersonUtils:
 		
 		return "person"
 
-	@staticmethod
-	def assign_gender(infobox_data, categories):
-		# pohlaví
-		# TODO: temp content
-		gender = ""
-		content = "\n".join(categories)
+	# @staticmethod
+	# def assign_gender(infobox_data, categories):
+	# 	# pohlaví
+	# 	# TODO: temp content
+	# 	gender = ""
+	# 	content = "\n".join(categories)
 
-		if re.search(r"muži", content, re.I):
-			gender = "M"
-		elif re.search(r"ženy", content, re.I):
-			gender = "F"
-		else:
-			# pohlaví as a field in the infobox
-			if "pohlaví" in infobox_data and infobox_data["pohlaví"]:
-				value = infobox_data["pohlaví"].lower().strip()
-				if value == "muž":
-					gender = "M"
-				elif value == "žena":
-					gender = "F"
+	# 	if re.search(r"muži", content, re.I):
+	# 		gender = "M"
+	# 	elif re.search(r"ženy", content, re.I):
+	# 		gender = "F"
+	# 	else:
+	# 		# pohlaví as a field in the infobox
+	# 		if "pohlaví" in infobox_data and infobox_data["pohlaví"]:
+	# 			value = infobox_data["pohlaví"].lower().strip()
+	# 			if value == "muž":
+	# 				gender = "M"
+	# 			elif value == "žena":
+	# 				gender = "F"
 
-		return gender
+	# 	return gender
 
 	@classmethod
 	def assign_dates(cls, infobox_data):
@@ -116,28 +118,28 @@ class PersonUtils:
 
 		return (birth_date, death_date)
 
-	@classmethod
-	def assign_places(cls, infobox_data):
-		birth_place = ""
-		death_place = ""
+	# @classmethod
+	# def assign_places(cls, infobox_data):
+	# 	birth_place = ""
+	# 	death_place = ""
 		
-		# Place of birth
-		keys = ["místo narození", "místo_narození"]
-		for key in keys:
-			if key in infobox_data and infobox_data[key]:
-				value = infobox_data[key]
-				birth_place = cls.get_place(value)
-				break
+	# 	# Place of birth
+	# 	keys = ["místo narození", "místo_narození"]
+	# 	for key in keys:
+	# 		if key in infobox_data and infobox_data[key]:
+	# 			value = infobox_data[key]
+	# 			birth_place = cls.get_place(value)
+	# 			break
 
-		# Place of death
-		keys = ["místo úmrtí", "místo_úmrtí"]
-		for key in keys:
-			if key in infobox_data and infobox_data[key]:
-				value = infobox_data[key]
-				death_place = cls.get_place(value)
-				break
+	# 	# Place of death
+	# 	keys = ["místo úmrtí", "místo_úmrtí"]
+	# 	for key in keys:
+	# 		if key in infobox_data and infobox_data[key]:
+	# 			value = infobox_data[key]
+	# 			death_place = cls.get_place(value)
+	# 			break
 
-		return (birth_place, death_place)
+	# 	return (birth_place, death_place)
 
 	@classmethod
 	def assign_jobs(cls, infobox_data):
@@ -421,36 +423,36 @@ class PersonUtils:
 	# @brief Převádí místo narození/úmrtí osoby do jednotného formátu.
 	# @param place - místo narození/úmrtí osoby (str)
 	# @param is_birth - určuje, zda se jedná o místo narození, či úmrtí (bool)
-	@staticmethod
-	def get_place(place):
-		place = re.sub(r"{{Vlajka a název\|(.*?)(?:\|.*?)?}}", r"\1", place, flags=re.I)
-		place = re.sub(
-			r"{{(?:vjazyce2|cizojazyčně|audio|cj)\|.*?\|(.+?)}}",
-			r"\1",
-			place,
-			flags=re.I,
-		)
-		place = re.sub(r"{{malé\|(.*?)}}", r"\1", place, flags=re.I)
-		place = re.sub(r"{{.*?}}", "", place)
-		place = re.sub(r"<br(?: /)?>", " ", place)
-		place = re.sub(r"<.*?>", "", place)
-		place = re.sub(
-			r"\[\[(?:Soubor|File):.*?\.(?:jpe?g|png|gif|bmp|ico|tif|tga|svg)[^\]]*\]\]",
-			"",
-			place,
-			flags=re.I,
-		)
-		place = re.sub(r"\d+\s*px", "", place, flags=re.I)
-		place = re.sub(
-			r"(?:(?:,\s*)?\(.*?věk.*?\)$|\(.*?věk.*?\)(?:,\s*)?)", "", place, flags=re.I
-		)
-		place = re.sub(r"\(.*?let.*?\)", "", place, flags=re.I)
-		place = re.sub(r",{2,}", ",", place)
-		place = re.sub(r"(\]\])[^,]", r"\1, ", place)
-		place = CoreUtils.del_redundant_text(place)
-		place = re.sub(r"[{}<>\[\]]", "", place)
-		place = re.sub(r"\s+", " ", place).strip().strip(",")
-		return place
+	# @staticmethod
+	# def get_place(place):
+	# 	place = re.sub(r"{{Vlajka a název\|(.*?)(?:\|.*?)?}}", r"\1", place, flags=re.I)
+	# 	place = re.sub(
+	# 		r"{{(?:vjazyce2|cizojazyčně|audio|cj)\|.*?\|(.+?)}}",
+	# 		r"\1",
+	# 		place,
+	# 		flags=re.I,
+	# 	)
+	# 	place = re.sub(r"{{malé\|(.*?)}}", r"\1", place, flags=re.I)
+	# 	place = re.sub(r"{{.*?}}", "", place)
+	# 	place = re.sub(r"<br(?: /)?>", " ", place)
+	# 	place = re.sub(r"<.*?>", "", place)
+	# 	place = re.sub(
+	# 		r"\[\[(?:Soubor|File):.*?\.(?:jpe?g|png|gif|bmp|ico|tif|tga|svg)[^\]]*\]\]",
+	# 		"",
+	# 		place,
+	# 		flags=re.I,
+	# 	)
+	# 	place = re.sub(r"\d+\s*px", "", place, flags=re.I)
+	# 	place = re.sub(
+	# 		r"(?:(?:,\s*)?\(.*?věk.*?\)$|\(.*?věk.*?\)(?:,\s*)?)", "", place, flags=re.I
+	# 	)
+	# 	place = re.sub(r"\(.*?let.*?\)", "", place, flags=re.I)
+	# 	place = re.sub(r",{2,}", ",", place)
+	# 	place = re.sub(r"(\]\])[^,]", r"\1, ", place)
+	# 	place = CoreUtils.del_redundant_text(place)
+	# 	place = re.sub(r"[{}<>\[\]]", "", place)
+	# 	place = re.sub(r"\s+", " ", place).strip().strip(",")
+	# 	return place
 
 	##
 	# @brief Převádí zaměstnání osoby do jednotného formátu.

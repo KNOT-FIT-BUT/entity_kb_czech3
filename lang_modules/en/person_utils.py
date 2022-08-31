@@ -5,6 +5,14 @@ from lang_modules.en.core_utils import CoreUtils
 
 class PersonUtils:
 
+	KEYWORDS = {
+		"birth_place": ["birth_place"],
+		"death_place": ["death_place"],
+		"gender": ["gender"],
+		"male": ["male"],
+		"female": ["female"]
+	}
+
 	@staticmethod
 	def extract_infobox(ent_data, debugger):
 		
@@ -18,10 +26,6 @@ class PersonUtils:
 			"gender": "",
 			"jobs": "",
 			"nationality": "",
-			
-			# artist data
-			"art_forms": "",
-			"urls": ""
 		}
 
 		title, sentence, infobox_data, infobox_name, categories = (
@@ -35,14 +39,9 @@ class PersonUtils:
 		extraction["prefix"] = PersonUtils.assign_prefix(title, sentence, infobox_name, categories)
 		
 		extraction["birth_date"], extraction["death_date"] = PersonUtils.assign_dates(infobox_data, debugger)
-		extraction["birth_place"], extraction["death_place"] = PersonUtils.assign_places(infobox_data, debugger)
 		extraction["nationality"] = PersonUtils.assign_nationality(infobox_data, debugger)
 		extraction["gender"] = PersonUtils.assign_gender(infobox_data)
-		extraction["jobs"] = PersonUtils.assign_jobs(infobox_data)        
-
-		if extraction["prefix"] == "person:artist":
-			extraction["art_froms"] = PersonUtils.assign_art_forms(infobox_data)
-			extraction["urls"] = PersonUtils.assign_urls(infobox_data)
+		extraction["jobs"] = PersonUtils.assign_jobs(infobox_data)
 
 		return extraction
 
@@ -104,39 +103,38 @@ class PersonUtils:
 		# debugger.log_message((birth_date, death_date))
 		return (birth_date, death_date)
 
-	##
-	# @brief extracts and assigns places from infobox, removes wikipedia formatting
-	@staticmethod
-	def assign_places(infobox_data, debugger):
+	# ##
+	# # @brief extracts and assigns places from infobox, removes wikipedia formatting
+	# @staticmethod
+	# def assign_places(infobox_data, debugger):
+	# 	birth_place = ""
+	# 	death_place = ""
 
-		birth_place = ""
-		death_place = ""
+	# 	if "birth_place" in infobox_data:
+	# 		birth_place = PersonUtils.fix_place(infobox_data["birth_place"])
 
-		if "birth_place" in infobox_data:
-			birth_place = PersonUtils.fix_place(infobox_data["birth_place"])
+	# 	if "death_place" in infobox_data:
+	# 		death_place = PersonUtils.fix_place(infobox_data["death_place"])
 
-		if "death_place" in infobox_data:
-			death_place = PersonUtils.fix_place(infobox_data["death_place"])
+	# 	# debugger.log_message((birth_place, death_place))
+	# 	return (birth_place, death_place)
 
-		# debugger.log_message((birth_place, death_place))
-		return (birth_place, death_place)
+	# ##
+	# # @brief removes wikiepdia formatting from places
+	# # @param place - wikipedia formatted string
+	# # @return string result without formatting
+	# @staticmethod
+	# def fix_place(place):
+	# 	p = place
 
-	##
-	# @brief removes wikiepdia formatting from places
-	# @param place - wikipedia formatted string
-	# @return string result without formatting
-	@staticmethod
-	def fix_place(place):
-		p = place
+	# 	if p:
+	# 		p = re.sub(r"{{nowrap\|(.*?)}}", r"\1", p)
+	# 		p = re.sub(r"\{\{.*?\}\}", "", p)
+	# 		p = re.sub(r"\[\[.*?\|([^\|]*?)\]\]", r"\1", p)
+	# 		p = re.sub(r"\[|\]", "", p)
+	# 		return p.strip()
 
-		if p:
-			p = re.sub(r"{{nowrap\|(.*?)}}", r"\1", p)
-			p = re.sub(r"\{\{.*?\}\}", "", p)
-			p = re.sub(r"\[\[.*?\|([^\|]*?)\]\]", r"\1", p)
-			p = re.sub(r"\[|\]", "", p)
-			return p.strip()
-
-		return ""
+	# 	return ""
 
 	##
 	# @brief extracts and assigns nationality from infobox, removes wikipedia formatting
@@ -221,54 +219,6 @@ class PersonUtils:
 		return ""
 
 	##
-	# @brief extracts and assigns art forms from the infobox
-	@staticmethod
-	def assign_art_forms(infobox_data):
-		
-		keys = ["movement", "field"]
-
-		art_forms = ""
-
-		for key in keys:
-			if key in infobox_data and infobox_data[key] != "":
-				value = infobox_data[key].replace("\n", " ")
-				if "''" in value:
-					continue
-				value = re.sub(r"\[\[.*?\|([^\|]*?)\]\]", r"\1", value)
-				value = re.sub(r"\[|\]", "", value)
-				value = re.sub(r"\{\{.*?\}\}", "", value)
-				value = value.lower()
-			  
-				value = [item.strip() for item in value.split(",")]
-				
-				if len(value) == 1:
-					value = value[0]
-					value = [item.strip() for item in value.split("/")]
-				
-				value = "|".join(value)
-
-				if value != "":
-					if art_forms == "":
-						art_forms = value
-					else:
-						art_forms += f"|{value}"
-		
-		return art_forms
-
-	##
-	# @brief extracts and assigns urls from the infobox
-	@staticmethod
-	def assign_urls(infobox_data):		
-		if "website" in infobox_data and infobox_data["website"] != "":
-			value = infobox_data["website"]
-
-			value = re.sub(r"\{\{url\|(?:.*?=)?([^\|\}]+).*?\}\}", r"\1", value, flags=re.I)
-			value = re.sub(r"\[(.*?)\s.*?\]", r"\1", value)
-
-			return value
-		return ""
-
-	##
 	# @brief extracts data from the first paragraph and categories
 	@staticmethod
 	def extract_text(extracted, ent_data, debugger):
@@ -285,7 +235,7 @@ class PersonUtils:
 		)		
 
 		# try to get the date from the 1st sentence
-		if (death_date == "" or birth_date == "") and prefix != "person:fictional":        
+		if (death_date == "" or birth_date == "") and prefix != "person:fictional":
 			match = re.search(r"\((.*?)\)", first_paragraph)
 			if match:
 				group = match.group(1)
@@ -342,3 +292,4 @@ class PersonUtils:
 					extracted["gender"] = "F"
 
 		return extracted
+

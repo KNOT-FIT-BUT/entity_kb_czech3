@@ -14,9 +14,11 @@
 from ent_core import EntCore
 
 from lang_modules.en.country_utils import CountryUtils as EnUtils
+from lang_modules.cs.country_utils import CountryUtils as CsUtils
 
 utils = {
-	"en": EnUtils
+	"en": EnUtils,
+	"cs": CsUtils
 }
 
 ##

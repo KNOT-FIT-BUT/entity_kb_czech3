@@ -24,7 +24,7 @@ class CountryUtils:
 		extracted["prefix"] = cls.assign_prefix(categories)
 
 		extracted["latitude"], extracted["longitude"] = CoreUtils.get_wiki_api_location(title)
-		extracted["area"] = cls.assign_area(infobox_data)
+		extracted["area"] = cls.assign_area(infobox_data, debugger)
 		extracted["population"] = cls.assign_population(infobox_data)
 
 		return extracted
@@ -38,8 +38,8 @@ class CountryUtils:
 		
 		return "country"
 	
-	@staticmethod
-	def assign_area(cls, infobox_data):
+	@classmethod
+	def assign_area(cls, infobox_data, debugger):
 		area = ""
 		
 		# rozloha
@@ -48,6 +48,7 @@ class CountryUtils:
 			if key in infobox_data and infobox_data[key]:
 				value = infobox_data[key]
 				value = CoreUtils.del_redundant_text(value)
+				debugger.log_message(value)
 				area = cls.get_area(value)
 				break
 

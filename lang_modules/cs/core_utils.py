@@ -19,6 +19,11 @@ class CoreUtils:
 	DISAMBIG_PATTERN = r"{{[^}]*?(?:rozcestník)(?:\|[^}]*?)?}}"
 	CATEGORY_PATTERN = r"\[\[Kategorie:\s?(.*?)\]\]"
 
+	# lang specific keywords
+	KEYWORDS = {
+		"image": ["obrázek", "vlajka", "znak", "mapa umístění", "mapa_umítění", "mapa", "logo"]		
+	}
+
 	@staticmethod
 	def is_entity(title):
 		# speciální stránky Wikipedie nepojednávají o entitách
