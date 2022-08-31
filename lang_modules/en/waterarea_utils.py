@@ -14,32 +14,16 @@ class WaterareaUtils:
 			"continents": ""
 		}
 
-		infobox_data = ent_data["infobox_data"]
+		infobox_data, title = (
+			ent_data["infobox_data"],
+			ent_data["title"]	
+		)
 
 		extraction["latitude"], extraction["longitude"] = CoreUtils.assign_coordinates(infobox_data, debugger)
-		extraction["area"] = WaterareaUtils.assign_area(infobox_data, debugger)
+		extraction["area"] = CoreUtils.assign_area(infobox_data, debugger)
 		extraction["continents"] = WaterareaUtils.assign_continents(infobox_data)
 
 		return extraction
-
-	##
-    # @brief extracts and assigns area from infobox
-	@staticmethod
-	def assign_area(infobox_data, debugger):
-
-		area = ""
-
-		if "area" in infobox_data:
-			area_match = infobox_data['area']
-			if area_match != "":
-				match = re.search(r"{{.*?\|([0-9\.]+)\|(\w+).*?}}", area_match)
-				if match:
-					area = CoreUtils.convert_units(match.group(1), match.group(2), debugger)
-
-		#print(f"{self.title}: did not match area ({area})")
-		#print(f"{self.title}: area not found")
-
-		return area
 
 	##
     # @brief extracts and assigns continents from infobox

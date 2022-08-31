@@ -109,6 +109,62 @@ class CoreUtils:
 		return (latitude, longitude)
 
 	##
+    # @brief extracts and assigns area from infobox
+	@classmethod
+	def assign_area(cls, infobox_data, debugger):
+
+		def fix_area(value):
+			value = value.replace(",", "").strip()
+			value = re.sub(r"\{\{.+\}\}", "", value)
+			return value
+
+		# km2
+		keys = ("area_km2", "area_total_km2")
+		for key in keys:
+			if key in infobox_data and infobox_data[key]:
+				value = infobox_data[key]
+				area = fix_area(value)
+				if area:
+					return area 
+
+		# sq_mi
+		keys = ("area_sq_mi", "area_total_sq_mi")
+		for key in keys:
+			if key in infobox_data and infobox_data[key]:
+				value = infobox_data[key]
+				area = fix_area(value)
+				area = cls.convert_units(area, "sqmi", debugger)
+				if area:
+					return area
+
+		keys = ("area", "basin_size")
+		for key in keys:
+			if key in infobox_data and infobox_data[key]:
+				value = infobox_data[key]
+				# look for convert template - {{convert|...}}
+				match = re.search(r"\{\{(?:convert|cvt)\|([^\}]+)\}\}", value, re.I)
+				if match:
+					area = match.group(1)
+					area = area.split("|")
+					if len(area) >= 2:
+						number, unit = (area[0].strip(), area[1].strip())
+						number = fix_area(number)
+						number = cls.convert_units(number, unit, debugger)
+						return number if number else ""
+
+				# e.g.: '20sqmi', '10 km2', ...
+				area = re.sub(r"\(.+\)", "", value).strip()
+				match = re.search(r"^([\d,\.]+)(.*)", area, re.I)
+				if match:
+					number, unit = (match.group(1), match.group(2).strip())
+					number = fix_area(number)
+					number = cls.convert_units(number, unit, debugger)
+					return number if number else ""
+
+		# debugger.log_message(f"Error: unidentified area")
+		return ""
+
+	##
 	# @brief converts units to metric system
 	# @param number - number to be converted <string>
 	# @param unit - unit abbreviation

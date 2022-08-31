@@ -215,7 +215,7 @@ class PersonUtils:
 					if s != "":
 						tmp.append(s.strip())
 			
-			occupation = tmp
+			occupation = [t for t in tmp if t]
 			
 			return "|".join(occupation).replace("\n", " ")
 		return ""

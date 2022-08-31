@@ -17,10 +17,13 @@ class WatercourseUtils:
 			"source_loc": ""
 		}
 
-		infobox_data = ent_data["infobox_data"]
+		infobox_data, title = (
+			ent_data["infobox_data"],
+			ent_data["title"]	
+		)
 
 		extraction["latitude"], extraction["longitude"] = CoreUtils.assign_coordinates(infobox_data, debugger)
-		extraction["area"] = WatercourseUtils.assign_area(infobox_data, debugger)
+		extraction["area"] = CoreUtils.assign_area(infobox_data,  debugger)
 		extraction["length"] = WatercourseUtils.assign_length(infobox_data, debugger)
 		extraction["streamflow"] = WatercourseUtils.assign_streamflow(infobox_data, debugger)
 		extraction["source_loc"] = WatercourseUtils.assign_source_loc(infobox_data)
@@ -36,7 +39,6 @@ class WatercourseUtils:
     # @brief extracts and assigns length from infobox
 	@staticmethod
 	def assign_length(infobox_data, debugger):
-
 		length = ""
 
 		# | length = {{convert|352|km|mi|abbr=on}}
@@ -50,27 +52,6 @@ class WatercourseUtils:
 		#print(f"{self.title}: did not find length")
 		return length
 		
-	##
-    # @brief extracts and assigns area from infobox
-	@staticmethod
-	def assign_area(infobox_data, debugger):
-		
-		area = ""
-		
-		# | basin_size        = {{convert|4506|km2|abbr=on}}
-		if "basin_size" in infobox_data:
-			area_match = infobox_data["basin_size"]
-			if area_match != "":
-				match = re.search(r"{{.*?\|([0-9.,]+)\|(\w+).*?}}", area_match)
-				if match:
-					number = re.sub(r",", "", match.group(1))
-					area = CoreUtils.convert_units(number, match.group(2), debugger)					
-				else:
-					debugger.log_message(f"did not match area ({area_match})")
-		
-		#print(f"\narea empty or not found ({self.link})")
-		return area
-
 	##
     # @brief extracts and assigns streamflow from infobox
 	@staticmethod

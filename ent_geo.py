@@ -86,7 +86,8 @@ class EntGeo(EntCore):
 		ent_data = {
 			"infobox_data": self.infobox_data,
 			"infobox_name": self.infobox_name,
-			"coords": self.coords
+			"coords": self.coords,
+			"title": self.title
 		}
 
 		extraction = lang_utils.extract_infobox(ent_data, self.d)

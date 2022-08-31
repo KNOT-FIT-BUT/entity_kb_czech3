@@ -62,7 +62,8 @@ class EntCountry(EntCore):
 		ent_data = {
 			"infobox_data": self.infobox_data,
 			"categories": self.categories,
-			"coords": self.coords
+			"coords": self.coords,
+			"title": self.title
 		}
 
 		extraction = lang_utils.extract_infobox(ent_data, self.d)

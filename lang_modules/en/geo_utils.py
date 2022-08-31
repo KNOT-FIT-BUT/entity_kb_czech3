@@ -18,9 +18,10 @@ class GeoUtils:
 			"total_height": ""
 		}
 
-		infobox_data, infobox_name = (
+		infobox_data, infobox_name, title = (
 			ent_data["infobox_data"],
-			ent_data["infobox_name"]
+			ent_data["infobox_name"],
+			ent_data["title"]
 		)
 
 		extraction["prefix"] = GeoUtils.assign_prefix(infobox_name)
@@ -29,7 +30,7 @@ class GeoUtils:
 		if extraction["prefix"] == "geo:waterfall":
 			extraction["total_height"] = GeoUtils.assign_height(infobox_data, debugger)
 		elif extraction["prefix"] in ("geo:island", "geo:continent"):
-			extraction["area"] = GeoUtils.assign_area(infobox_data, debugger)
+			extraction["area"] = CoreUtils.assign_area(infobox_data, debugger)
 			extraction["population"] = GeoUtils.assign_population(infobox_data)
 
 		return extraction
@@ -59,38 +60,6 @@ class GeoUtils:
 
 		return total_height			
 	
-	##
-    # @brief extracts and assigns area from infobox
-	@staticmethod
-	def assign_area(infobox_data, debugger):
-		area = ""
-
-		area_infoboxes = ["area_km2", "area"]
-		for a in area_infoboxes:
-			if a in infobox_data and infobox_data[a]:
-				area_match = infobox_data[a]
-				area_match = re.sub(r",|\(.*\)", "", area_match).strip()
-				
-				# {{convert|[number]|[km2 / sqmi]}}
-				match = re.search(r"{{.*?\|([0-9]+)\s?\|(\w+).*?}}", area_match)
-				if match:
-					area = CoreUtils.convert_units(match.group(1), match.group(2), debugger)
-					break
-				
-				# [number] [km2 / sqmi]
-				split = area_match.split(" ")
-				if len(split) > 1:
-					area = CoreUtils.convert_units(split[0], split[1], debugger)
-				else:
-					try:
-						number = float(area_match)
-						area = str(number if number % 1 != 0 else int(number))
-					except:
-						debugger.log_message(f"error while converting area to float - {area}")
-				break
-
-		return area
-
 	##
     # @brief extracts and assigns population from infobox
 	@staticmethod

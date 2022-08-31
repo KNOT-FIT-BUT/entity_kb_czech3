@@ -16,15 +16,16 @@ class CountryUtils:
 			"population": ""
 		}
 
-		infobox_data, categories = (
+		infobox_data, categories, title = (
 			ent_data["infobox_data"],
-			ent_data["categories"]
+			ent_data["categories"],
+			ent_data["title"]
 		)
 
 		extraction["prefix"] = CountryUtils.assign_prefix(categories)
 		
 		extraction["latitude"], extraction["longitude"] = CoreUtils.assign_coordinates(infobox_data, debugger)
-		extraction["area"] = CountryUtils.assign_area(infobox_data, debugger)
+		extraction["area"] = CoreUtils.assign_area(infobox_data, debugger)
 		extraction["population"] = CountryUtils.assign_population(infobox_data)
 
 		return extraction
@@ -38,29 +39,6 @@ class CountryUtils:
 			if re.search(r"former.*?countries", category.lower(), re.I):
 				return "country:former"
 		return "country"
-
-	##
-    # @brief extracts and assigns area from infobox
-	@staticmethod
-	def assign_area(infobox_data, debugger):
-		names = ("area_km2", "area_total_km2")
-		for name in names:
-			if name in infobox_data and infobox_data[name] != "":
-				area = infobox_data[name]
-				area = area.replace(",", "")
-				area = re.sub(r"\{\{.+\}\}", "", area)				
-				return area
-
-		names = ("area_sq_mi", "area_total_sq_mi")
-		for name in names:
-			if name in infobox_data and infobox_data[name] != "":
-				area = infobox_data[name]
-				area = area.replace(",", "")
-				area = re.sub(r"\{\{.+\}\}", "", area)
-				area = CoreUtils.convert_units(area, "sqmi", debugger)
-				return area
-
-		return ""
 
 	##
     # @brief extracts and assigns population from infobox
