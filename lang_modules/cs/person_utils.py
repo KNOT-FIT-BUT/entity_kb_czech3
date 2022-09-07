@@ -10,25 +10,46 @@ from lang_modules.cs.libs.UniqueDict import KEY_LANG, LANG_ORIG, LANG_UNKNOWN
 class PersonUtils:
 
 	KEYWORDS = {
-		"birth_place": ["místo narození", "místo_narození"],
-		"death_place": ["místo úmrtí", "místo_úmrtí"],
-		"gender": ["pohlaví"],
-		"male": ["muž"],
-		"female": ["žena"]
+		"birth_place": 	["místo narození", "místo_narození"],
+		"death_place": 	["místo úmrtí", "místo_úmrtí"],
+		"gender": 		["pohlaví"],
+		"male": 		"muž",
+		"female": 		"žena",
+		"jobs":			["profese", "zaměstnání", "povolání"],
+		"nationality":	["národnost"]
 	}
+
+	##
+	# @brief assigns prefix to the person entity
+	#
+	# person, person:fictional or person:group
+	@staticmethod
+	def assign_prefix(person):
+		# prefix - fiktivní osoby
+		# TODO: temp content? joining categories?
+		content = "\n".join(person.categories)
+		if (re.search(r"hrdinové\s+a\s+postavy\s+řecké\s+mytologie", content, re.I,) or 
+			re.search(r"bohové", content, re.I) or 
+			re.search(r"postavy", content, re.I)):			
+			return "person:fictional" 
+
+		# prefix - groups
+		natToKB = NatToKB()
+		nationalities = natToKB.get_nationalities()
+
+		name_without_location = re.sub(r"\s+(?:ze?|of|von)\s+.*", "", person.title, flags=re.I)
+		a_and_neighbours = re.search(r"((?:[^ ])+)\s+a(?:nd)?\s+((?:[^ ])+)", name_without_location)
+		if a_and_neighbours:
+			if (a_and_neighbours.group(1) not in nationalities or a_and_neighbours.group(2) not in nationalities):
+				# else Kateřina Řecká a Dánská" is regular person
+				return "person:group"
+		
+		return "person"
 
 	@classmethod
 	def extract_infobox(cls, ent_data, debugger):
 		extraction = {
 			"aliases": "",
-			"prefix": "",
-
-			"birth_date": "",
-			"death_date": "",
-			"birth_place": "",
-			"death_place": "",
-			"gender": "",
-			"jobs": "",
 			"nationality": "",
 		}
 
@@ -39,37 +60,9 @@ class PersonUtils:
 			ent_data["infobox_name"]
 		)
 
-		extraction["prefix"] = cls.assign_prefix(title, categories)
 		extraction["aliases"] = cls.assign_aliases(infobox_data, infobox_name, title)
-
-		extraction["birth_date"], extraction["death_date"] = cls.assign_dates(infobox_data)
-		extraction["jobs"] = cls.assign_jobs(infobox_data)
-		extraction["nationality"] = cls.assign_nationality(infobox_data)
-
-		return extraction
-
-	@staticmethod
-	def assign_prefix(title, categories):
-		# prefix - fiktivní osoby
-		# TODO: temp content? joining categories?
-		content = "\n".join(categories)
-		if (re.search(r"hrdinové\s+a\s+postavy\s+řecké\s+mytologie", content, re.I,) or 
-			re.search(r"bohové", content, re.I) or 
-			re.search(r"postavy", content, re.I)):			
-			return "person:fictional" 
-
-		# prefix - groups
-		natToKB = NatToKB()
-		nationalities = natToKB.get_nationalities()
-
-		name_without_location = re.sub(r"\s+(?:ze?|of|von)\s+.*", "", title, flags=re.I)
-		a_and_neighbours = re.search(r"((?:[^ ])+)\s+a(?:nd)?\s+((?:[^ ])+)", name_without_location)
-		if a_and_neighbours:
-			if (a_and_neighbours.group(1) not in nationalities or a_and_neighbours.group(2) not in nationalities):
-				# else Kateřina Řecká a Dánská" is regular person
-				return "person:group"
 		
-		return "person"
+		return extraction
 
 	# @staticmethod
 	# def assign_gender(infobox_data, categories):
@@ -94,15 +87,15 @@ class PersonUtils:
 	# 	return gender
 
 	@classmethod
-	def assign_dates(cls, infobox_data):
+	def assign_dates(cls, person):
 		birth_date = ""
 		death_date = ""
 		
 		# Date of birth
 		keys = ["datum narození", "datum_narození"]
 		for key in keys:
-			if key in infobox_data and infobox_data[key]:
-				value = infobox_data[key]
+			if key in person.infobox_data and person.infobox_data[key]:
+				value = person.infobox_data[key]
 				value = CoreUtils.del_redundant_text(value)
 				birth_date = cls._convert_date(value, True)
 				break
@@ -110,62 +103,13 @@ class PersonUtils:
 		# Date of death
 		keys = ["datum úmrtí", "datum_úmrtí"]
 		for key in keys:
-			if key in infobox_data and infobox_data[key]:
-				value = infobox_data[key]
+			if key in person.infobox_data and person.infobox_data[key]:
+				value = person.infobox_data[key]
 				value = CoreUtils.del_redundant_text(value)
 				death_date = cls._convert_date(value, False)
 				break
 
 		return (birth_date, death_date)
-
-	# @classmethod
-	# def assign_places(cls, infobox_data):
-	# 	birth_place = ""
-	# 	death_place = ""
-		
-	# 	# Place of birth
-	# 	keys = ["místo narození", "místo_narození"]
-	# 	for key in keys:
-	# 		if key in infobox_data and infobox_data[key]:
-	# 			value = infobox_data[key]
-	# 			birth_place = cls.get_place(value)
-	# 			break
-
-	# 	# Place of death
-	# 	keys = ["místo úmrtí", "místo_úmrtí"]
-	# 	for key in keys:
-	# 		if key in infobox_data and infobox_data[key]:
-	# 			value = infobox_data[key]
-	# 			death_place = cls.get_place(value)
-	# 			break
-
-	# 	return (birth_place, death_place)
-
-	@classmethod
-	def assign_jobs(cls, infobox_data):
-		jobs = ""
-
-		# Job / career
-		keys = ["profese", "zaměstnání", "povolání"]
-		for key in keys:
-			if key in infobox_data and infobox_data[key]:
-				value = infobox_data[key]
-				jobs = cls.get_jobs(CoreUtils.del_redundant_text(value))
-				break
-
-		return jobs
-
-	@classmethod
-	def assign_nationality(cls, infobox_data):
-		nationality = ""
-		
-		# Nationality		
-		if "národnost" in infobox_data and infobox_data["národnost"]:
-			value = infobox_data["národnost"]
-			value = CoreUtils.del_redundant_text(value)
-			nationality = cls.get_nationality(value)
-		
-		return nationality
 
 	@classmethod
 	def assign_aliases(cls, infobox_data, infobox_name, title):
@@ -423,36 +367,36 @@ class PersonUtils:
 	# @brief Převádí místo narození/úmrtí osoby do jednotného formátu.
 	# @param place - místo narození/úmrtí osoby (str)
 	# @param is_birth - určuje, zda se jedná o místo narození, či úmrtí (bool)
-	# @staticmethod
-	# def get_place(place):
-	# 	place = re.sub(r"{{Vlajka a název\|(.*?)(?:\|.*?)?}}", r"\1", place, flags=re.I)
-	# 	place = re.sub(
-	# 		r"{{(?:vjazyce2|cizojazyčně|audio|cj)\|.*?\|(.+?)}}",
-	# 		r"\1",
-	# 		place,
-	# 		flags=re.I,
-	# 	)
-	# 	place = re.sub(r"{{malé\|(.*?)}}", r"\1", place, flags=re.I)
-	# 	place = re.sub(r"{{.*?}}", "", place)
-	# 	place = re.sub(r"<br(?: /)?>", " ", place)
-	# 	place = re.sub(r"<.*?>", "", place)
-	# 	place = re.sub(
-	# 		r"\[\[(?:Soubor|File):.*?\.(?:jpe?g|png|gif|bmp|ico|tif|tga|svg)[^\]]*\]\]",
-	# 		"",
-	# 		place,
-	# 		flags=re.I,
-	# 	)
-	# 	place = re.sub(r"\d+\s*px", "", place, flags=re.I)
-	# 	place = re.sub(
-	# 		r"(?:(?:,\s*)?\(.*?věk.*?\)$|\(.*?věk.*?\)(?:,\s*)?)", "", place, flags=re.I
-	# 	)
-	# 	place = re.sub(r"\(.*?let.*?\)", "", place, flags=re.I)
-	# 	place = re.sub(r",{2,}", ",", place)
-	# 	place = re.sub(r"(\]\])[^,]", r"\1, ", place)
-	# 	place = CoreUtils.del_redundant_text(place)
-	# 	place = re.sub(r"[{}<>\[\]]", "", place)
-	# 	place = re.sub(r"\s+", " ", place).strip().strip(",")
-	# 	return place
+	@staticmethod
+	def get_place(place):
+		place = re.sub(r"{{Vlajka a název\|(.*?)(?:\|.*?)?}}", r"\1", place, flags=re.I)
+		place = re.sub(
+			r"{{(?:vjazyce2|cizojazyčně|audio|cj)\|.*?\|(.+?)}}",
+			r"\1",
+			place,
+			flags=re.I,
+		)
+		place = re.sub(r"{{malé\|(.*?)}}", r"\1", place, flags=re.I)
+		place = re.sub(r"{{.*?}}", "", place)
+		place = re.sub(r"<br(?: /)?>", " ", place)
+		place = re.sub(r"<.*?>", "", place)
+		place = re.sub(
+			r"\[\[(?:Soubor|File):.*?\.(?:jpe?g|png|gif|bmp|ico|tif|tga|svg)[^\]]*\]\]",
+			"",
+			place,
+			flags=re.I,
+		)
+		place = re.sub(r"\d+\s*px", "", place, flags=re.I)
+		place = re.sub(
+			r"(?:(?:,\s*)?\(.*?věk.*?\)$|\(.*?věk.*?\)(?:,\s*)?)", "", place, flags=re.I
+		)
+		place = re.sub(r"\(.*?let.*?\)", "", place, flags=re.I)
+		place = re.sub(r",{2,}", ",", place)
+		place = re.sub(r"(\]\])[^,]", r"\1, ", place)
+		place = CoreUtils.del_redundant_text(place)
+		place = re.sub(r"[{}<>\[\]]", "", place)
+		place = re.sub(r"\s+", " ", place).strip().strip(",")
+		return place
 
 	##
 	# @brief Převádí zaměstnání osoby do jednotného formátu.

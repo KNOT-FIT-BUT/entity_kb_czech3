@@ -628,7 +628,7 @@ class WikiExtract(object):
 		clean_content = self.remove_references(clean_content, r"{{refn")
 		
 		# remove break lines
-		clean_content = re.sub(r"<br />", " ", clean_content, flags=re.DOTALL)
+		clean_content = re.sub(r"<br\s*?/>", " ", clean_content, flags=re.DOTALL)
 		clean_content = re.sub(r"<.*?/?>", "", clean_content, flags=re.DOTALL)
 
 		return clean_content

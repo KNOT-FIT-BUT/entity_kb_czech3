@@ -5,24 +5,6 @@ from lang_modules.en.core_utils import CoreUtils
 
 class EventUtils:
 
-	@staticmethod
-	def extract_infobox(ent_data, debugger):
-
-		extraction = {
-			"start_date": "",
-			"end_date": "",
-			"locations": "",
-			"type": ""
-		}
-
-		infobox_data = ent_data["infobox_data"]
-
-		extraction["start_date"], extraction["end_date"] = EventUtils.assign_dates(infobox_data)
-		extraction["locations"] = EventUtils.assign_locations(infobox_data)
-		extraction["type"] = EventUtils.assign_type(infobox_data)
-
-		return extraction
-	
 	##
     # @brief extracts and assigns start date and end date variables from infobox
 	@staticmethod
@@ -80,79 +62,6 @@ class EventUtils:
 					end_date = CoreUtils.extract_date(split[1])[0]
 
 		return (start_date, end_date)
-
-	##
-    # @brief extracts and assigns locations from infobox
-	@staticmethod
-	def assign_locations(infobox_data):
-		locations = []
-		
-		keys = [
-			"place", 
-			"country",
-			"location",
-			"areas",
-			"city",
-			"host_city",
-			"cities",
-			"affected",
-			"site",
-			"venue"
-		]
-
-		for key in keys:
-			if key in infobox_data and infobox_data[key] != "":
-				data = infobox_data[key]
-				data = EventUtils.remove_templates(data)
-				
-				if re.search(r"[a-z][A-Z]", data):
-					string = re.sub(r"([a-z])([A-Z])", r"\1|\2", data)
-					split = string.split("|")
-					found = False
-					for s in split:
-						if "," not in s:
-							found = True
-							break
-					if found:
-						string = re.sub(r"([a-z])([A-Z])", r"\1, \2", data)
-						locations.append(string)
-					else:
-						locations = split
-					break
-				
-				if "," in data:
-					split = data.split(",") 
-					if len(split) > 5:
-						locations = [item.strip() for item in split]
-						break
-
-				locations.append(data)
-				break
-		
-		return locations 
-
-	##
-    # @brief extracts and assigns type from infobox
-	@staticmethod
-	def assign_type(infobox_data):
-		type = ""
-
-		if "type" in infobox_data and infobox_data["type"] != "":
-			type = infobox_data["type"]
-			type = EventUtils.remove_templates(type).lower()
-
-		return type
-
-	##
-	# @brief removes wikipedia formatting
-	# @param data - string with wikipedia formatting
-	# @return string without wikipedia formatting
-	@staticmethod
-	def remove_templates(data):
-		data = re.sub(r"\{\{.*?\}\}", "", data)
-		data = re.sub(r"\[\[.*?\|([^\|]*?)\]\]", r"\1", data)
-		data = re.sub(r"\[|\]|'|\(\)", "", data)
-		return data
 
 	def extract_text(extracted, ent_data, debugger):
 		infobox_name = ent_data["infobox_name"]

@@ -11,6 +11,8 @@
 # @author created by Jan Kapsa (xkapsa00)
 # @date 15.07.2022
 
+import re
+
 from ent_core import EntCore
 
 from lang_modules.en.organisation_utils import OrganisationUtils as EnUtils
@@ -63,12 +65,53 @@ class EntOrganisation(EntCore):
 			"infobox_name": self.infobox_name
 		}
 
-		extraction = lang_utils.extract_infobox(ent_data, self.d)
-		extraction = lang_utils.extract_text(extraction, ent_data, self.d)
+		# extraction = lang_utils.extract_text(extraction, ent_data, self.d)
 
-		self.founded	= extraction["founded"]
-		self.cancelled	= extraction["cancelled"]
-		self.location	= extraction["location"]
-		self.type 		= extraction["type"]
+		self.founded, self.cancelled = lang_utils.assign_dates(self.infobox_data)
+		self.assign_location()
+		self.assign_type()
+	
+	##
+	# @brief extracts and assigns location from infobox
+	def assign_location(self):
+		location = ""
+		country = ""
+		city = ""
+
+		keys = ["location", "headquarters", "hq_location", "area"]
+		data = self.get_infobox_data(keys, return_first=True)
+		if data:
+			data = self.remove_templates(data)
+			location = data
+		
+		keys = ["location_country", "country", "hq_location_country"]
+		data = self.get_infobox_data(keys, return_first=True)
+		if data:
+			data = self.remove_templates(data)
+			country = data
+
+		keys = ["location_city", "hq_location_city"]
+		data = self.get_infobox_data(keys, return_first=True)
+		if data:
+			data = self.remove_templates(data)
+			city = data
+
+		if city != "" and country != "":
+			self.location = f"{city}, {country}"
+		else:
+			if location != "":
+				self.location = location
+			elif country != "":
+				self.location = country
+			else:
+				self.location = city
+
+	##
+    # @brief extracts and assigns type from infobox
+	def assign_type(self):
+		data = self.get_infobox_data(utils[self.lang].KEYWORDS["type"], return_first=True)
+		if data:
+			data = self.remove_templates(data)
+			self.type = data
 
 	

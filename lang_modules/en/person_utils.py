@@ -6,72 +6,39 @@ from lang_modules.en.core_utils import CoreUtils
 class PersonUtils:
 
 	KEYWORDS = {
-		"birth_place": ["birth_place"],
-		"death_place": ["death_place"],
-		"gender": ["gender"],
-		"male": ["male"],
-		"female": ["female"]
+		"birth_place":	["birth_place"],
+		"death_place": 	["death_place"],
+		"gender": 		["gender"],
+		"male": 		"male",
+		"female": 		"female",
+		"jobs":			["occupation"],
+		"nationality":	["nationality"]
 	}
-
-	@staticmethod
-	def extract_infobox(ent_data, debugger):
-		
-		extraction = {
-			"aliases": "",
-			"prefix": "",
-			"birth_date": "",
-			"death_date": "",
-			"birth_place": "",
-			"death_place": "",
-			"gender": "",
-			"jobs": "",
-			"nationality": "",
-		}
-
-		title, sentence, infobox_data, infobox_name, categories = (
-			ent_data["title"], 
-			ent_data["sentence"], 
-			ent_data["infobox_data"],
-			ent_data["infobox_name"], 
-			ent_data["categories"]
-		)
-
-		extraction["prefix"] = PersonUtils.assign_prefix(title, sentence, infobox_name, categories)
-		
-		extraction["birth_date"], extraction["death_date"] = PersonUtils.assign_dates(infobox_data, debugger)
-		extraction["nationality"] = PersonUtils.assign_nationality(infobox_data, debugger)
-		extraction["gender"] = PersonUtils.assign_gender(infobox_data)
-		extraction["jobs"] = PersonUtils.assign_jobs(infobox_data)
-
-		return extraction
 
 	##
 	# @brief assigns prefix based on entity categories or infobox names
 	#
 	# person, person:fictional, person:artist or person:group
 	@staticmethod
-	def assign_prefix(title, sentence, infobox_name, categories):
-		
-		# self.d.log_message(self.title)
-
-		if re.search(r".*\s(?:,|and|&)\s.*", title):
+	def assign_prefix(person):
+		if re.search(r".*\s(?:,|and|&)\s.*", person.title):
 			return "person:group"
 
 		# self.d.log_message(self.first_sentence)
 
-		if "character" in infobox_name or "fictional" in sentence:
+		if "character" in person.infobox_name or "fictional" in person.description:
 			return "person:fictional"
 
-		for c in categories:
+		for c in person.categories:
 			if "fictional" in c.lower():
 				return "person:fictional"
 
-		if infobox_name.lower() == "artist":
+		if person.infobox_name.lower() == "artist":
 			return "person:artist"
 
 		# artist, painter, writer
 
-		for c in categories:
+		for c in person.categories:
 			if re.search(r"artist", c, re.I):				
 				return "person:artist"
 
@@ -80,18 +47,17 @@ class PersonUtils:
 	##
 	# @brief extracts and assigns dates from infobox or from the first sentence
 	@staticmethod
-	def assign_dates(infobox_data, debugger):
-		
+	def assign_dates(person):
 		birth_date = ""
 		death_date = ""
-		
-		if "birth_date" in infobox_data and infobox_data["birth_date"] != "":
-			date = infobox_data["birth_date"].strip()
+
+		if "birth_date" in person.infobox_data and person.infobox_data["birth_date"] != "":
+			date = person.infobox_data["birth_date"].strip()
 			extracted = CoreUtils.extract_date(date)
 			birth_date = extracted[0]
 		
-		if "death_date" in infobox_data and infobox_data["death_date"] != "":
-			date = infobox_data["death_date"].strip()
+		if "death_date" in person.infobox_data and person.infobox_data["death_date"] != "":
+			date = person.infobox_data["death_date"].strip()
 			extracted = CoreUtils.extract_date(date)
 			if extracted[1] == "":
 				death_date = extracted[0]
@@ -102,121 +68,6 @@ class PersonUtils:
 		
 		# debugger.log_message((birth_date, death_date))
 		return (birth_date, death_date)
-
-	# ##
-	# # @brief extracts and assigns places from infobox, removes wikipedia formatting
-	# @staticmethod
-	# def assign_places(infobox_data, debugger):
-	# 	birth_place = ""
-	# 	death_place = ""
-
-	# 	if "birth_place" in infobox_data:
-	# 		birth_place = PersonUtils.fix_place(infobox_data["birth_place"])
-
-	# 	if "death_place" in infobox_data:
-	# 		death_place = PersonUtils.fix_place(infobox_data["death_place"])
-
-	# 	# debugger.log_message((birth_place, death_place))
-	# 	return (birth_place, death_place)
-
-	# ##
-	# # @brief removes wikiepdia formatting from places
-	# # @param place - wikipedia formatted string
-	# # @return string result without formatting
-	# @staticmethod
-	# def fix_place(place):
-	# 	p = place
-
-	# 	if p:
-	# 		p = re.sub(r"{{nowrap\|(.*?)}}", r"\1", p)
-	# 		p = re.sub(r"\{\{.*?\}\}", "", p)
-	# 		p = re.sub(r"\[\[.*?\|([^\|]*?)\]\]", r"\1", p)
-	# 		p = re.sub(r"\[|\]", "", p)
-	# 		return p.strip()
-
-	# 	return ""
-
-	##
-	# @brief extracts and assigns nationality from infobox, removes wikipedia formatting
-	@staticmethod
-	def assign_nationality(infobox_data, debugger):
-		if "nationality" in infobox_data and infobox_data["nationality"] != "":
-			nationalities = []
-			string = infobox_data["nationality"]
-
-			if string:
-				# removing stuff in () and [] brackets 
-				# (e.g.: [[Belgium|Belgian]] (1949—2003), [[Chile]]an[[Mexico|Mexican]])
-				string = re.sub(r"\(.*\)|\[|\]", "", string).strip()
-				
-				# case splitting 
-				# (e.g.: GermanAmerican)
-				indexes = [m.start(0) for m in re.finditer(r"[a-z][A-Z]", string)]
-				x = 0
-				for i in indexes:
-					nationalities.append(string[x:i+1])
-					x = i+1
-				nationalities.append(string[x:])
-				
-				# other splitting 
-				# (e.g.: French-Moroccan)
-				splitters = ["/", "-", "–", ","]
-				for splitter in splitters:
-					tmp = []
-					for s in nationalities:
-						for a in s.split(splitter):
-							tmp.append(a)
-					
-					nationalities = tmp
-				
-				# splitting redirects 
-				# (e.g.: [[Germans|German]]) -> German
-				for i in range(len(nationalities)):
-					bar_split = nationalities[i].split("|")
-					bar_split[-1] = re.sub(r"{|}", "", bar_split[-1]).strip()
-					nationalities[i] = bar_split[-1]
-				
-				return "|".join(nationalities)
-		return ""
-
-	##
-	# @brief extracts and assigns gender from the infobox
-	@staticmethod
-	def assign_gender(infobox_data):
-		if "gender" in infobox_data and infobox_data["gender"] != "":
-			gender = infobox_data["gender"].lower()
-			if gender == "male":
-				return "M"
-			elif gender == "female":
-				return "F"		
-			return gender
-		
-		return ""
-
-	##
-	# @brief extracts and assigns jobs from the infobox
-	@staticmethod
-	def assign_jobs(infobox_data):
-		if "occupation" in infobox_data and infobox_data["occupation"] != "":
-			string = infobox_data["occupation"]
-			string = re.sub("\[|\]|\{|\}", "", string)
-			occupation = [s.lower().strip() for s in string.split(",")]
-
-			for i in range(len(occupation)):
-				bar_split = occupation[i].split("|")
-				occupation[i] = bar_split[-1]
-
-			tmp = []
-			for o in occupation:
-				star_split = o.split("*")
-				for s in star_split:
-					if s != "":
-						tmp.append(s.strip())
-			
-			occupation = [t for t in tmp if t]
-			
-			return "|".join(occupation).replace("\n", " ")
-		return ""
 
 	##
 	# @brief extracts data from the first paragraph and categories

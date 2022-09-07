@@ -21,7 +21,10 @@ class CoreUtils:
 
 	# lang specific keywords
 	KEYWORDS = {
-		"image": ["obrázek", "vlajka", "znak", "mapa umístění", "mapa_umítění", "mapa", "logo"]		
+		"image": 		["obrázek", "vlajka", "znak", "mapa umístění", "mapa_umítění", "mapa", "logo"],
+		"area_km2": 	["rozloha", "výměra", "plocha"],
+		"area_sqmi": 	[],
+		"area_other": 	[]
 	}
 
 	@staticmethod
@@ -101,6 +104,11 @@ class CoreUtils:
 		clean_text = clean_text.replace("&nbsp;", " ").replace("\xa0", " ")
 
 		return clean_text
+
+	# TODO: fix this
+	@classmethod
+	def assign_coordinates(cls, country):
+		return cls.get_wiki_api_location(country.title)
 
 	@staticmethod
 	def get_wiki_api_location(title):

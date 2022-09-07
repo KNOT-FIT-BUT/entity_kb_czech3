@@ -5,6 +5,10 @@ from lang_modules.cs.core_utils import CoreUtils
 
 class CountryUtils:
 
+	KEYWORDS = {
+		"population": ["počet obyvatel"]
+	}
+
 	@classmethod
 	def extract_infobox(cls, ent_data, debugger):
 		extracted = {
@@ -24,7 +28,6 @@ class CountryUtils:
 		extracted["prefix"] = cls.assign_prefix(categories)
 
 		extracted["latitude"], extracted["longitude"] = CoreUtils.get_wiki_api_location(title)
-		extracted["area"] = cls.assign_area(infobox_data, debugger)
 		extracted["population"] = cls.assign_population(infobox_data)
 
 		return extracted
@@ -38,22 +41,6 @@ class CountryUtils:
 		
 		return "country"
 	
-	@classmethod
-	def assign_area(cls, infobox_data, debugger):
-		area = ""
-		
-		# rozloha
-		keys = ["rozloha", "výměra"]
-		for key in keys:
-			if key in infobox_data and infobox_data[key]:
-				value = infobox_data[key]
-				value = CoreUtils.del_redundant_text(value)
-				debugger.log_message(value)
-				area = cls.get_area(value)
-				break
-
-		return area
-
 	@classmethod
 	def assign_population(cls, infobox_data):
 		population = ""
@@ -107,48 +94,49 @@ class CountryUtils:
 	def extract_text(cls, extracted, ent_data, debugger):
 		return extracted
 
-	##
-	# @brief Převádí rozlohu státu do jednotného formátu.
-	# @param area - rozloha státu (str)
-	@staticmethod
-	def get_area(area):
-		area = re.sub(r"\(.*?\)", "", area)
-		area = re.sub(r"\[.*?\]", "", area)
-		area = re.sub(r"<.*?>", "", area)
-		area = re.sub(r"{{.*?}}", "", area).replace("{", "").replace("}", "")
-		area = re.sub(r"(?<=\d)\s(?=\d)", "", area).strip()
-		area = re.sub(r"(?<=\d)\.(?=\d)", ",", area)
-		area = re.sub(r"^\D*(?=\d)", "", area)
-		area = re.sub(r"^(\d+(?:,\d+)?)[^\d,]+.*$", r"\1", area)
-		area = "" if not re.search(r"\d", area) else area
-		return area
+	# ##
+	# # @brief Převádí rozlohu státu do jednotného formátu.
+	# # @param area - rozloha státu (str)
+	# @staticmethod
+	# def get_area(area):
+	# 	area = re.sub(r"\(.*?\)", "", area)
+	# 	area = re.sub(r"\[.*?\]", "", area)
+	# 	area = re.sub(r"<.*?>", "", area)
+	# 	area = re.sub(r"{{.*?}}", "", area).replace("{", "").replace("}", "")
+	# 	area = re.sub(r"(?<=\d)\s(?=\d)", "", area).strip()
+	# 	area = re.sub(r"(?<=\d)\.(?=\d)", ",", area)
+	# 	area = re.sub(r"^\D*(?=\d)", "", area)
+	# 	area = re.sub(r"^(\d+(?:,\d+)?)[^\d,]+.*$", r"\1", area)
+	# 	area = "" if not re.search(r"\d", area) else area
+	# 	return area
 
-	##
-	# @brief Převádí počet obyvatel státu do jednotného formátu.
-	# @param population - počet obyvatel státu (str)
-	@staticmethod
-	def get_population(population):
+	# ##
+	# # @brief Převádí počet obyvatel státu do jednotného formátu.
+	# # @param population - počet obyvatel státu (str)
+	# @staticmethod
+	# def get_population(population):
 		
-		coef = (
-			1000000
-			if re.search(r"mil\.|mili[oó]n", population, re.I)
-			else 1000
-			if re.search(r"tis\.|tis[ií]c", population, re.I)
-			else 0
-		)
+	# 	coef = (
+	# 		1000000
+	# 		if re.search(r"mil\.|mili[oó]n", population, re.I)
+	# 		else 1000
+	# 		if re.search(r"tis\.|tis[ií]c", population, re.I)
+	# 		else 0
+	# 	)
 
-		population = re.sub(r"\(.*?\)", "", population)
-		population = re.sub(r"\[.*?\]", "", population)
-		population = re.sub(r"<.*?>", "", population)
-		population = (
-			re.sub(r"{{.*?}}", "", population).replace("{", "").replace("}", "")
-		)
-		population = re.sub(r"(?<=\d)[,.\s](?=\d)", "", population).strip()
-		population = re.sub(r"^\D*(?=\d)", "", population)
-		population = re.sub(r"^(\d+)\D.*$", r"\1", population)
-		population = "" if not re.search(r"\d", population) else population
+	# 	population = re.sub(r"\(.*?\)", "", population)
+	# 	population = re.sub(r"\[.*?\]", "", population)
+	# 	population = re.sub(r"<.*?>", "", population)
+	# 	population = (
+	# 		re.sub(r"{{.*?}}", "", population).replace("{", "").replace("}", "")
+	# 	)
+	# 	population = re.sub(r"(?<=\d)[,.\s](?=\d)", "", population).strip()
+	# 	population = re.sub(r"^\D*(?=\d)", "", population)
+	# 	population = re.sub(r"^(\d+)\D.*$", r"\1", population)
+	# 	population = "" if not re.search(r"\d", population) else population
 
-		if coef and population:
-			population = str(int(population) * coef)
+	# 	if coef and population:
+	# 		population = str(int(population) * coef)
 
-		return population
+	# 	return population
+

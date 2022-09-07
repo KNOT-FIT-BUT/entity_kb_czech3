@@ -97,25 +97,25 @@ class EntPerson(EntCore):
 			"infobox_name": self.infobox_name,
 			"categories": self.categories
 		}
-
-		extraction = lang_utils.extract_infobox(ent_data, self.d)
-		extraction = lang_utils.extract_text(extraction, ent_data, self.d)
-
-		self.prefix 		= extraction["prefix"]
-		if extraction["aliases"]:
-			self.aliases	= extraction["aliases"] if self.aliases == "" else f"{self.aliases}|{extraction['aliases']}"
 		
-		self.birth_date 	= extraction["birth_date"]
-		self.death_date 	= extraction["death_date"]
+		self.prefix = utils[lang].assign_prefix(self)
+		
+		# extraction = {}
+		# extraction = lang_utils.extract_text(extraction, ent_data, self.d)
+		# if extraction["aliases"]:
+		# 	self.aliases	= extraction["aliases"] if self.aliases == "" else f"{self.aliases}|{extraction['aliases']}"
+		
+		self.birth_date, self.death_date = utils[lang].assign_dates(self)
 		self.assign_places()
 		self.assign_gender()
-		self.jobs 			= extraction["jobs"]
-		self.nationality 	= extraction["nationality"]
-		
+		self.assign_jobs()
+		self.assign_nationality()
+
 		# artist
 		if self.prefix == "person:artist":
 			self.assign_art_forms()
 			self.assign_urls()
+		
 
 	##
 	# @brief extracts and assigns places from infobox, removes wikipedia formatting
@@ -145,12 +145,13 @@ class EntPerson(EntCore):
 		self.birth_place = birth_place
 		self.death_place = death_place
 
-	#
+	##	
 	# @brief extracts and assigns gender from the infobox
 	def assign_gender(self):
 		gender = ""		
 		
 		value = self.get_infobox_data(utils[self.lang].KEYWORDS["gender"], return_first=True)
+		value = value.lower().strip()
 		if value:
 			if value == utils[self.lang].KEYWORDS["male"]:
 				gender = "M"
@@ -160,6 +161,100 @@ class EntPerson(EntCore):
 				self.d.log_message(f"Error: invalid gender - {value}")		
 		
 		self.gender = gender
+	
+	##
+	# @brief extracts and assigns jobs from the infobox
+	def assign_jobs(self):
+		data = self.get_infobox_data(utils[self.lang].KEYWORDS["jobs"])
+		for d in data:
+			jobs = []
+
+			# [[...|data]]
+			value = re.sub(r"\[\[[^]]*?\|(.+?)\]\]", r"\1", d)
+			# [[data]]
+			value = re.sub(r"\[\[(.+?)\]\]", r"\1", value)
+			# {{nowrap|data}}
+			value = re.sub(r"{{nowrap\|([^}]+)}}", r"\1", value, flags=re.I)
+
+			# data (irrelevant data)
+			value = re.sub(r"\(.*?\)", "", value).strip()
+			# getting rid of wikipedia templates
+			value = re.sub(r"\'{2,3}", "", value)
+			value = re.sub(r"&nbsp;", " ", value)
+
+			value = value.replace("\n", "").strip()
+			# plainlists and flatlists - {{plainlist|*job *job}}
+			pattern = r"\{\{(?:(?:indented\s)?plainlist|flatlist)\s*?\|(.*?)\}\}"
+			match = re.search(pattern, value, flags=re.I)
+			if match:
+				array = match.group(1).strip()
+				array = [a.strip() for a in array.split("*") if a]
+				if len(array):
+					jobs += array
+					value = re.sub(pattern, "", value, flags=re.I).strip()
+			
+			# hlists and unbulleted lists - {{hlist|job|job}}
+			pattern = r"\{\{(?:hlist|ubl|unbulleted\slist)\s*?\|(.*?)\}\}"
+			match = re.search(pattern, value, flags=re.I)
+			if match:
+				array = match.group(1).strip()
+				array = [a.strip() for a in array.split("|") if a]
+				if len(array):
+					jobs += array
+					value = re.sub(pattern, "", value, flags=re.I).strip()
+
+			# data {{unsuported template}}
+			value = re.sub(r"\{\{.*?\}\}", "", value).strip()
+
+			match = re.search(r"([;*•])", value)
+			if match:
+				char = match.group(1)
+				array = value.split(char)
+				array = [a.strip() for a in array if a]
+				jobs += array
+			elif value:
+				value = value.replace(", and", ",")
+				array = value.split(",")
+				array = [a.strip() for a in array if a]
+				jobs += array
+
+			self.jobs = "|".join(jobs)
+	
+	def assign_nationality(self):
+		nationalities = []
+
+		data = self.get_infobox_data(utils[self.lang].KEYWORDS["nationality"], return_first=True)
+		if data:
+			# remove irrelevant wiki templates
+			value = re.sub(r"\{\{(?:citation|flagicon)[^}]*?\}\}", "", data, flags=re.I)
+			value = re.sub(r"\[\[(?:image|file|soubor|obrázek):[^]]*?\]\]", "", value, flags=re.I)
+
+			# [[...|data]]
+			value = re.sub(r"\[\[[^]]*?\|(.+?)\]\]", r"\1", value)
+			# [[data]]
+			value = re.sub(r"\[\[(.+?)\]\]", r"\1", value)
+			value = re.sub(r"\[|\]", "", value)
+			# data (irrelevant data)
+			value = re.sub(r"\(.*?\)", "", value).strip()
+			
+			# use other templates (e.g.: {{flag|...}}, {{USA}})
+			value = re.sub(r"\{\{.+?\|(.+?)\}\}", r"\1", value)
+			value = re.sub(r"\{\{(.*?)\}\}", r"\1", value)
+
+			value = value.strip()
+
+			value = re.sub(r"\s(?:and|a)\s", ",", value)
+			value = re.sub(r"\s{2,}", ",", value)
+			match = re.search(r"(/|-|–|,)", value) 
+			if match:
+				char = match.group(1)
+				array = value.split(char)
+				array = [a.strip() for a in array if a]
+				nationalities += array
+			else:
+				nationalities.append(value)
+			
+			self.nationality = "|".join(nationalities)
 
 	# TODO: extract text
 	# extract gender from categories 

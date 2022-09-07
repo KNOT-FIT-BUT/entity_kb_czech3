@@ -11,6 +11,8 @@
 # @author created by Jan Kapsa (xkapsa00)
 # @date 15.07.2022
 
+import re
+
 from ent_core import EntCore
 
 from lang_modules.en.country_utils import CountryUtils as EnUtils
@@ -58,23 +60,28 @@ class EntCountry(EntCore):
 	##
     # @brief tries to assign entity information (calls the appropriate functions) and assigns prefix
 	def assign_values(self, lang):
-
 		lang_utils = utils[lang]
 
-		ent_data = {
-			"infobox_data": self.infobox_data,
-			"categories": self.categories,
-			"coords": self.coords,
-			"title": self.title
-		}
+		# extraction = lang_utils.extract_text(extraction, ent_data, self.d)
 
-		extraction = lang_utils.extract_infobox(ent_data, self.d)
-		extraction = lang_utils.extract_text(extraction, ent_data, self.d)
+		self.prefix = lang_utils.assign_prefix(self.categories)
+		self.latitude, self.longitude = self.core_utils.assign_coordinates(self)
+		self.area = self.assign_area()
+		self.assign_population()
 
-		self.prefix 	= extraction["prefix"]
 
-		self.latitude 	= extraction["latitude"]
-		self.longitude 	= extraction["longitude"]
-		self.area 		= extraction["area"]
-		self.population	= extraction["population"]
+	##
+    # @brief extracts and assigns population from infobox
+	#
+	# TODO: coef?
+	def assign_population(self):
+		data = self.get_infobox_data(utils[self.lang].KEYWORDS["population"], return_first=True)
+		if data:
+			data = re.sub(r"&nbsp;", "", data)
+			data = re.sub(r"(?<=\d)\s(?=\d)", "", data)
+			data = data.replace(',','')
+			match = re.findall(r"\d+", data)
+			if match:
+				data = match[0]				
+				self.population = data
 

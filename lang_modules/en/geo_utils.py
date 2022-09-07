@@ -26,7 +26,7 @@ class GeoUtils:
 
 		extraction["prefix"] = GeoUtils.assign_prefix(infobox_name)
 
-		extraction["latitude"], extraction["longitude"] = CoreUtils.assign_coordinates(infobox_data, debugger)
+		# extraction["latitude"], extraction["longitude"] = CoreUtils.assign_coordinates(infobox_data, debugger)
 		if extraction["prefix"] == "geo:waterfall":
 			extraction["total_height"] = GeoUtils.assign_height(infobox_data, debugger)
 		elif extraction["prefix"] in ("geo:island", "geo:continent"):

@@ -9,7 +9,10 @@ class CoreUtils:
 
 	# lang specific keywords
 	KEYWORDS = {
-		"image": ["image", "photo", "image_name", "image_flag", "image_coat", "image_map", "map_image", "logo"]		
+		"image": ["image", "photo", "image_name", "image_flag", "image_coat", "image_map", "map_image", "logo"],
+		"area_km2": ["area_km2", "area_total_km2"],
+		"area_sqmi": ["area_sq_mi", "area_total_sq_mi"],
+		"area_other": ["area", "basin_size"]
 	}
 
 	##
@@ -101,13 +104,12 @@ class CoreUtils:
 	#
 	# general method for country, settlement, waterarea, watercourse and geo entities
 	@staticmethod
-	def assign_coordinates(infobox_data, debugger):
-
+	def assign_coordinates(country):
 		latitude = ""
 		longitude = ""
 
-		if "coordinates" in infobox_data and infobox_data["coordinates"]:
-			coords = CoreUtils.get_coordinates(infobox_data["coordinates"], debugger)
+		if "coordinates" in country.infobox_data and country.infobox_data["coordinates"]:
+			coords = CoreUtils.get_coordinates(country.infobox_data["coordinates"], country.d)
 			if all(coords):
 				latitude, longitude = coords
 		
@@ -117,7 +119,6 @@ class CoreUtils:
     # @brief extracts and assigns area from infobox
 	@classmethod
 	def assign_area(cls, infobox_data, debugger):
-
 		def fix_area(value):
 			value = value.replace(",", "").strip()
 			value = re.sub(r"\{\{.+\}\}", "", value)
