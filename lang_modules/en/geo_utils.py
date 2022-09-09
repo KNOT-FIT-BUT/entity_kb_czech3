@@ -6,7 +6,8 @@ from lang_modules.en.core_utils import CoreUtils
 class GeoUtils:
 
 	KEYWORDS = {
-		"height": ["height"]
+		"height": ["height"],
+		"population": ["population"]
 	}
 
 	##
@@ -38,35 +39,7 @@ class GeoUtils:
 	def get_coef(value):
 		if re.search(r"billion", value, flags=re.I):
 			return 10e9
-		return 1
-
-	##
-    # @brief extracts and assigns population from infobox
-	@staticmethod
-	def assign_population(infobox_data):
-		population = ""
-		
-		if "population" in infobox_data and infobox_data["population"]:
-			population_match = infobox_data["population"]
-			population_match = re.sub(r",|\(.*\)", "", population_match).strip()
-			
-			if population_match.lower() == "uninhabited":
-				population = "0"
-				return population
-			
-			match = re.search(r"([0-9\.]+)\s+(\w+)", population_match)
-			if match:
-				#print(match.groups())
-				if match.group(2) == "billion":
-					population = round(float(match.group(1)) * 1e9)					
-				# add more if needed
-				return str(population)
-
-			match = re.search(r"([0-9\.]+)", population)
-			if match:
-				population = match.group(1)
-
-		return population			
+		return 1		
 
 	@staticmethod
 	def extract_text(extracted, ent_data, debugger):

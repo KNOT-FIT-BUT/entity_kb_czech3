@@ -5,7 +5,8 @@ from lang_modules.cs.core_utils import CoreUtils
 class GeoUtils:
 
 	KEYWORDS = {
-		"height": ["celková výška", "celková_výška"]
+		"height": ["celková výška", "celková_výška"],
+		"population": ["počet obyvatel", "počet_obyvatel"]
 	}
 	
 	@staticmethod
@@ -35,18 +36,6 @@ class GeoUtils:
 		if re.search(r"tis\.|tis[ií]c", value, re.I):
 			return 10e3
 		return 1
-
-	@classmethod
-	def assign_population(cls, infobox_data):
-		population = ""
-		# počet obyvatel
-		keys = ["počet obyvatel", "počet_obyvatel"]
-		for key in keys:
-			if key in infobox_data and infobox_data[key]:
-				value = infobox_data[key]
-				population = cls.get_population(CoreUtils.del_redundant_text(value))
-				break
-		return population
 		
 	@classmethod
 	def extract_text(cls, extracted, ent_data, debugger):
@@ -79,39 +68,39 @@ class GeoUtils:
 
 	# 	return area
 
-	##
-	# Převádí počet obyvatel, jenž žije na území geografické entity, do jednotného formátu.
-	# population - počet obyvatel, jenž žije na území geografické entity (str)
-	@staticmethod
-	def get_population(population):
-		coef = (
-			1000000
-			if re.search(r"mil\.|mili[oó]n", population, re.I)
-			else 1000
-			if re.search(r"tis\.|tis[ií]c", population, re.I)
-			else 0
-		)
+	# ##
+	# # Převádí počet obyvatel, jenž žije na území geografické entity, do jednotného formátu.
+	# # population - počet obyvatel, jenž žije na území geografické entity (str)
+	# @staticmethod
+	# def get_population(population):
+	# 	coef = (
+	# 		1000000
+	# 		if re.search(r"mil\.|mili[oó]n", population, re.I)
+	# 		else 1000
+	# 		if re.search(r"tis\.|tis[ií]c", population, re.I)
+	# 		else 0
+	# 	)
 
-		population = re.sub(r"\(.*?\)", "", population)
-		population = re.sub(r"\[.*?\]", "", population)
-		population = re.sub(r"<.*?>", "", population)
-		population = (
-			re.sub(r"{{.*?}}", "", population).replace("{", "").replace("}", "")
-		)
-		population = re.sub(r"(?<=\d)[,.\s](?=\d)", "", population).strip()
-		population = re.sub(r"^\D*(?=\d)", "", population)
-		population = re.sub(r"^(\d+)\D.*$", r"\1", population)
-		population = (
-			"0"
-			if re.search(r"neobydlen|bez.+?obyvatel", population, re.I)
-			else population
-		)  # pouze v tomto souboru
-		population = "" if not re.search(r"\d", population) else population
+	# 	population = re.sub(r"\(.*?\)", "", population)
+	# 	population = re.sub(r"\[.*?\]", "", population)
+	# 	population = re.sub(r"<.*?>", "", population)
+	# 	population = (
+	# 		re.sub(r"{{.*?}}", "", population).replace("{", "").replace("}", "")
+	# 	)
+	# 	population = re.sub(r"(?<=\d)[,.\s](?=\d)", "", population).strip()
+	# 	population = re.sub(r"^\D*(?=\d)", "", population)
+	# 	population = re.sub(r"^(\d+)\D.*$", r"\1", population)
+	# 	population = (
+	# 		"0"
+	# 		if re.search(r"neobydlen|bez.+?obyvatel", population, re.I)
+	# 		else population
+	# 	)  # pouze v tomto souboru
+	# 	population = "" if not re.search(r"\d", population) else population
 
-		if coef and population:
-			population = str(int(population) * coef)
+	# 	if coef and population:
+	# 		population = str(int(population) * coef)
 
-		return population
+	# 	return population
 
 	# ##
 	# # @brief Převádí celkovou výšku vodopádu do jednotného formátu.

@@ -163,7 +163,7 @@ class EntGeo(EntCore):
 				pop = ""
 			return pop
 
-		data = self.get_infobox_data(["population", "počet obyvatel", "počet_obyvatel"], return_first=True)
+		data = self.get_infobox_data(utils[self.lang].KEYWORDS["population"], return_first=True)
 		if data:
 			data = fix_population(data)
 			self.population = data
