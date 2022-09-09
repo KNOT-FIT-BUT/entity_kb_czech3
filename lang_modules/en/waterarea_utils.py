@@ -5,34 +5,14 @@ from lang_modules.en.core_utils import CoreUtils
 
 class WaterareaUtils:
 
-	def extract_infobox(ent_data, debugger):
-		
-		extraction = {
-			"latitude": "",
-			"longitude": "",
-			"area": "",
-			"continents": ""
-		}
-
-		infobox_data, title = (
-			ent_data["infobox_data"],
-			ent_data["title"]	
-		)
-
-		extraction["latitude"], extraction["longitude"] = CoreUtils.assign_coordinates(infobox_data, debugger)
-		extraction["area"] = CoreUtils.assign_area(infobox_data, debugger)
-		extraction["continents"] = WaterareaUtils.assign_continents(infobox_data)
-
-		return extraction
-
 	##
     # @brief extracts and assigns continents from infobox
 	@staticmethod
-	def assign_continents(infobox_data):	
+	def assign_continents(waterarea):
 		continents = ""
 
-		if "location" in infobox_data:
-			location = infobox_data['location']
+		if "location" in waterarea.infobox_data:
+			location = waterarea.infobox_data['location']
 			if location != "":
 				continents = ["Asia", "Africa", "Europe", "North America", "South America", "Australia", "Oceania", "Antarctica"]
 				patterns = [r"Asia", r"Africa", r"Europe", r"North[^,]+America", r"South[^,]+America", r"Australia", r"Oceania", r"Antarctica"]

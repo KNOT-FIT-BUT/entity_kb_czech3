@@ -107,8 +107,30 @@ class CoreUtils:
 
 	# TODO: fix this
 	@classmethod
-	def assign_coordinates(cls, country):
-		return cls.get_wiki_api_location(country.title)
+	def assign_coordinates(cls, entity):
+		latitude = ""
+		longitude = ""
+
+		# zeměpisná šířka
+		keys = ["zeměpisná šířka", "zeměpisná_šířka"]
+		for key in keys:
+			if key in entity.infobox_data and entity.infobox_data[key]:
+				value = entity.infobox_data[key]
+				latitude = cls.get_latitude(cls.del_redundant_text(value))
+				break
+
+		# zeměpisná výška
+		keys = ["zeměpisná výška", "zeměpisná_výška"]
+		for key in keys:
+			if key in entity.infobox_data and entity.infobox_data[key]:
+				value = entity.infobox_data[key]
+				longitude = cls.get_longitude(cls.del_redundant_text(value))
+				break
+
+		if latitude and longitude:
+			return (latitude, longitude)
+		else:
+			return cls.get_wiki_api_location(entity.title)
 
 	@staticmethod
 	def get_wiki_api_location(title):

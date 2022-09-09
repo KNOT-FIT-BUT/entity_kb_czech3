@@ -14,12 +14,15 @@
 # @author created by Jan Kapsa (xkapsa00)
 # @date 15.07.2022
 
-from ent_core import EntCore
+import re
 
+from ent_core import EntCore
 from lang_modules.en.watercourse_utils import WatercourseUtils as EnUtils
+from lang_modules.cs.watercourse_utils import WatercourseUtils as CsUtils
 
 utils = {
-	"en": EnUtils
+	"en": EnUtils,
+	"cs": CsUtils
 }
 
 ##
@@ -65,20 +68,119 @@ class EntWaterCourse(EntCore):
 	##
     # @brief tries to assign entity information (calls the appropriate functions)
 	def assign_values(self, lang):		
-		lang_utils = utils[lang]
+		# lang_utils = utils[lang]
+		# extraction = lang_utils.extract_text(extraction, ent_data, self.d)
 
-		ent_data = {
-			"infobox_data": self.infobox_data,
-			"coords": self.coords,
-			"title": self.title
-		}
+		self.assign_continent()
+		self.latitude, self.longitude = self.core_utils.assign_coordinates(self)
+		self.area = self.assign_area()
+		self.assign_length()
+		self.assign_stremflow()
+		self.assign_source()
 
-		extraction = lang_utils.extract_infobox(ent_data, self.d)
-		extraction = lang_utils.extract_text(extraction, ent_data, self.d)
 
-		self.continents 	= extraction["continents"]
-		self.latitude 		= extraction["latitude"]
-		self.longitude 		= extraction["longitude"]
-		self.area 			= extraction["area"]
-		self.streamflow		= extraction["streamflow"]
-		self.source_loc		= extraction["source_loc"]
+	##
+	# @brief extracts and assigns continents from infobox
+	#
+	# NOT UNIFIED - en version is not currently extracting continents in watercourse entities
+	def assign_continent(self):
+		data = self.get_infobox_data(["světadíl"], return_first=True)
+		if data:
+			data = self.get_continent(self.core_utils.del_redundant_text(data))
+			self.continents = data
+
+	##
+    # @brief extracts and assigns source location from infobox
+	def assign_source(self):
+		def fix_source(source):
+			source = re.sub(r"\[\[.*?\|([^\|]*?)\]\]", r"\1", source)
+			source = re.sub(r"\[|\]", "", source)
+			source = re.sub(r"'{2}", "", source)
+			source = re.sub(r"{{.*?}}", "", source).replace("()", "")
+			source = source.strip().strip(",").strip()
+			return source
+
+		data = self.get_infobox_data(utils[self.lang].KEYWORDS["source"], return_first=True)
+		if data:
+			data = fix_source(data)
+			self.source_loc = data
+
+	##
+    # @brief extracts and assigns streamflow from infobox
+	def assign_stremflow(self):
+		def fix_streamflow(flow):
+			flow = re.sub(r"\(.*?\)", "", flow).strip()
+			flow = re.sub(r"&nbsp;", "", flow)
+			flow = re.sub(r",(?=\d{3})", "", flow)
+			match = re.search(r"\{\{(?:convert|cvt)\|([\d,\.]+)\|([^\|]+)(?:\|.*?)?\}\}", flow, flags=re.I)
+			if match:
+				number = match.group(1).strip()
+				unit = match.group(2).strip()
+				flow = self.convert_units(number, unit, self.d)
+			flow = re.sub(r"(?<=\d)\s(?=\d)", "", flow)
+			flow = re.sub(r"^\D*(?=\d)", "", flow)
+			match = re.search(r"^([\d\.,]+)(?:\s([^\s]+))?", flow)
+			if match:
+				number = match.group(1)
+				unit = match.group(2)
+				if unit:
+					flow = self.convert_units(number, unit, self.d)
+				else:
+					flow = number
+			else:
+				flow = ""
+			flow = re.sub(r"(?<=\d)\.(?=\d)", ",", flow)
+			return flow
+
+		data = self.get_infobox_data(utils[self.lang].KEYWORDS["streamflow"], return_first=True)
+		if data:
+			data = fix_streamflow(data)
+			self.streamflow = data
+
+	##
+    # @brief extracts and assigns length from infobox
+	def assign_length(self):
+		def fix_length(length):
+			length = re.sub(r"\(.*?\)", "", length)
+			length = re.sub(r"&nbsp;", " ", length)
+			length = re.sub(r"(?<=\d)\s(?=\d)", "", length)
+			length = re.sub(r",(?=\d{3})", "", length)
+			length = length.replace(",", ".")
+			match = re.search(r"\{\{(?:convert|cvt)\|([\d,\.]+)\|([^\|]+)(?:\|.*?)?\}\}", length, flags=re.I)
+			if match:
+				number = match.group(1).strip()
+				unit = match.group(2).strip()
+				length = self.convert_units(number, unit, self.d)
+			length = re.sub(r"\{\{.*?\}\}", "", length)
+			match = re.search(r"^([\d\.,]+)(?:\s?([^\s]+))?", length)
+			if match:
+				number = match.group(1).strip()
+				unit = match.group(2)
+				if unit:
+					unit = unit.strip(".").strip()
+					length = self.convert_units(number, unit, self.d)
+				else:
+					length = number
+			else:
+				length = ""
+			length = re.sub(r"(?<=\d)\.(?=\d)", ",", length)
+			return length
+
+		data = self.get_infobox_data(utils[self.lang].KEYWORDS["length"], return_first=True)
+		if data:
+			data = fix_length(data)
+			self.length = data
+
+	##
+	# @brief Převádí světadíl, kterým vodní tok protéká, do jednotného formátu.
+	# @param continent - světadíl, kterým vodní tok protéká (str)
+	@staticmethod
+	def get_continent(continent):
+		continent = re.sub(r"\(.*?\)", "", continent)
+		continent = re.sub(r"\[.*?\]", "", continent)
+		continent = re.sub(r"<.*?>", "", continent)
+		continent = re.sub(r"{{.*?}}", "", continent)
+		continent = re.sub(r"\s+", " ", continent).strip()
+		continent = re.sub(r", ?", "|", continent).replace("/", "|")
+
+		return continent

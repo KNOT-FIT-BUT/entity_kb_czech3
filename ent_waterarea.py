@@ -16,9 +16,11 @@ import re
 from ent_core import EntCore
 
 from lang_modules.en.waterarea_utils import WaterareaUtils as EnUtils
+from lang_modules.cs.waterarea_utils import WaterareaUtils as CsUtils
 
 utils = {
-	"en": EnUtils
+	"en": EnUtils,
+	"cs": CsUtils
 }
 
 ##
@@ -60,16 +62,9 @@ class EntWaterArea(EntCore):
 	def assign_values(self, lang):
 		lang_utils = utils[lang]
 
-		ent_data = {
-			"infobox_data": self.infobox_data,
-			"coords": self.coords,
-			"title": self.title
-		}
+		# extraction = lang_utils.extract_text(extraction, ent_data, self.d)
 
-		extraction = lang_utils.extract_infobox(ent_data, self.d)
-		extraction = lang_utils.extract_text(extraction, ent_data, self.d)
+		self.latitude, self.longitude = self.core_utils.assign_coordinates(self)
+		self.area = self.assign_area()		
+		self.continents = lang_utils.assign_continents(self)
 
-		self.latitude 		= extraction["latitude"]
-		self.longitude 		= extraction["longitude"]
-		self.area 			= extraction["area"]
-		self.continents 	= extraction["continents"]
