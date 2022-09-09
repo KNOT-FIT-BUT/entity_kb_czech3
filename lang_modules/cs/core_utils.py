@@ -145,6 +145,7 @@ class CoreUtils:
 				latitude = pages[first_page]["coordinates"][0]["lat"]
 				longitude = pages[first_page]["coordinates"][0]["lon"]
 				return (str(latitude), str(longitude))
+			return ("", "")
 		except Exception as e:
 			return ("", "")
 

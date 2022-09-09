@@ -26,12 +26,15 @@
 # @author created by Jan Kapsa (xkapsa00)
 # @date 15.07.2022
 
-from ent_core import EntCore
+import re
 
+from ent_core import EntCore
 from lang_modules.en.geo_utils import GeoUtils as EnUtils
+from lang_modules.cs.geo_utils import GeoUtils as CsUtils
 
 utils = {
-	"en": EnUtils
+	"en": EnUtils,
+	"cs": CsUtils
 }
 
 ##
@@ -83,21 +86,108 @@ class EntGeo(EntCore):
 	def assign_values(self, lang):
 		lang_utils = utils[lang]
 
-		ent_data = {
-			"infobox_data": self.infobox_data,
-			"infobox_name": self.infobox_name,
-			"coords": self.coords,
-			"title": self.title
-		}
+		# extraction = lang_utils.extract_text(extraction, ent_data, self.d)
 
-		extraction = lang_utils.extract_infobox(ent_data, self.d)
-		extraction = lang_utils.extract_text(extraction, ent_data, self.d)
+		self.prefix = lang_utils.assign_prefix(self)
+		self.latitude, self.longitude = self.core_utils.assign_coordinates(self)
 
-		self.prefix 		= extraction["prefix"]
+		if self.prefix == "geo:waterfall":
+			self.assign_height()
 
-		self.continent 		= extraction["continent"]
-		self.latitude 		= extraction["latitude"]
-		self.longitude 		= extraction["longitude"]
-		self.area 			= extraction["area"]
-		self.population		= extraction["population"]
-		self.total_height	= extraction["total_height"]
+		if self.prefix in ("geo:island", "geo:continent"):
+			self.area = self.assign_area()
+			self.assign_population()
+
+		if self.prefix in ("geo:island", "geo:relief", "geo:waterfall"):
+			self.assign_continent()
+
+	##
+    # @brief extracts and assigns height from infobox
+	def assign_height(self):
+		def fix_height(height):
+			height = re.sub(r"\(.*?\)", "", height)
+			height = re.sub(r"&nbsp;", " ", height)
+			height = re.sub(r"(?<=\d)\s(?=\d)", "", height)
+			height = re.sub(r",(?=\d{3})", "", height)
+			height = height.replace(",", ".")
+			match = re.search(r"\{\{(?:convert|cvt)\|([\d,\.]+)\|([^\|]+)(?:\|.*?)?\}\}", height, flags=re.I)
+			if match:
+				number = match.group(1).strip()
+				unit = match.group(2).strip()
+				height = self.convert_units(number, unit, self.d)
+			height = re.sub(r"\{\{.*?\}\}", "", height)
+			match = re.search(r"^([\d\.,]+)(?:\s?([^\s]+))?", height)
+			if match:
+				number = match.group(1).strip()
+				unit = match.group(2)
+				if unit:
+					unit = unit.strip(".").strip()
+					height = self.convert_units(number, unit, self.d)
+				else:
+					height = number
+			else:
+				height = ""
+			height = re.sub(r"(?<=\d)\.(?=\d)", ",", height)
+			return height
+		
+		data = self.get_infobox_data(utils[self.lang].KEYWORDS["height"], return_first=True)
+		if data:
+			data = fix_height(data)
+			self.total_height = data
+
+	##
+    # @brief extracts and assigns population from infobox
+	def assign_population(self):
+		def fix_population(pop):
+			pop = re.sub(r"\(.*?\)", "", pop)
+			pop = re.sub(r"&nbsp;", "", pop)
+			pop = re.sub(r"(?<=\d)\s(?=\d)", "", pop)
+			pop = re.sub(r",(?=\d{3})", "", pop)
+			pop = re.sub(r"\{\{circa\|([^\|]+).*?\}\}", r"\1", pop)
+			pop = re.sub(r"\{\{.*?\}\}", "", pop)
+			match = re.search(r"uninhabited|neobydlen|bez.+?obyvatel", pop, flags=re.I)
+			if match:
+				pop = "0"
+			match = re.search(r"^([\d,\.]+)(?:\s?([^\s]+))?", pop)
+			if match:
+				number = match.group(1).strip()
+				coef = match.group(2)
+				if coef:
+					coef = coef.strip()
+					coef = utils[self.lang].get_coef(coef)
+					number = str(int(float(number) * coef))
+					pop = number
+				else:
+					pop = number
+			else:
+				pop = ""
+			return pop
+
+		data = self.get_infobox_data(["population", "počet obyvatel", "počet_obyvatel"], return_first=True)
+		if data:
+			data = fix_population(data)
+			self.population = data
+
+	##
+	# @brief description
+	#
+	# NOT UNIFIED - en version is not currently extracting continents in watercourse entities
+	def assign_continent(self):
+		data = self.get_infobox_data(["světadíl"], return_first=True)
+		if data:
+			data = self.get_continent(self.core_utils.del_redundant_text(data))
+			self.continent = data
+
+	##
+	# Převádí světadíl, na kterém se geografická entita nachází, do jednotného formátu.
+	# continent - světadíl, na kterém se geografická entita nachází (str)
+	@staticmethod
+	def get_continent(continent):
+		continent = re.sub(r"\(.*?\)", "", continent)
+		continent = re.sub(r"\[.*?\]", "", continent)
+		continent = re.sub(r"<.*?>", "", continent)
+		continent = re.sub(r"{{.*?}}", "", continent)
+		continent = re.sub(r"\s+", " ", continent).strip()
+		continent = re.sub(r", ?", "|", continent).replace("/", "|")
+
+		return continent

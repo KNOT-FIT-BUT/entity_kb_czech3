@@ -5,61 +5,41 @@ from lang_modules.en.core_utils import CoreUtils
 
 class GeoUtils:
 
-	@staticmethod
-	def extract_infobox(ent_data, debugger):
-
-		extraction = {
-			"prefix": "",
-			"continent": "",
-			"latitude": "",
-			"longitude": "",
-			"area": "",
-			"population": "",
-			"total_height": ""
-		}
-
-		infobox_data, infobox_name, title = (
-			ent_data["infobox_data"],
-			ent_data["infobox_name"],
-			ent_data["title"]
-		)
-
-		extraction["prefix"] = GeoUtils.assign_prefix(infobox_name)
-
-		# extraction["latitude"], extraction["longitude"] = CoreUtils.assign_coordinates(infobox_data, debugger)
-		if extraction["prefix"] == "geo:waterfall":
-			extraction["total_height"] = GeoUtils.assign_height(infobox_data, debugger)
-		elif extraction["prefix"] in ("geo:island", "geo:continent"):
-			extraction["area"] = CoreUtils.assign_area(infobox_data, debugger)
-			extraction["population"] = GeoUtils.assign_population(infobox_data)
-
-		return extraction
+	KEYWORDS = {
+		"height": ["height"]
+	}
 
 	##
-    # @brief extracts and assigns height from infobox
+    # @brief assigns prefix based on infobox name
+    #
+    # geo:waterfall, geo:island, geo:relief, geo:peninsula or geo:continent
 	@staticmethod
-	def assign_height(infobox_data, debugger):
-		total_height = ""
+	def assign_prefix(geo):
+		prefix = "geo:"
+		name = ""
 		
-		if "height" in infobox_data and infobox_data["height"] != "":
-			height = infobox_data["height"]
+		pattern = r"(waterfall|islands?|mountain|peninsulas?|continent)"
+		match = re.search(pattern, geo.infobox_name, re.I)
+		if match:
+			name = match.group(1).lower()
 
-			# match "{{convert }}" format
-			match = re.search(r"{{(?:convert|cvt)\|([0-9]+)\|(\w+).*}}", height)
-			if match:
-				total_height = CoreUtils.convert_units(match.group(1), match.group(2), debugger)
-			else:
-				height = re.sub(r"\(.*\)", "", height).strip()
-				split = height.split(" ")
-				if len(split) > 1:
-					total_height = CoreUtils.convert_units(split[0], split[1], debugger)
-				else:
-					match = re.search(r"([0-9]+)(\w+)", split[0])
-					if match:
-						total_height = CoreUtils.convert_units(match.group(1), match.group(2), debugger)
+		if name in ("island", "islands"):
+			prefix += "island"
+		elif name == "mountain":
+			prefix += "relief"
+		elif name == "peninsulas":
+			prefix += "peninsula"
+		else:
+			prefix += name
 
-		return total_height			
-	
+		return prefix
+
+	@staticmethod
+	def get_coef(value):
+		if re.search(r"billion", value, flags=re.I):
+			return 10e9
+		return 1
+
 	##
     # @brief extracts and assigns population from infobox
 	@staticmethod
@@ -88,31 +68,6 @@ class GeoUtils:
 
 		return population			
 
-	##
-    # @brief assigns prefix based on infobox name
-    #
-    # geo:waterfall, geo:island, geo:relief, geo:peninsula or geo:continent
-	@staticmethod
-	def assign_prefix(infobox_name):
-		prefix = "geo:"
-		name = ""
-		
-		pattern = r"(waterfall|islands?|mountain|peninsulas?|continent)"
-		match = re.search(pattern, infobox_name, re.I)
-		if match:
-			name = match.group(1).lower()
-
-		if name in ("island", "islands"):
-			prefix += "island"
-		elif name == "mountain":
-			prefix += "relief"
-		elif name == "peninsulas":
-			prefix += "peninsula"
-		else:
-			prefix += name
-
-		return prefix
-
 	@staticmethod
 	def extract_text(extracted, ent_data, debugger):
 		coords = ent_data["coords"]
@@ -123,3 +78,4 @@ class GeoUtils:
 				extracted["latitude"], extracted["longitude"] = coords
 
 		return extracted
+
