@@ -133,11 +133,11 @@ class EntPerson(EntCore):
 			p = re.sub(r"\[|\]", "", p)
 			return p.strip()
 
-		value = self.get_infobox_data(utils[self.lang].KEYWORDS["birth_place"], return_first=True)
+		value = self.get_infobox_data(utils[self.lang].KEYWORDS["birth_place"])
 		if value:
 			birth_place = fix_place(value)
 
-		value = self.get_infobox_data(utils[self.lang].KEYWORDS["birth_place"], return_first=True)
+		value = self.get_infobox_data(utils[self.lang].KEYWORDS["birth_place"])
 		if value:
 			death_place = fix_place(value)
 
@@ -150,7 +150,7 @@ class EntPerson(EntCore):
 	def assign_gender(self):
 		gender = ""		
 		
-		value = self.get_infobox_data(utils[self.lang].KEYWORDS["gender"], return_first=True)
+		value = self.get_infobox_data(utils[self.lang].KEYWORDS["gender"])
 		value = value.lower().strip()
 		if value:
 			if value == utils[self.lang].KEYWORDS["male"]:
@@ -166,11 +166,11 @@ class EntPerson(EntCore):
 	# @brief extracts and assigns jobs from the infobox
 	def assign_jobs(self):
 		data = self.get_infobox_data(utils[self.lang].KEYWORDS["jobs"])
-		for d in data:
+		if data:
 			jobs = []
 
 			# [[...|data]]
-			value = re.sub(r"\[\[[^]]*?\|(.+?)\]\]", r"\1", d)
+			value = re.sub(r"\[\[[^]]*?\|(.+?)\]\]", r"\1", data)
 			# [[data]]
 			value = re.sub(r"\[\[(.+?)\]\]", r"\1", value)
 			# {{nowrap|data}}
@@ -223,7 +223,7 @@ class EntPerson(EntCore):
 	def assign_nationality(self):
 		nationalities = []
 
-		data = self.get_infobox_data(utils[self.lang].KEYWORDS["nationality"], return_first=True)
+		data = self.get_infobox_data(utils[self.lang].KEYWORDS["nationality"])
 		if data:
 			# remove irrelevant wiki templates
 			value = re.sub(r"\{\{(?:citation|flagicon)[^}]*?\}\}", "", data, flags=re.I)

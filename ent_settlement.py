@@ -98,7 +98,7 @@ class EntSettlement(EntCore):
 			return
 		
 		# subdivision_name
-		data = self.get_infobox_data(["subdivision_name", "země", "stát"], return_first=True)
+		data = self.get_infobox_data(utils[self.lang].KEYWORDS["country"])
 		if data:
 			data = fix_country(data)
 			self.country = data
@@ -106,7 +106,7 @@ class EntSettlement(EntCore):
 	##
     # @brief extracts and assigns population from infobox
 	def assign_population(self):
-		data = self.get_infobox_data(utils[self.lang].KEYWORDS["population"], return_first=True)
+		data = self.get_infobox_data(utils[self.lang].KEYWORDS["population"])
 		if data:
 			if re.search(r"plainlist", data, flags=re.I):
 				return

@@ -23,8 +23,8 @@ class CoreUtils:
 	KEYWORDS = {
 		"image": 		["obrázek", "vlajka", "znak", "mapa umístění", "mapa_umítění", "mapa", "logo"],
 		"area_km2": 	["rozloha", "výměra", "plocha"],
-		"area_sqmi": 	[],
-		"area_other": 	[]
+		"area_sqmi": 	"",
+		"area_other": 	""
 	}
 
 	@staticmethod

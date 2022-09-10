@@ -6,13 +6,13 @@ from lang_modules.en.core_utils import CoreUtils
 class PersonUtils:
 
 	KEYWORDS = {
-		"birth_place":	["birth_place"],
-		"death_place": 	["death_place"],
-		"gender": 		["gender"],
+		"birth_place":	"birth_place",
+		"death_place": 	"death_place",
+		"gender": 		"gender",
 		"male": 		"male",
 		"female": 		"female",
-		"jobs":			["occupation"],
-		"nationality":	["nationality"]
+		"jobs":			"occupation",
+		"nationality":	"nationality"
 	}
 
 	##

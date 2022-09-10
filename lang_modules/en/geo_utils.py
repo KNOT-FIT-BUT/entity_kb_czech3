@@ -6,8 +6,8 @@ from lang_modules.en.core_utils import CoreUtils
 class GeoUtils:
 
 	KEYWORDS = {
-		"height": ["height"],
-		"population": ["population"]
+		"height": "height",
+		"population": "population"
 	}
 
 	##

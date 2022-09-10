@@ -84,7 +84,7 @@ class EntWaterCourse(EntCore):
 	#
 	# NOT UNIFIED - en version is not currently extracting continents in watercourse entities
 	def assign_continent(self):
-		data = self.get_infobox_data(["světadíl"], return_first=True)
+		data = self.get_infobox_data(["světadíl"])
 		if data:
 			data = self.get_continent(self.core_utils.del_redundant_text(data))
 			self.continents = data
@@ -100,7 +100,7 @@ class EntWaterCourse(EntCore):
 			source = source.strip().strip(",").strip()
 			return source
 
-		data = self.get_infobox_data(utils[self.lang].KEYWORDS["source"], return_first=True)
+		data = self.get_infobox_data(utils[self.lang].KEYWORDS["source"])
 		if data:
 			data = fix_source(data)
 			self.source_loc = data
@@ -132,7 +132,7 @@ class EntWaterCourse(EntCore):
 			flow = re.sub(r"(?<=\d)\.(?=\d)", ",", flow)
 			return flow
 
-		data = self.get_infobox_data(utils[self.lang].KEYWORDS["streamflow"], return_first=True)
+		data = self.get_infobox_data(utils[self.lang].KEYWORDS["streamflow"])
 		if data:
 			data = fix_streamflow(data)
 			self.streamflow = data
@@ -166,7 +166,7 @@ class EntWaterCourse(EntCore):
 			length = re.sub(r"(?<=\d)\.(?=\d)", ",", length)
 			return length
 
-		data = self.get_infobox_data(utils[self.lang].KEYWORDS["length"], return_first=True)
+		data = self.get_infobox_data(utils[self.lang].KEYWORDS["length"])
 		if data:
 			data = fix_length(data)
 			self.length = data

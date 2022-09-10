@@ -75,7 +75,7 @@ class EntCountry(EntCore):
 	#
 	# TODO: coef?
 	def assign_population(self):
-		data = self.get_infobox_data(utils[self.lang].KEYWORDS["population"], return_first=True)
+		data = self.get_infobox_data(utils[self.lang].KEYWORDS["population"])
 		if data:
 			data = re.sub(r"&nbsp;", "", data)
 			data = re.sub(r"(?<=\d)\s(?=\d)", "", data)

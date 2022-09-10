@@ -124,7 +124,9 @@ class EntCore(metaclass=ABCMeta):
 	##
 	# @brief extracts data from infobox dictionary given an array of keys
 	# @return array of data found in the infobox dictionary
-	def get_infobox_data(self, keys, return_first=False):
+	def get_infobox_data(self, keys, return_first=True):
+		if isinstance(keys, str):
+			keys = [keys]
 		data = []
 		for key in keys:
 			if key in self.infobox_data and self.infobox_data[key]:
@@ -148,7 +150,7 @@ class EntCore(metaclass=ABCMeta):
 		return data
 
 	##
-    # @brief extracts and assigns area from infobox
+	# @brief extracts and assigns area from infobox
 	def assign_area(self):
 		def fix_area(value):
 			area = re.sub(r"&nbsp;", "", value)
@@ -160,21 +162,21 @@ class EntCore(metaclass=ABCMeta):
 			return area.strip()
 
 		# km2
-		data = self.get_infobox_data(utils[self.lang].KEYWORDS["area_km2"])
+		data = self.get_infobox_data(utils[self.lang].KEYWORDS["area_km2"], return_first=False)
 		for d in data:
 			area = fix_area(d)
 			if area:
 				return area
 
 		# sq_mi
-		data = self.get_infobox_data(utils[self.lang].KEYWORDS["area_sqmi"])
+		data = self.get_infobox_data(utils[self.lang].KEYWORDS["area_sqmi"], return_first=False)
 		for d in data:
 			area = fix_area(d)
 			area = self.convert_units(area, "sqmi", self.d)
 			if area:
 				return area
 
-		data = self.get_infobox_data(utils[self.lang].KEYWORDS["area_other"])
+		data = self.get_infobox_data(utils[self.lang].KEYWORDS["area_other"], return_first=False)
 		for d in data:
 			# look for convert template - {{convert|...}}
 			match = re.search(r"\{\{(?:convert|cvt)\|([^\}]+)\}\}", d, re.I)
@@ -446,7 +448,7 @@ class EntCore(metaclass=ABCMeta):
 			extracted_images = [self.get_image_path(img) for img in extracted_images]
 			self.images = "|".join(extracted_images)
 
-		data = self.get_infobox_data(utils[self.lang].KEYWORDS["image"])
+		data = self.get_infobox_data(utils[self.lang].KEYWORDS["image"], return_first=False)
 		for d in data:
 			image = d.replace("\n", "")
 			if not image.startswith("http"):

@@ -12,11 +12,11 @@ class PersonUtils:
 	KEYWORDS = {
 		"birth_place": 	["místo narození", "místo_narození"],
 		"death_place": 	["místo úmrtí", "místo_úmrtí"],
-		"gender": 		["pohlaví"],
+		"gender": 		"pohlaví",
 		"male": 		"muž",
 		"female": 		"žena",
 		"jobs":			["profese", "zaměstnání", "povolání"],
-		"nationality":	["národnost"]
+		"nationality":	"národnost"
 	}
 
 	##

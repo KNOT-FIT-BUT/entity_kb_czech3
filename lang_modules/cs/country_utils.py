@@ -6,7 +6,7 @@ from lang_modules.cs.core_utils import CoreUtils
 class CountryUtils:
 
 	KEYWORDS = {
-		"population": ["počet obyvatel"]
+		"population": "počet obyvatel"
 	}
 
 	@classmethod
