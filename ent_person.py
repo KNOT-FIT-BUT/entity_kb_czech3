@@ -110,30 +110,27 @@ class EntPerson(EntCore):
 	##
 	# @brief extracts and assigns places from infobox, removes wikipedia formatting
 	def assign_places(self):
-		birth_place = ""
-		death_place = ""
-
 		def fix_place(place):
 			p = re.sub(r"{{Vlajka a název\|(.*?)(?:\|.*?)?}}", r"\1", place, flags=re.I)
 			p = re.sub(r"{{flagicon\|(.*?)(?:\|.*?)?}}", r"\1", p, flags=re.I)
-			p = re.sub(r"{{malé\|(.*?)}}", r"\1", p, flags=re.I)
+			p = re.sub(r"{{(?:malé|small)\|(.*?)}}", r"\1", p, flags=re.I)
 			p = re.sub(r"{{nowrap\|(.*?)}}", r"\1", p)
+			p = re.sub(r"\[\[(?:file|soubor|image):.*?\]\]", "", p, flags=re.I)
 			p = re.sub(r"\{\{.*?\}\}", "", p)
-			p = re.sub(r"\[\[.*?\|([^\|]*?)\]\]", r"\1", p)
+			p = re.sub(r"\[\[[^]]*?\|([^\|]*?)\]\]", r"\1", p)
 			p = re.sub(r"\[|\]", "", p)
+			p = re.sub(r"\s+", " ", p)
 			return p.strip()
 
 		value = self.get_infobox_data(utils[self.lang].KEYWORDS["birth_place"])
 		if value:
 			birth_place = fix_place(value)
+			self.birth_place = birth_place
 
 		value = self.get_infobox_data(utils[self.lang].KEYWORDS["birth_place"])
 		if value:
 			death_place = fix_place(value)
-
-		# debugger.log_message((birth_place, death_place))
-		self.birth_place = birth_place
-		self.death_place = death_place
+			self.death_place = death_place
 
 	##	
 	# @brief extracts and assigns gender
