@@ -50,10 +50,10 @@ class EntWaterArea(EntCore):
     # @return tab separated values containing all of entity data <string>
 	def __repr__(self):
 		data = [
+			self.continents,
 			self.latitude,
 			self.longitude,
-			self.area,
-			self.continents
+			self.area
 		]
 		return self.serialize("\t".join(data))
 

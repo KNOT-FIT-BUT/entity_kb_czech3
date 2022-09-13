@@ -116,7 +116,7 @@ class EntWaterCourse(EntCore):
 			if match:
 				number = match.group(1).strip()
 				unit = match.group(2).strip()
-				flow = self.convert_units(number, unit, self.d)
+				flow = self.convert_units(number, unit)
 			flow = re.sub(r"(?<=\d)\s(?=\d)", "", flow)
 			flow = re.sub(r"^\D*(?=\d)", "", flow)
 			match = re.search(r"^([\d\.,]+)(?:\s([^\s]+))?", flow)
@@ -124,7 +124,7 @@ class EntWaterCourse(EntCore):
 				number = match.group(1)
 				unit = match.group(2)
 				if unit:
-					flow = self.convert_units(number, unit, self.d)
+					flow = self.convert_units(number, unit)
 				else:
 					flow = number
 			else:
@@ -150,7 +150,7 @@ class EntWaterCourse(EntCore):
 			if match:
 				number = match.group(1).strip()
 				unit = match.group(2).strip()
-				length = self.convert_units(number, unit, self.d)
+				length = self.convert_units(number, unit)
 			length = re.sub(r"\{\{.*?\}\}", "", length)
 			match = re.search(r"^([\d\.,]+)(?:\s?([^\s]+))?", length)
 			if match:
@@ -158,7 +158,7 @@ class EntWaterCourse(EntCore):
 				unit = match.group(2)
 				if unit:
 					unit = unit.strip(".").strip()
-					length = self.convert_units(number, unit, self.d)
+					length = self.convert_units(number, unit)
 				else:
 					length = number
 			else:

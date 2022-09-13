@@ -536,8 +536,10 @@ class WikiExtract(object):
 					break
 			
 			split = [s for s in section.strip().split("\n") if s != ""]
-			for s in split:
-				if s.startswith("'''") or s.startswith("The '''"):
+			while len(split):
+				s = split.pop(0)
+				if re.search(r"^(?:'''|The ''')", s, flags=re.I):
+					s += f" {' '.join(split)}"
 					result["paragraph"] = s.strip()
 					break
 		else:

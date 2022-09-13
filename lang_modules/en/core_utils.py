@@ -9,6 +9,7 @@ class CoreUtils:
 
 	# lang specific keywords
 	KEYWORDS = {
+		"sentence": ["was", "is", "are", "were"],
 		"image": ["image", "photo", "image_name", "image_flag", "image_coat", "image_map", "map_image", "logo"],
 		"area_km2": ["area_km2", "area_total_km2"],
 		"area_sqmi": ["area_sq_mi", "area_total_sq_mi"],

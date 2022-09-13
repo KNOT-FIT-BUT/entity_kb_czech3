@@ -13,8 +13,8 @@ class PersonUtils:
 		"birth_place": 	["místo narození", "místo_narození"],
 		"death_place": 	["místo úmrtí", "místo_úmrtí"],
 		"gender": 		"pohlaví",
-		"male": 		"muž",
-		"female": 		"žena",
+		"male": 		["muž", "muži"],
+		"female": 		["žena", "ženy"],
 		"jobs":			["profese", "zaměstnání", "povolání"],
 		"nationality":	"národnost"
 	}

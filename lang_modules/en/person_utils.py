@@ -9,8 +9,8 @@ class PersonUtils:
 		"birth_place":	"birth_place",
 		"death_place": 	"death_place",
 		"gender": 		"gender",
-		"male": 		"male",
-		"female": 		"female",
+		"male": 		["male"],
+		"female": 		["female", "women"],
 		"jobs":			"occupation",
 		"nationality":	"nationality"
 	}

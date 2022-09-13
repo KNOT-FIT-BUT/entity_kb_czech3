@@ -115,8 +115,6 @@ def gen_stats():
 
 		# emptiness
 		f.write("== entity emptiness ==\n")
-		f.write("- tracs how successfull the extraction was\n")
-		f.write("- % means how likely is the field emty in the kb\n")
 		f.write("\n")
 		for key, item in entities.items():
 			if item["count"] != 0:
@@ -126,7 +124,7 @@ def gen_stats():
 				for k, i in item.items():
 					if k == "count":
 						continue
-					f.write("{:<20}{}%\n".format(k, round(100-i[1]/count*100,2)))
+					f.write("{:<20}{}%\n".format(k, round(i[1]/count*100,2)))
 				f.write("\n")
 
 def pretty_time_delta(seconds):

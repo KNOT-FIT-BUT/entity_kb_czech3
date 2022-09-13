@@ -121,9 +121,10 @@ class EntSettlement(EntCore):
 			)
 			if coef:
 				match = re.search(r"([\d,\.]+)", data)
-				data = match.group(1)
-				data = data.replace(",", ".")
-				data = str(int(float(data) * coef))
+				if match:
+					data = match.group(1)
+					data = data.replace(",", ".")
+					data = str(int(float(data) * coef))
 			else:
 				data = re.sub(r"[,\.]", "", data)
 			data = re.sub(r"\{\{.*?\}\}", "", data)

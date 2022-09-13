@@ -114,7 +114,7 @@ class EntGeo(EntCore):
 			if match:
 				number = match.group(1).strip()
 				unit = match.group(2).strip()
-				height = self.convert_units(number, unit, self.d)
+				height = self.convert_units(number, unit)
 			height = re.sub(r"\{\{.*?\}\}", "", height)
 			match = re.search(r"^([\d\.,]+)(?:\s?([^\s]+))?", height)
 			if match:
@@ -122,7 +122,7 @@ class EntGeo(EntCore):
 				unit = match.group(2)
 				if unit:
 					unit = unit.strip(".").strip()
-					height = self.convert_units(number, unit, self.d)
+					height = self.convert_units(number, unit)
 				else:
 					height = number
 			else:

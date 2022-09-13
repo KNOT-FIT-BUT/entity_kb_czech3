@@ -82,6 +82,7 @@ class EntCore(metaclass=ABCMeta):
 		self.langmap = langmap
 
 		self.lang = link[8:10]
+		self.core_utils = utils[self.lang]
 
 		# extracted data
 		self.infobox_data       = data["data"]
@@ -94,13 +95,12 @@ class EntCore(metaclass=ABCMeta):
 		self.first_sentence = ""
 		
 		self.extract_image()
+		self.get_first_sentence()
 
 		if self.lang == "en":
 			if self.first_paragraph:
-				self.get_first_sentence(self.first_paragraph)
 				self.get_aliases()
 
-		self.core_utils = utils[self.lang]
 
 	##
 	# @brief serializes entity data for output (tsv format)
@@ -172,7 +172,7 @@ class EntCore(metaclass=ABCMeta):
 		data = self.get_infobox_data(utils[self.lang].KEYWORDS["area_sqmi"], return_first=False)
 		for d in data:
 			area = fix_area(d)
-			area = self.convert_units(area, "sqmi", self.d)
+			area = self.convert_units(area, "sqmi")
 			if area:
 				return area
 
@@ -186,7 +186,7 @@ class EntCore(metaclass=ABCMeta):
 				if len(area) >= 2:
 					number, unit = (area[0].strip(), area[1].strip())
 					number = fix_area(number)
-					number = self.convert_units(number, unit, self.d)
+					number = self.convert_units(number, unit)
 					return number if number else ""
 
 			# e.g.: '20sqmi', '10 km2', ...
@@ -195,7 +195,7 @@ class EntCore(metaclass=ABCMeta):
 			if match:
 				number, unit = (match.group(1), match.group(2).strip())
 				number = fix_area(number)
-				number = self.convert_units(number, unit, self.d)
+				number = self.convert_units(number, unit)
 				return number if number else ""
 
 		# debugger.log_message(f"Error: unidentified area")
@@ -207,12 +207,11 @@ class EntCore(metaclass=ABCMeta):
 	# @param unit - unit abbreviation
 	# @param round_to - to how many decimal points will be rounded to (default: 2)
 	# @return converted rounded number as a string
-	@staticmethod
-	def convert_units(number, unit, debugger, round_to=2):
+	def convert_units(self, number, unit, round_to=2):
 		try:
 			number = float(number)
 		except:
-			debugger.log_message(f"couldn't conver string to float: {number}")
+			self.d.log_message(f"couldn't conver string to float: {number}")
 			return ""
 		unit = unit.lower()
 
@@ -252,13 +251,66 @@ class EntCore(metaclass=ABCMeta):
 		elif unit == "mi2":
 			number = round(number * MI2_TO_KM2, round_to)
 		else:
-			debugger.log_message(f"Error: unit conversion error ({unit})")
+			self.d.log_message(f"Error: unit conversion error ({unit})")
 			return ""
 
 		return str(number if number % 1 != 0 else int(number))
 
+	##
+	# @brief extracts image data from the infobox
+	def extract_image(self):
+		if len(self.extract_images):
+			extracted_images = [img.strip().replace(" ", "_") for img in self.extract_images]
+			extracted_images = [self.get_image_path(img) for img in extracted_images]
+			self.images = "|".join(extracted_images)
+
+		data = self.get_infobox_data(utils[self.lang].KEYWORDS["image"], return_first=False)
+		for d in data:
+			image = d.replace("\n", "")
+			if not image.startswith("http"):
+				image = self.get_images(image)
+				self.images += image if not self.images else f"|{image}"
+
+	##
+	# @brief removes wikipedia formatting and assigns image paths to the images variable
+	# @param image - image data with wikipedia formatting
+	def get_images(self, image):
+		result = []
+
+		image = re.sub(r"file:", "", image, flags=re.I)
+		
+		images = []
+		
+		if re.search(r"\{|\}", image):
+			wikicode = parser.parse(image)
+			templates = wikicode.filter_templates(wikicode)
+			for t in templates:
+				params = t.params
+				for p in params:
+					if re.search(r"image|photo|[0-9]+", str(p.name), re.I):
+						if re.search(r"\.(?:jpe?g|png|gif|bmp|ico|tif|tga|svg)", str(p.value), re.I):
+							images.append(str(p.value))
+
+		if not len(images):
+			images.append(image)
+		
+		images = [re.sub(r"^(?:\[\[(?:image:)?)?(.*?(?:jpe?g|png|gif|bmp|ico|tif|tga|svg)).*$", r"\1", img, flags=re.I) for img in images]
+		images = [img.strip().replace(" ", "_") for img in images]
+
+		result = [self.get_image_path(img) for img in images]
+
+		return "|".join(result)
+
+	##
+	# @brief generates server path from an image name
+	# @param image - image name 
+	@staticmethod
+	def get_image_path(image):
+		image_hash = md5(image.encode("utf-8")).hexdigest()[:2]
+		image_path = f"wikimedia/commons/{image_hash[0]}/{image_hash}/{image}"
+		return image_path
+
 	# get_aliases
-	# get_images
 	# get_description
 
 	##
@@ -269,52 +321,23 @@ class EntCore(metaclass=ABCMeta):
 	# but first sentece with wikipedia formatting is also stored because it helps with extraction of other information
 	#
 	# e.g.: '''Vasily Vasilyevich Smyslov''' (24 March 1921 – 27 March 2010) was a [[Soviet people|Soviet]] ...
-	def get_first_sentence(self, paragraph):
-		paragraph = paragraph.strip()
-		paragraph = re.sub(r"\.({{.*?}})", ".", paragraph)
+	def get_first_sentence(self):
+		paragraph = self.first_paragraph.strip()
+		if paragraph and paragraph[-1] != '.':
+			paragraph += '.'
 
-		pattern = r"('''.*?'''.*?\.)(?:\s*[A-Z][a-z,]+\s[a-z0-9]|\n|$|\]\])"
-		m = re.search(pattern, paragraph)
-		if m:            
-			# maybe use this for extraction
-			first_sentence = m.group(1)
-			langs = []
-
-			# and this for description
-			
-			# sub '''
-			description = re.sub(r"'{2,3}|&.+;", "", first_sentence)
-
-			# match things inside [[]]
-			description = re.sub(r"\[\[[^\[\]]+?\|([^\[\]\|]+?)\]\]", r"\1", description)            
-			description = re.sub(r"\[|\]", r"", description)
-
-			for lang in re.finditer(r"({{lang.*?}});?", description):
-				langs.append(lang.group(1))
-
-			self.get_lang_aliases(langs)
-
-			# TODO: convert, dates
-			
-			description = re.sub(r"{{.*?}};?", "", description)
-			description = re.sub(r"{|}", "", description)
-			description = re.sub(r"\)\)", ")", description)
-
-			description = re.sub(r"\(\s+", "(", description)
-			description = re.sub(r"\s+", " ", description)
-			description = re.sub(r"\s\(\)\s?", " ", description)
-
-			description = re.sub(r"\s?\(,.*?\)|\s?\(.*?\s+\)", "", description)
-			description = re.sub(r"\s+,", ",", description)
-
-			# print(f"{description}\n")
-			if self.description == "":
-				self.description = description
-			self.first_sentence = first_sentence
-		else: 
-			# print(self.first_paragraph)           
-			# print(f"{self.original_title}: error\n")
-			pass
+		# TODO: make this better -> e.g.: Boleslav Bárta - ... 90. let ...
+		keywords = self.core_utils.KEYWORDS["sentence"]
+		pattern = r"('''.*?'''.*?(?: (?:" + f"{'|'.join(keywords)}" + r") ).*?(?<!\s[A-Z][a-z])(?<!\s[A-Z])\.)"		
+		match = re.search(pattern, paragraph)
+		if match:
+			sentence = match.group(1)
+			sentence = re.sub(r"&nbsp;", " ", sentence)
+			sentence = re.sub(r"\[\[([^\|]*?)\]\]", r"\1", sentence)
+			sentence = re.sub(r"\[\[.*?\|([^\|]*?)\]\]", r"\1", sentence)
+			sentence = re.sub(r"\[|\]", "", sentence)
+			# self.d.log_message(sentence)
+			self.first_sentence = sentence
 
 	##
 	# @brief extracts an alias in a native language
@@ -364,7 +387,7 @@ class EntCore(metaclass=ABCMeta):
 		name = split[0]
 		surname = split[-1] if len(split) > 1 else ""
 		
-		# finds all names in triple quates and removes those that match the title 
+		# finds all names in triple quotes and removes those that match the title 
 		aliases = re.findall(r"(?:\"|\()?'''.*?'''(?:\"|\))?", sentence)
 		aliases = [re.sub(r"'{3,5}", "", a) for a in aliases]
 		aliases = [a for a in aliases if a != title]
@@ -439,57 +462,4 @@ class EntCore(metaclass=ABCMeta):
 		# if self.aliases:
 		#     self.d.log_message(f"{'|'.join(self.aliases)}")
 		pass    
-
-	##
-	# @brief extracts image data from the infobox
-	def extract_image(self):
-		if len(self.extract_images):
-			extracted_images = [img.strip().replace(" ", "_") for img in self.extract_images]
-			extracted_images = [self.get_image_path(img) for img in extracted_images]
-			self.images = "|".join(extracted_images)
-
-		data = self.get_infobox_data(utils[self.lang].KEYWORDS["image"], return_first=False)
-		for d in data:
-			image = d.replace("\n", "")
-			if not image.startswith("http"):
-				image = self.get_images(image)
-				self.images += image if not self.images else f"|{image}"
-
-	##
-	# @brief removes wikipedia formatting and assigns image paths to the images variable
-	# @param image - image data with wikipedia formatting
-	def get_images(self, image):
-		result = []
-
-		image = re.sub(r"file:", "", image, flags=re.I)
-		
-		images = []
-		
-		if re.search(r"\{|\}", image):
-			wikicode = parser.parse(image)
-			templates = wikicode.filter_templates(wikicode)
-			for t in templates:
-				params = t.params
-				for p in params:
-					if re.search(r"image|photo|[0-9]+", str(p.name), re.I):
-						if re.search(r"\.(?:jpe?g|png|gif|bmp|ico|tif|tga|svg)", str(p.value), re.I):
-							images.append(str(p.value))
-
-		if not len(images):
-			images.append(image)
-		
-		images = [re.sub(r"^(?:\[\[(?:image:)?)?(.*?(?:jpe?g|png|gif|bmp|ico|tif|tga|svg)).*$", r"\1", img, flags=re.I) for img in images]
-		images = [img.strip().replace(" ", "_") for img in images]
-
-		result = [self.get_image_path(img) for img in images]
-
-		return "|".join(result)
-
-	##
-	# @brief generates server path from an image name
-	# @param image - image name 
-	@staticmethod
-	def get_image_path(image):
-		image_hash = md5(image.encode("utf-8")).hexdigest()[:2]
-		image_path = f"wikimedia/commons/{image_hash[0]}/{image_hash}/{image}"
-		return image_path
+	

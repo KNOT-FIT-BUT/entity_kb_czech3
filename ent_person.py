@@ -88,15 +88,6 @@ class EntPerson(EntCore):
 	# this function is getting called from the main script after identification
 	def assign_values(self, lang):
 		lang_utils = utils[lang]
-
-		ent_data = {
-			"title": self.title,
-			"sentence": self.first_sentence,
-			"first_paragraph": self.first_paragraph,
-			"infobox_data": self.infobox_data,
-			"infobox_name": self.infobox_name,
-			"categories": self.categories
-		}
 		
 		self.prefix = utils[lang].assign_prefix(self)
 		
@@ -115,7 +106,6 @@ class EntPerson(EntCore):
 		if self.prefix == "person:artist":
 			self.assign_art_forms()
 			self.assign_urls()
-		
 
 	##
 	# @brief extracts and assigns places from infobox, removes wikipedia formatting
@@ -146,21 +136,26 @@ class EntPerson(EntCore):
 		self.death_place = death_place
 
 	##	
-	# @brief extracts and assigns gender from the infobox
+	# @brief extracts and assigns gender
 	def assign_gender(self):
-		gender = ""		
-		
+		# infobox search
 		value = self.get_infobox_data(utils[self.lang].KEYWORDS["gender"])
-		value = value.lower().strip()
 		if value:
-			if value == utils[self.lang].KEYWORDS["male"]:
-				gender = "M"
-			elif value == utils[self.lang].KEYWORDS["female"]:
-				gender = "F"
+			value = value.lower().strip()
+			if value in utils[self.lang].KEYWORDS["male"]:
+				self.gender = "M"
+			elif value in utils[self.lang].KEYWORDS["female"]:
+				self.gender = "F"
 			else:
-				self.d.log_message(f"Error: invalid gender - {value}")		
-		
-		self.gender = gender
+				self.d.log_message(f"Error: invalid gender - {value}")
+
+		# look for keywords in categories
+		if not self.gender and self.prefix != "person:fictional":
+			for c in self.categories:
+				if re.search("|".join(utils[self.lang].KEYWORDS["female"]), c.lower()):
+					self.gender = "F"
+				if re.search("|".join(utils[self.lang].KEYWORDS["male"]), c.lower()):
+					self.gender = "M"
 	
 	##
 	# @brief extracts and assigns jobs from the infobox

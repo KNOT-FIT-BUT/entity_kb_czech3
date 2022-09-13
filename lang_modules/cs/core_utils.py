@@ -21,6 +21,7 @@ class CoreUtils:
 
 	# lang specific keywords
 	KEYWORDS = {
+		"sentence":		["je", "jsou", "byl", "byla", "byli", "byly"],
 		"image": 		["obrázek", "vlajka", "znak", "mapa umístění", "mapa_umítění", "mapa", "logo"],
 		"area_km2": 	["rozloha", "výměra", "plocha"],
 		"area_sqmi": 	"",
