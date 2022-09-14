@@ -106,15 +106,17 @@ class CoreUtils:
 	# general method for country, settlement, waterarea, watercourse and geo entities
 	@staticmethod
 	def assign_coordinates(country):
-		latitude = ""
-		longitude = ""
-
 		if "coordinates" in country.infobox_data and country.infobox_data["coordinates"]:
 			coords = CoreUtils.get_coordinates(country.infobox_data["coordinates"], country.d)
 			if all(coords):
-				latitude, longitude = coords
-		
-		return (latitude, longitude)
+				return coords
+
+		if country.coords:
+			coords = CoreUtils.get_coordinates(country.coords, country.d)			
+			if all(coords):
+				return coords
+
+		return ("", "")
 
 	##
     # @brief extracts and assigns area from infobox

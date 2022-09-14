@@ -40,6 +40,11 @@ import mwparserfromhell as parser
 from lang_modules.en.core_utils import CoreUtils as EnCoreUtils
 from lang_modules.cs.core_utils import CoreUtils as CsCoreUtils
 
+from libs.DictOfUniqueDict import DictOfUniqueDict
+from libs.UniqueDict import KEY_LANG, LANG_UNKNOWN
+
+KEY_NAMETYPE = "ntype"
+
 utils = {
 	"en": EnCoreUtils,
 	"cs": CsCoreUtils
@@ -97,9 +102,12 @@ class EntCore(metaclass=ABCMeta):
 		self.extract_image()
 		self.get_first_sentence()
 
-		if self.lang == "en":
-			if self.first_paragraph:
-				self.get_aliases()
+		self.get_aliases()
+
+		# if self.lang == "en":
+		# 	if self.first_paragraph:
+		# 		self.get_aliases()
+		pass
 
 
 	##
@@ -339,127 +347,185 @@ class EntCore(metaclass=ABCMeta):
 			# self.d.log_message(sentence)
 			self.first_sentence = sentence
 
-	##
-	# @brief extracts an alias in a native language
-	# @param langs - aliases in a wikipedia format <array of strings>
-	# 
-	# e.g.: {{lang-rus|Васи́лий Васи́льевич Смысло́в|Vasíliy Vasíl'yevich Smyslóv}};
-	def get_lang_aliases(self, langs):
-		if len(langs) > 0:
-			for lang in langs:
-				lang = re.sub(r"{{lang(?:-|\|)(.*?)}}", r"\1", lang)
-				split = lang.split("|")
-				code = split[0].split("-")[0]
-				if len(code) != 2:
-					if code in self.langmap:
-						code = self.langmap[code].split("|")[0]
-					else:
-						code = "??"
-				
-				for s in split[1:]:
-					if "=" in s:
-						split.remove(s)
+	def serialize_aliases(self):
+		pass
 
-				if len(split) < 2:
-					# self.d.log_message(f"couldn't split lang alias: {split[0]} [{self.link}]")
-					return
-
-				alias = split[1]
-				if len(split) > 2:
-					if "{" not in alias:
-						if self.aliases:
-							self.aliases += f"|{alias}#lang={code}"
-						else:
-							self.aliases = f"{alias}#lang={code}"
-
-	##
-	# @brief extracts aliases from the first sentence
 	def get_aliases(self):
-		title = self.title
 		sentence = self.first_sentence
+		aliases = DictOfUniqueDict()
 
-		sentence = re.sub(r"\[\[.*?\|(.*?)\]\]", r"\1", sentence)
-		sentence = re.sub(r"\[|\]", "", sentence)
+		self.d.log_message(sentence)
+
+		if self.lang == "cs":
+			return
+
+		# en lang aliases
+		# TODO: langmap integration
+		lang_alias_matches = re.findall(r"\{\{([^\{]*?)\}\};?", sentence)
+		for m in lang_alias_matches:
+			# {{lang-language tag|name}}
+			match = re.search(r"lang-([^\|]+?)(?:-.*?)?\|([^\|]+)(?:\|.*?)?", m, flags=re.I)
+			if match:
+				lang = match.group(1).strip()
+				alias = match.group(2).strip()
+				aliases[alias] = self.get_alias_properties(None, lang)
+
+			# {{lang|language tag|text}}
+			match = re.search(r"lang\|([^\|]+?)(?:-.*?)?\|([^\|]+)(?:\|.*?)?", m, flags=re.I)
+			if match:
+				lang = match.group(1).strip()
+				alias = match.group(2).strip()
+				aliases[alias] = self.get_alias_properties(None, lang)
+
+			# chinese -> {{zh|...}}
+			match = re.search(r"zh\|(?:[^\|]*?=)?([^\|]+)(?:\|.*?)?", m, flags=re.I)
+			if match:
+				alias = match.group(1)
+				aliases[alias] = self.get_alias_properties(None, "zh")
+
+		aliases = self.serialize_aliases(aliases)
+		if aliases:
+			self.d.log_message(aliases)
+
+	def get_alias_properties(self, nametype, lang=None):
+		return {KEY_LANG: lang, KEY_NAMETYPE: nametype}
+
+	def serialize_aliases(self, aliases):
+		aliases.pop(self.title, None)
+
+		preserialized = set()
+		for alias, properties in aliases.items():
+			tmp_flags = ""
+			for key, value in properties.items():
+				if key == KEY_LANG and value is None:
+					value = LANG_UNKNOWN
+				if key != KEY_NAMETYPE or value is not None:
+					tmp_flags += f"#{key}={value}"
+			preserialized.add(alias + tmp_flags)
+
+		return "|".join(preserialized)
+
+	# ##
+	# # @brief extracts an alias in a native language
+	# # @param langs - aliases in a wikipedia format <array of strings>
+	# # 
+	# # e.g.: {{lang-rus|Васи́лий Васи́льевич Смысло́в|Vasíliy Vasíl'yevich Smyslóv}};
+	# def get_lang_aliases(self, langs):
+	# 	if len(langs) > 0:
+	# 		for lang in langs:
+	# 			lang = re.sub(r"{{lang(?:-|\|)(.*?)}}", r"\1", lang)
+	# 			split = lang.split("|")
+	# 			code = split[0].split("-")[0]
+	# 			if len(code) != 2:
+	# 				if code in self.langmap:
+	# 					code = self.langmap[code].split("|")[0]
+	# 				else:
+	# 					code = "??"
+				
+	# 			for s in split[1:]:
+	# 				if "=" in s:
+	# 					split.remove(s)
+
+	# 			if len(split) < 2:
+	# 				# self.d.log_message(f"couldn't split lang alias: {split[0]} [{self.link}]")
+	# 				return
+
+	# 			alias = split[1]
+	# 			if len(split) > 2:
+	# 				if "{" not in alias:
+	# 					if self.aliases:
+	# 						self.aliases += f"|{alias}#lang={code}"
+	# 					else:
+	# 						self.aliases = f"{alias}#lang={code}"
+
+	# ##
+	# # @brief extracts aliases from the first sentence
+	# def get_aliases(self):
+	# 	title = self.title
+	# 	sentence = self.first_sentence
+
+	# 	sentence = re.sub(r"\[\[[^\[]]*?\|(.*?)\]\]", r"\1", sentence)
+	# 	sentence = re.sub(r"\[|\]", "", sentence)
 		
-		aliases = []
+	# 	aliases = []
 	
-		split = title.split(" ")
-		name = split[0]
-		surname = split[-1] if len(split) > 1 else ""
+	# 	split = title.split(" ")
+	# 	name = split[0]
+	# 	surname = split[-1] if len(split) > 1 else ""
 		
-		# finds all names in triple quotes and removes those that match the title 
-		aliases = re.findall(r"(?:\"|\()?'''.*?'''(?:\"|\))?", sentence)
-		aliases = [re.sub(r"'{3,5}", "", a) for a in aliases]
-		aliases = [a for a in aliases if a != title]
+	# 	# finds all names in triple quotes and removes those that match the title 
+	# 	aliases = re.findall(r"(?:\"|\()?'''.*?'''(?:\"|\))?", sentence)
+	# 	aliases = [re.sub(r"'{3,5}", "", a) for a in aliases]
+	# 	aliases = [a for a in aliases if a != title]
 		
-		title_data = title.split(" ")
+	# 	title_data = title.split(" ")
 		
-		# handles born surnames (née)
-		born_name = ""
-		m = re.search(r".*née\s'''(.*?)'''.*", sentence)
-		if m:
-			born_name = m.group(1)
+	# 	# handles born surnames (née)
+	# 	born_name = ""
+	# 	m = re.search(r".*née\s'''(.*?)'''.*", sentence)
+	# 	if m:
+	# 		born_name = m.group(1)
 		
-		# handles aliases in double quotes and brackets
-		# surname is added to nicknames as a rule
-		patterns = [r"\"(.*?)\"", r"\((.*?)\)"]
-		nicknames = []
-		for pattern in patterns:
-			for i in range(len(aliases)):
-				m = re.search(pattern, aliases[i])
-				if m:
-					if m.start():
-						cut = f"{aliases[i][:m.start()].strip()} {aliases[i][m.end():].strip()}"
-						aliases[i] = cut
-					else:
-						if i-1 >= 0 and i+1 < len(aliases):
-							cut = f"{aliases[i-1]} {aliases[i+1]}"
-							aliases[i-1] = cut
-							aliases[i+1] = ""
-					nicknames.append(m.group(1))
+	# 	# handles aliases in double quotes and brackets
+	# 	# surname is added to nicknames as a rule
+	# 	patterns = [r"\"(.*?)\"", r"\((.*?)\)"]
+	# 	nicknames = []
+	# 	for pattern in patterns:
+	# 		for i in range(len(aliases)):
+	# 			m = re.search(pattern, aliases[i])
+	# 			if m:
+	# 				if m.start():
+	# 					cut = f"{aliases[i][:m.start()].strip()} {aliases[i][m.end():].strip()}"
+	# 					aliases[i] = cut
+	# 				else:
+	# 					if i-1 >= 0 and i+1 < len(aliases):
+	# 						cut = f"{aliases[i-1]} {aliases[i+1]}"
+	# 						aliases[i-1] = cut
+	# 						aliases[i+1] = ""
+	# 				nicknames.append(m.group(1))
 		
-		nicknames = [
-			f"{nick} {surname}" for nick in nicknames 
-			if f"{nick} {surname}" != title 
-			and nick != title
-		]
+	# 	nicknames = [
+	# 		f"{nick} {surname}" for nick in nicknames 
+	# 		if f"{nick} {surname}" != title 
+	# 		and nick != title
+	# 	]
 		
-		# remove previously handeled nicknames and born surname
-		aliases = [
-			item for item in aliases 
-			if item 
-			and item not in title_data 
-			and '"' not in item
-			and "(" not in item
-			and item != title
-		]
-		if born_name and born_name != title:
-			aliases = [item for item in aliases if item != born_name]
+	# 	# remove previously handeled nicknames and born surname
+	# 	aliases = [
+	# 		item for item in aliases 
+	# 		if item 
+	# 		and item not in title_data 
+	# 		and '"' not in item
+	# 		and "(" not in item
+	# 		and item != title
+	# 	]
+	# 	if born_name and born_name != title:
+	# 		aliases = [item for item in aliases if item != born_name]
 		
-		aliases = [re.sub(r"\(|\)", "", a).strip() for a in aliases]
+	# 	aliases = [re.sub(r"\(|\)", "", a).strip() for a in aliases]
 
-		aliases += nicknames
-		if born_name and born_name != title:
-			aliases.append(f"{name} {born_name}")
+	# 	aliases += nicknames
+	# 	if born_name and born_name != title:
+	# 		aliases.append(f"{name} {born_name}")
 		
-		self.aliases = self.aliases.split("|")
-		self.aliases += aliases
+	# 	self.aliases = self.aliases.split("|")
+	# 	self.aliases += aliases
 		
-		# TODO: get aliases from infoboxes
-		# keys = ["name", "birth_name", "birthname", "native_name", "nativename", "aliases"]
-		# for key in keys:
-		#     if key in self.infobox_data and self.infobox_data[key]:
-		#         value = self.infobox_data[key]
-		#         if value != title and value not in self.aliases:
-		#             self.d.log_message(f"{key} -> {value}")
+	# 	# TODO: get aliases from infoboxes
+	# 	# keys = ["name", "birth_name", "birthname", "native_name", "nativename", "aliases"]
+	# 	# for key in keys:
+	# 	#     if key in self.infobox_data and self.infobox_data[key]:
+	# 	#         value = self.infobox_data[key]
+	# 	#         if value != title and value not in self.aliases:
+	# 	#             self.d.log_message(f"{key} -> {value}")
 
-		self.aliases = [re.sub(r"\{\{.*?\}\}", "", a).strip() for a in self.aliases]
-		self.aliases = [a for a in self.aliases if a != title]
-		self.aliases = [a for a in self.aliases if a != ""]
+	# 	self.aliases = [re.sub(r"\{\{.*?\}\}", "", a).strip() for a in self.aliases]
+	# 	self.aliases = [a for a in self.aliases if a != title]
+	# 	self.aliases = [a for a in self.aliases if a != ""]
 
-		self.aliases = "|".join(self.aliases)
+	# 	self.aliases = "|".join(self.aliases)
 
-		# if self.aliases:
-		#     self.d.log_message(f"{'|'.join(self.aliases)}")
-		pass    
+	# 	# if self.aliases:
+	# 	#     self.d.log_message(f"{'|'.join(self.aliases)}")
+	# 	pass
 	

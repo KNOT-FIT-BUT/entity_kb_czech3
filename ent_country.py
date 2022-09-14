@@ -69,7 +69,6 @@ class EntCountry(EntCore):
 		self.area = self.assign_area()
 		self.assign_population()
 
-
 	##
     # @brief extracts and assigns population from infobox
 	#
