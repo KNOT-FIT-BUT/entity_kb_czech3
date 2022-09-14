@@ -70,7 +70,7 @@ class EntSettlement(EntCore):
 		self.assign_country()
 		self.latitude, self.longitude = self.core_utils.assign_coordinates(self)
 		self.area = self.assign_area()
-		self.assign_population()
+		self.population = self.assign_population()
 
 	##
     # @brief extracts and assigns country from infobox
@@ -103,32 +103,3 @@ class EntSettlement(EntCore):
 			data = fix_country(data)
 			self.country = data
 	
-	##
-    # @brief extracts and assigns population from infobox
-	def assign_population(self):
-		data = self.get_infobox_data(utils[self.lang].KEYWORDS["population"])
-		if data:
-			if re.search(r"plainlist", data, flags=re.I):
-				return
-			data = re.sub(r"&nbsp;", "", data)
-			data = re.sub(r"(?<=\d)\s(?=\d)", "", data)
-			coef = (
-				1000000
-				if re.search(r"mil\.?|mili[oó]n", data, re.I)
-				else 1000
-				if re.search(r"tis\.?|tis[ií]c", data, re.I)
-				else 0
-			)
-			if coef:
-				match = re.search(r"([\d,\.]+)", data)
-				if match:
-					data = match.group(1)
-					data = data.replace(",", ".")
-					data = str(int(float(data) * coef))
-			else:
-				data = re.sub(r"[,\.]", "", data)
-			data = re.sub(r"\{\{.*?\}\}", "", data)
-			match = re.findall(r"\d+", data)
-			if match:
-				data = match[0]				
-				self.population = data

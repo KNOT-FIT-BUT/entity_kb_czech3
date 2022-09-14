@@ -36,12 +36,6 @@ class GeoUtils:
 		return prefix
 
 	@staticmethod
-	def get_coef(value):
-		if re.search(r"billion", value, flags=re.I):
-			return 10e9
-		return 1		
-
-	@staticmethod
 	def extract_text(extracted, ent_data, debugger):
 		coords = ent_data["coords"]
 

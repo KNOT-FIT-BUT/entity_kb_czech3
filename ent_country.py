@@ -67,20 +67,4 @@ class EntCountry(EntCore):
 		self.prefix = lang_utils.assign_prefix(self.categories)
 		self.latitude, self.longitude = self.core_utils.assign_coordinates(self)
 		self.area = self.assign_area()
-		self.assign_population()
-
-	##
-    # @brief extracts and assigns population from infobox
-	#
-	# TODO: coef?
-	def assign_population(self):
-		data = self.get_infobox_data(utils[self.lang].KEYWORDS["population"])
-		if data:
-			data = re.sub(r"&nbsp;", "", data)
-			data = re.sub(r"(?<=\d)\s(?=\d)", "", data)
-			data = data.replace(',','')
-			match = re.findall(r"\d+", data)
-			if match:
-				data = match[0]				
-				self.population = data
-
+		self.population = self.assign_population()

@@ -25,7 +25,8 @@ class CoreUtils:
 		"image": 		["obrázek", "vlajka", "znak", "mapa umístění", "mapa_umítění", "mapa", "logo"],
 		"area_km2": 	["rozloha", "výměra", "plocha"],
 		"area_sqmi": 	"",
-		"area_other": 	""
+		"area_other": 	"",
+		"population": 	["počet obyvatel", "počet_obyvatel", "pocet obyvatel", "pocet_obyvatel"]
 	}
 
 	@staticmethod
@@ -183,6 +184,14 @@ class CoreUtils:
 		longitude = "" if not re.search(r"\d", longitude) else longitude
 
 		return longitude
+
+	@staticmethod
+	def get_coef(value):
+		if re.search(r"mil\.|mili[oó]n", value, re.I):
+			return 10e6
+		if re.search(r"tis\.|tis[ií]c", value, re.I):
+			return 10e3
+		return 1
 
 	##
 	# @brief Převádí alternativní pojmenování do jednotného formátu.

@@ -13,7 +13,8 @@ class CoreUtils:
 		"image": ["image", "photo", "image_name", "image_flag", "image_coat", "image_map", "map_image", "logo"],
 		"area_km2": ["area_km2", "area_total_km2"],
 		"area_sqmi": ["area_sq_mi", "area_total_sq_mi"],
-		"area_other": ["area", "basin_size"]
+		"area_other": ["area", "basin_size"],
+		"population": ["population", "population_total", "population_estimate", "population_census"]
 	}
 
 	##
@@ -172,6 +173,12 @@ class CoreUtils:
 
 		# debugger.log_message(f"Error: unidentified area")
 		return ""
+
+	@staticmethod
+	def get_coef(value):
+		if re.search(r"billion", value, flags=re.I):
+			return 10e9
+		return 1
 
 	##
 	# @brief converts units to metric system

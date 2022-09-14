@@ -210,6 +210,39 @@ class EntCore(metaclass=ABCMeta):
 		return ""
 
 	##
+    # @brief extracts and assigns population from infobox
+	def assign_population(self):
+		data = self.get_infobox_data(utils[self.lang].KEYWORDS["population"], return_first=True)
+		if data:
+			pop = re.sub(r"\(.*?\)", "", data)
+			pop = re.sub(r"\{\{nowrap\|([^\{]*?)\}\}", r"\1", pop)
+			pop = re.sub(r"&nbsp;", "", pop)
+			pop = re.sub(r"(?<=\d)\s(?=\d)", "", pop)
+			pop = re.sub(r",(?=\d{3})", "", pop)
+			pop = re.sub(r"\{\{circa\|([^\|]+).*?\}\}", r"\1", pop)
+			pop = re.sub(r"\{\{.*?\}\}", "", pop).strip()
+			match = re.search(r"uninhabited|neobydlen|bez.+?obyvatel", pop, flags=re.I)
+			if match:
+				pop = "0"
+			match = re.search(r"^(\d+)(?:\s?([^\s]+))?", pop)
+			if match:
+				number = match.group(1).strip()
+				coef = match.group(2)
+				if coef:
+					coef = coef.strip()
+					coef = utils[self.lang].get_coef(coef)
+					number = str(int(float(number) * coef))
+					pop = number
+				else:
+					pop = number
+			else:
+				pop = ""
+			if re.search(r"plainlist", data, flags=re.I):
+				pop = ""
+			return pop
+		return ""
+
+	##
 	# @brief converts units to metric system
 	# @param number - number to be converted <string>
 	# @param unit - unit abbreviation
@@ -354,7 +387,7 @@ class EntCore(metaclass=ABCMeta):
 		sentence = self.first_sentence
 		aliases = DictOfUniqueDict()
 
-		self.d.log_message(sentence)
+		# self.d.log_message(sentence)
 
 		if self.lang == "cs":
 			return
@@ -385,7 +418,8 @@ class EntCore(metaclass=ABCMeta):
 
 		aliases = self.serialize_aliases(aliases)
 		if aliases:
-			self.d.log_message(aliases)
+			# self.d.log_message(aliases)
+			pass
 
 	def get_alias_properties(self, nametype, lang=None):
 		return {KEY_LANG: lang, KEY_NAMETYPE: nametype}

@@ -96,7 +96,7 @@ class EntGeo(EntCore):
 
 		if self.prefix in ("geo:island", "geo:continent"):
 			self.area = self.assign_area()
-			self.assign_population()
+			self.population = self.assign_population()
 
 		if self.prefix in ("geo:island", "geo:relief", "geo:waterfall"):
 			self.assign_continent()
@@ -134,39 +134,6 @@ class EntGeo(EntCore):
 		if data:
 			data = fix_height(data)
 			self.total_height = data
-
-	##
-    # @brief extracts and assigns population from infobox
-	def assign_population(self):
-		def fix_population(pop):
-			pop = re.sub(r"\(.*?\)", "", pop)
-			pop = re.sub(r"&nbsp;", "", pop)
-			pop = re.sub(r"(?<=\d)\s(?=\d)", "", pop)
-			pop = re.sub(r",(?=\d{3})", "", pop)
-			pop = re.sub(r"\{\{circa\|([^\|]+).*?\}\}", r"\1", pop)
-			pop = re.sub(r"\{\{.*?\}\}", "", pop)
-			match = re.search(r"uninhabited|neobydlen|bez.+?obyvatel", pop, flags=re.I)
-			if match:
-				pop = "0"
-			match = re.search(r"^([\d,\.]+)(?:\s?([^\s]+))?", pop)
-			if match:
-				number = match.group(1).strip()
-				coef = match.group(2)
-				if coef:
-					coef = coef.strip()
-					coef = utils[self.lang].get_coef(coef)
-					number = str(int(float(number) * coef))
-					pop = number
-				else:
-					pop = number
-			else:
-				pop = ""
-			return pop
-
-		data = self.get_infobox_data(utils[self.lang].KEYWORDS["population"], return_first=True)
-		if data:
-			data = fix_population(data)
-			self.population = data
 
 	##
 	# @brief description
