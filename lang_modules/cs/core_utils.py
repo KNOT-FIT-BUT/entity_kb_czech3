@@ -3,6 +3,8 @@ import re, regex, requests
 from lang_modules.cs.libs.DictOfUniqueDict import *
 from lang_modules.cs.libs.UniqueDict import KEY_LANG, LANG_ORIG, LANG_UNKNOWN
 
+from debugger import Debugger as debug
+
 ALIASES_SEPARATOR = re.escape(", ")
 KEY_NAMETYPE = "ntype"
 LANG_CZECH = "cs"
@@ -26,7 +28,11 @@ class CoreUtils:
 		"area_km2": 	["rozloha", "výměra", "plocha"],
 		"area_sqmi": 	"",
 		"area_other": 	"",
-		"population": 	["počet obyvatel", "počet_obyvatel", "pocet obyvatel", "pocet_obyvatel"]
+		"population": 	["počet obyvatel", "počet_obyvatel", "pocet obyvatel", "pocet_obyvatel"],
+		"lang_alias_patterns": [
+			r"\{\{vjazyce\|(.+?)\}\}\s'{2}(.+?)'{2}",
+			r"'{0,3}\{\{(?:vjazyce2|cizojazyčně)\|([^\|]+)\|'{0,2}(.+?)'{0,2}\}\}'{0,3}"
+		]
 	}
 
 	@staticmethod
@@ -198,7 +204,7 @@ class CoreUtils:
 	# @param alias - alternativní pojmenování entity (str)
 	# @param marked_czech - entita explicitně definovaná jako česká
 	@classmethod
-	def get_aliases(cls, alias, aliases, custom_transform_alias, custom_data, marked_czech=False, nametype=None):		
+	def get_aliases(cls, alias, aliases, custom_transform_alias, custom_data, marked_czech=False, nametype=None):
 		# Eliminating of an alias identical with a title is now contraproductive, 
 		# 'cause we need ensure that first alias is in czech language (it is eliminated in serializing step).
 		if alias.strip() == "{{PAGENAME}}":

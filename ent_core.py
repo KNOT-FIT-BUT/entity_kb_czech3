@@ -37,6 +37,8 @@ import re
 from hashlib import md5, sha224
 import mwparserfromhell as parser
 
+from debugger import Debugger as debug
+
 from lang_modules.en.core_utils import CoreUtils as EnCoreUtils
 from lang_modules.cs.core_utils import CoreUtils as CsCoreUtils
 
@@ -78,7 +80,7 @@ class EntCore(metaclass=ABCMeta):
 		self.eid = sha224(str(EntCore.counter).encode("utf-8")).hexdigest()[:10]
 		self.prefix = prefix
 		self.title = re.sub(r"\s+\(.+?\)\s*$", "", title)
-		self.aliases = ""
+		self.aliases = DictOfUniqueDict()
 		self.redirects = redirects
 		self.description = sentence
 		self.original_title = title
@@ -95,20 +97,13 @@ class EntCore(metaclass=ABCMeta):
 		self.categories         = data["categories"]
 		self.first_paragraph    = data["paragraph"]
 		self.coords             = data["coords"]
-		self.extract_images     = data["images"]
+		self.extracted_images   = data["images"]
 		
 		self.first_sentence = ""
 		
-		self.extract_image()
+		self.extract_images()
 		self.get_first_sentence()
-
-		self.get_aliases()
-
-		# if self.lang == "en":
-		# 	if self.first_paragraph:
-		# 		self.get_aliases()
-		pass
-
+		self.get_lang_aliases()
 
 	##
 	# @brief serializes entity data for output (tsv format)
@@ -119,7 +114,7 @@ class EntCore(metaclass=ABCMeta):
 			self.eid,
 			self.prefix,
 			self.title,
-			self.aliases,
+			self.serialize_aliases() if self.prefix != "person:group" else "",
 			"|".join(self.redirects),
 			self.description,
 			self.original_title,
@@ -252,7 +247,7 @@ class EntCore(metaclass=ABCMeta):
 		try:
 			number = float(number)
 		except:
-			self.d.log_message(f"couldn't conver string to float: {number}")
+			debug.log_message(f"couldn't conver string to float: {number}")
 			return ""
 		unit = unit.lower()
 
@@ -292,16 +287,16 @@ class EntCore(metaclass=ABCMeta):
 		elif unit == "mi2":
 			number = round(number * MI2_TO_KM2, round_to)
 		else:
-			self.d.log_message(f"Error: unit conversion error ({unit})")
+			debug.log_message(f"Error: unit conversion error ({unit}, {self.link})")
 			return ""
 
 		return str(number if number % 1 != 0 else int(number))
 
 	##
 	# @brief extracts image data from the infobox
-	def extract_image(self):
-		if len(self.extract_images):
-			extracted_images = [img.strip().replace(" ", "_") for img in self.extract_images]
+	def extract_images(self):
+		if len(self.extracted_images):
+			extracted_images = [img.strip().replace(" ", "_") for img in self.extracted_images]
 			extracted_images = [self.get_image_path(img) for img in extracted_images]
 			self.images = "|".join(extracted_images)
 
@@ -372,63 +367,54 @@ class EntCore(metaclass=ABCMeta):
 		pattern = r"('''.*?'''.*?(?: (?:" + f"{'|'.join(keywords)}" + r") ).*?(?<!\s[A-Z][a-z])(?<!\s[A-Z])\.)"		
 		match = re.search(pattern, paragraph)
 		if match:
+			# removing templates
 			sentence = match.group(1)
 			sentence = re.sub(r"&nbsp;", " ", sentence)
 			sentence = re.sub(r"\[\[([^\|]*?)\]\]", r"\1", sentence)
 			sentence = re.sub(r"\[\[.*?\|([^\|]*?)\]\]", r"\1", sentence)
 			sentence = re.sub(r"\[|\]", "", sentence)
-			# self.d.log_message(sentence)
+			# removing pronounciation
+			sentence = re.sub(r"\{\{IPA.*?\}\}[,;]?", "", sentence)
 			self.first_sentence = sentence
 
 	def serialize_aliases(self):
 		pass
 
-	def get_aliases(self):
-		sentence = self.first_sentence
-		aliases = DictOfUniqueDict()
-
-		# self.d.log_message(sentence)
-
-		if self.lang == "cs":
-			return
-
-		# en lang aliases
-		# TODO: langmap integration
-		lang_alias_matches = re.findall(r"\{\{([^\{]*?)\}\};?", sentence)
-		for m in lang_alias_matches:
-			# {{lang-language tag|name}}
-			match = re.search(r"lang-([^\|]+?)(?:-.*?)?\|([^\|]+)(?:\|.*?)?", m, flags=re.I)
-			if match:
-				lang = match.group(1).strip()
-				alias = match.group(2).strip()
-				aliases[alias] = self.get_alias_properties(None, lang)
-
-			# {{lang|language tag|text}}
-			match = re.search(r"lang\|([^\|]+?)(?:-.*?)?\|([^\|]+)(?:\|.*?)?", m, flags=re.I)
-			if match:
-				lang = match.group(1).strip()
-				alias = match.group(2).strip()
-				aliases[alias] = self.get_alias_properties(None, lang)
-
-			# chinese -> {{zh|...}}
-			match = re.search(r"zh\|(?:[^\|]*?=)?([^\|]+)(?:\|.*?)?", m, flags=re.I)
-			if match:
-				alias = match.group(1)
-				aliases[alias] = self.get_alias_properties(None, "zh")
-
-		aliases = self.serialize_aliases(aliases)
-		if aliases:
-			# self.d.log_message(aliases)
-			pass
-
 	def get_alias_properties(self, nametype, lang=None):
 		return {KEY_LANG: lang, KEY_NAMETYPE: nametype}
 
-	def serialize_aliases(self, aliases):
-		aliases.pop(self.title, None)
+	def get_lang_aliases(self):
+		spans = []
+		sentence = self.first_sentence
+		patterns = self.core_utils.KEYWORDS["lang_alias_patterns"]
+		for p in patterns:
+			match = re.finditer(p, sentence, flags=re.I)
+			for m in match:
+				lang = m.group(1).strip()
+				if len(lang) < 2 or len(lang) > 3:
+					debug.log_message(f"Error: invalid lang tag - {lang} ({self.link})")
+					continue
+				if len(lang) == 3:
+					lang = None if lang not in self.langmap else self.langmap[lang]					
+				alias = m.group(2)
+				alias = alias.replace("'", "").strip()
+				if re.search(r"\{|\}|=", alias):
+					continue
+				start, end = m.span()
+				self.aliases[alias] = self.get_alias_properties(None, lang)
+				spans.append((start, end, alias))
+			
+		for s in sorted(spans, reverse=True):
+			start, end, alias = s
+			sentence = sentence[:start] + alias + sentence[end:]
+
+		self.first_sentence = sentence
+
+	def serialize_aliases(self):
+		self.aliases.pop(self.title, None)
 
 		preserialized = set()
-		for alias, properties in aliases.items():
+		for alias, properties in self.aliases.items():
 			tmp_flags = ""
 			for key, value in properties.items():
 				if key == KEY_LANG and value is None:

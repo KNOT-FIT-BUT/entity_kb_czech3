@@ -1,6 +1,8 @@
 
 import re, regex
 
+from debugger import Debugger as debug
+
 from lang_modules.cs.core_utils import CoreUtils
 
 from lang_modules.cs.libs.natToKB import *

@@ -15,6 +15,8 @@ import re
 
 from ent_core import EntCore
 
+from debugger import Debugger as debug
+
 from lang_modules.en.country_utils import CountryUtils as EnUtils
 from lang_modules.cs.country_utils import CountryUtils as CsUtils
 
@@ -68,3 +70,17 @@ class EntCountry(EntCore):
 		self.latitude, self.longitude = self.core_utils.assign_coordinates(self)
 		self.area = self.assign_area()
 		self.population = self.assign_population()
+
+		self.assign_aliases()
+
+	def assign_aliases(self):
+		sentence = self.first_sentence
+		match = re.findall(r"'{3}(.*?)'{3}", sentence)
+		for m in match:
+			m = re.sub(r"\{\{.*?\}\}", "", m)
+			if m not in self.aliases:
+				self.aliases[m] = self.get_alias_properties(None, self.lang)
+		sentence = re.sub(r"'{3}", "", sentence)
+		if sentence:
+			# debug.log_message(sentence)
+			pass

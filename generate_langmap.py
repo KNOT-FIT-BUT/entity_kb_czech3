@@ -31,13 +31,16 @@ def generate():
 			
 			split[4] = re.sub(r"\[\[.*\|(.*)\]\]", r"\1", split[4])
 			split[4] = re.sub(r"\[|\]", "", split[4])
-			split[4] = re.sub(r"&nbsp;", " ", split[4])
+			split[4] = re.sub(r"&nbsp;|&amp;nbsp;", " ", split[4])
 			split[4] = re.sub(r",.*$", "", split[4])
 			split[4] = re.sub(r"\(.*\)", "", split[4])
+			split[4] = split[4].split(";")[0]
 
 			split[4] = split[4].strip()
 			
-			langs[split[0]] = f"{split[3]}|{split[4]}"
+			langs[split[0]] = split[3]
+			langs[split[3]] = split[4]
+			langs[split[4]] = split[3]
 
 	with open("json/langmap.json", "w", encoding="utf8") as f:
 		json.dump(langs, f, ensure_ascii=False, indent=4)

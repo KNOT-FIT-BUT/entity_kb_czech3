@@ -2,6 +2,8 @@
 import re
 import mwparserfromhell as parser
 
+from debugger import Debugger as debug
+
 class CoreUtils:
 
 	DISAMBIG_PATTERN = r"{{[^}]*?(?:disambiguation|disambig|dab)(?:\|[^}]*?)?}}"
@@ -14,7 +16,12 @@ class CoreUtils:
 		"area_km2": ["area_km2", "area_total_km2"],
 		"area_sqmi": ["area_sq_mi", "area_total_sq_mi"],
 		"area_other": ["area", "basin_size"],
-		"population": ["population", "population_total", "population_estimate", "population_census"]
+		"population": ["population", "population_total", "population_estimate", "population_census"],
+		"lang_alias_patterns": [
+			r"\{\{lang-([^\|]+?)(?:-.*?)?\|([^\|]+?)(?:\|.*?)?\}\}",
+			r"\{\{lang\|([^\|]+?)(?:-.*?)?\|([^\|]+?)(?:\|.*?)?\}\}",
+			r"\{\{(zh)\|(?:[^\|]*?=)?([^\|]+?)(?:\|.*?)?\}\}"
+		]
 	}
 
 	##
