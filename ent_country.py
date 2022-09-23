@@ -82,5 +82,5 @@ class EntCountry(EntCore):
 				self.aliases[m] = self.get_alias_properties(None, self.lang)
 		sentence = re.sub(r"'{3}", "", sentence)
 		if sentence:
-			# debug.log_message(sentence)
+			# debug.log_message(f"{sentence} [{self.serialize_aliases()}]")
 			pass

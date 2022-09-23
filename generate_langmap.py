@@ -9,6 +9,15 @@ import re
 import json
 import requests
 
+# TODO: cs
+LANG_TRANSFORMATIONS = {
+    "aština": "ašsky",
+    "ština": "sky",
+    "čtina": "cky",
+    "atina": "atinsky",
+    "o": "u",
+}
+
 ##
 # @brief gets a "List of ISO 639-2 codes" wikipedia page and generates langmap
 def generate():
@@ -36,7 +45,7 @@ def generate():
 			split[4] = re.sub(r"\(.*\)", "", split[4])
 			split[4] = split[4].split(";")[0]
 
-			split[4] = split[4].strip()
+			split[4] = split[4].strip().lower()
 			
 			langs[split[0]] = split[3]
 			langs[split[3]] = split[4]

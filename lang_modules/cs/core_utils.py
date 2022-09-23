@@ -199,6 +199,28 @@ class CoreUtils:
 			return 10e3
 		return 1
 
+	# TODO: specific infobox aliases (countries)
+	def specific_aliases(entity):
+		# cs specific
+		keys = entity.infobox_data.keys()
+		for key in keys:
+			match = re.search(r"úřední\snázev\s(\w+)", key)
+			if match:
+				lang = match.group(1)
+				# TODO: cs langmap
+				lang_abbr = ""
+				alias = entity.infobox_data[key]
+				alias = re.sub(r"&nbsp;", " ", alias)
+				alias = re.sub(r"\[\[.*?\|(.*?)\]\]", r"\1", alias)
+				alias = re.sub(r"\[\[(.*?)\]\]", r"\1", alias)
+				match = re.search(r"\{\{Cizojazyčně\|(.*?)\|(.*?)\}\}", alias, flags=re.I)
+				if match:
+					lang_abbr = match.group(1)
+					alias = match.group(2)
+				alias = re.sub(r"\{\{(malé|small).*?\}\}", "", alias).strip()
+				alias = re.sub(r"'{2}", "", alias)
+				debug.log_message(f"{lang}: {alias}")
+	
 	##
 	# @brief Převádí alternativní pojmenování do jednotného formátu.
 	# @param alias - alternativní pojmenování entity (str)

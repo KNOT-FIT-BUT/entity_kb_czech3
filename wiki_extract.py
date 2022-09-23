@@ -28,7 +28,7 @@
 
 import os, re, argparse, time, json, sys
 
-from debugger import Debugger
+from debugger import Debugger as debug
 import xml.etree.cElementTree as CElTree
 from datetime import datetime
 from multiprocessing import Pool
@@ -63,7 +63,7 @@ class WikiExtract(object):
 	# @brief initializes the console_args variable and debugger class
 	def __init__(self):
 		self.console_args = None
-		self.d = Debugger()
+		self.d = debug()
 		# self.first_sentence_version = "20210101"
 		# self.first_sentences_path = f"/mnt/minerva1/nlp/corpora_datasets/monolingual/english/wikipedia/1st_sentences_from_enwiki-20210101-pages-articles.tsv"
 		self.first_sentences_path = f"testing_data/xml/1st_sentences_from_enwiki-20210101-pages-articles.tsv"
@@ -622,12 +622,12 @@ class WikiExtract(object):
 		# remove comments
 		clean_content = re.sub(r"<!--.*?-->", "", clean_content, flags=re.DOTALL)
 
-		# remove references        
-		clean_content = re.sub(r"<ref.*?/(?:ref)?>", "", clean_content, flags=re.DOTALL)
+		# remove references
+		clean_content = re.sub(r"<ref[^<]*?/>", "", clean_content, flags=re.DOTALL)
+		clean_content = re.sub(r"<ref(?:.*?)?>.*?</ref>", "", clean_content, flags=re.DOTALL)
 
-		# remove {{efn ... }} and {{refn ...}}
-		clean_content = self.remove_references(clean_content, r"{{efn")
-		clean_content = self.remove_references(clean_content, r"{{refn")
+		# remove {{efn ... }}, {{refn ...}}, ...
+		clean_content = self.remove_ref_templates(clean_content)
 		
 		# remove break lines
 		clean_content = re.sub(r"<br\s*?/>", " ", clean_content, flags=re.DOTALL)
@@ -635,30 +635,44 @@ class WikiExtract(object):
 
 		return clean_content
 
-	##
-	# @brief removes a specific references from a string
-	# @param string - input string
-	# @param ref_pattern - specific reference pattern
-	# @return string without the references
-	#
 	@staticmethod
-	def remove_references(string, ref_pattern):
-		clean_content = string
-		arr = []
-		for m in re.finditer(ref_pattern, clean_content):
-			index = m.start()+1
-			indentation = 1            
-			while indentation != 0 and index != len(clean_content):
-				if clean_content[index] == "{":
-					indentation += 1
-				elif clean_content[index] == "}":
-					indentation -= 1
-				index += 1
-			arr.append((m.start(), index))
-		arr = sorted(arr, reverse=True)
-		for i in arr:
-			clean_content = clean_content[:i[0]] + clean_content[i[1]:]
-		return clean_content
+	def remove_ref_templates(content):
+		patterns = [
+			r"\{\{efn",
+			r"\{\{refn",
+			r"\{\{citation",
+			r"\{\{notetag",
+			r"\{\{snf",
+			r"\{\{#tag:ref",
+			r"\{\{ref label"
+		]
+		
+		spans = []
+
+		for p in patterns:
+			match = re.finditer(p, content, flags=re.I)
+			for m in match:				
+				start = m.span()[0]
+				end = start
+				indent = 0
+				for c in content[start:]:
+					if c == '{':
+						indent += 1
+					elif c == '}':
+						indent -= 1
+					end += 1
+					if indent == 0:
+						break
+				spans.append((start, end))
+		
+		for span in sorted(spans, reverse=True):
+			start, end = span
+			# debug.log_message(f"removed: {content[start:end]}")
+			content = content[:start] + content[end:]
+		
+		content = re.sub(r"[ \t]+", " ", content)
+				
+		return content
 
 if __name__ == "__main__":
 	wiki_extract = WikiExtract()

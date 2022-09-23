@@ -33,7 +33,7 @@
 # @date 28.07.2022
 
 from abc import ABCMeta, abstractmethod
-import re
+import re, regex
 from hashlib import md5, sha224
 import mwparserfromhell as parser
 
@@ -102,7 +102,10 @@ class EntCore(metaclass=ABCMeta):
 		self.first_sentence = ""
 		
 		self.extract_images()
+		
 		self.get_first_sentence()
+		self.get_infobox_aliases()
+		self.get_native_names()
 		self.get_lang_aliases()
 
 	##
@@ -358,7 +361,7 @@ class EntCore(metaclass=ABCMeta):
 	#
 	# e.g.: '''Vasily Vasilyevich Smyslov''' (24 March 1921 – 27 March 2010) was a [[Soviet people|Soviet]] ...
 	def get_first_sentence(self):
-		paragraph = self.first_paragraph.strip()
+		paragraph = self.first_paragraph.strip()		
 		if paragraph and paragraph[-1] != '.':
 			paragraph += '.'
 
@@ -373,8 +376,14 @@ class EntCore(metaclass=ABCMeta):
 			sentence = re.sub(r"\[\[([^\|]*?)\]\]", r"\1", sentence)
 			sentence = re.sub(r"\[\[.*?\|([^\|]*?)\]\]", r"\1", sentence)
 			sentence = re.sub(r"\[|\]", "", sentence)
-			# removing pronounciation
-			sentence = re.sub(r"\{\{IPA.*?\}\}[,;]?", "", sentence)
+			# removing pronounciation and spelling
+			sentence = re.sub(r"\{\{(?:IPA|respell|pronunciation).*?\}\}[,;]?", "", sentence)
+
+			sentence = re.sub(r"\([\s,;]*\)", "", sentence)
+			sentence = re.sub(r"\([\s,;]+", "(", sentence)
+			sentence = re.sub(r"[\s,;]+\)", ")", sentence)
+			sentence = re.sub(r"[ \t]{2,}", " ", sentence)
+			# debug.log_message(sentence)
 			self.first_sentence = sentence
 
 	def serialize_aliases(self):
@@ -383,32 +392,184 @@ class EntCore(metaclass=ABCMeta):
 	def get_alias_properties(self, nametype, lang=None):
 		return {KEY_LANG: lang, KEY_NAMETYPE: nametype}
 
+	def get_infobox_aliases(self):
+		keys = [
+			"name",			
+			"birth_name",
+			"birthname",
+			"other_names",
+			"name_other",
+			"nickname",
+			"alias",
+			"aliases"
+		]
+		
+		# keys = [
+		# 	"rodné jméno",
+		# 	"jiná jména",
+		#	"rodné jméno",
+		#	"jinak zvaný",
+		# 	"úplné jméno",
+		# 	"chrámové jméno",
+		# 	"posmrtné jméno",
+		# 	"pseudonym"
+		# ]
+
+		for k in keys:
+			data = self.get_infobox_data(k)
+			if data:
+				debug.log_message(f"{k}:\t{data}")
+
+	def get_native_names(self):
+		keys = "native_name_lang"
+		keys = ["iso2", "iso3"]
+		native_lang = self.get_infobox_data(keys)
+		if native_lang:
+			native_lang = native_lang.strip(":").lower()
+			if len(native_lang) != 2:
+				if native_lang in self.langmap:
+					native_lang = self.langmap[native_lang]
+			if len(native_lang) > 3:
+				native_lang = ""
+				debug.log_message(f"Error: unsoported language found in native name extraction -> {native_lang}")
+
+		keys = ["nativename", "native_name"]
+		keys = "úřední název"
+		data = self.get_infobox_data(keys)
+		if data:
+			data = re.sub(r"&nbsp;", " ", data, flags=re.I)
+			data = re.sub(r"{{okina}}|{{wbr}}", "", data, flags=re.I)
+			data = re.sub(r"\{\{Nastaliq\|(.*?)\}\}", "\1", data, flags=re.I)
+			data = re.sub(r"\(.*?\)", "", data)
+			
+			data = self.remove_outer_templates(data).strip()
+			
+			# native name and transliteration templates
+			a = []
+			patterns = [
+				r"\{\{(?:native name)\|(.*?)\|(.*?)(?:\|.*?)?\}\}",
+				r"(?:'{2,3})?\{\{(?:transliteration|transl)\|(.*?)\|(?:(?:ISO|ALA-LC)\|)?(.*?)\}\}(?:'{2,3})?"
+			]
+			for pattern in patterns: 
+				match = re.finditer(pattern, data, flags=re.I)
+				for m in match:
+					lang_abbr = m.group(1)
+					alias = m.group(2)
+					alias = re.sub(r"'{2,3}", "", alias)
+					self.aliases[alias] = self.get_alias_properties(None, lang_abbr)
+					a.append(m.span())
+				data = self.remove_spans(data, a)
+				a = []
+
+			if data:
+				data, aliases = self.remove_lang_templates(data, False)
+				for span in aliases:
+					alias, lang = span
+					self.aliases[alias] = self.get_alias_properties(None, lang)
+
+			# ''alias''
+			pattern = r"'{2,3}(.*?)'{2,3}"
+			match = re.finditer(pattern, data, flags=re.I)
+			for m in match:
+				alias = m.group(1)
+				if not re.search(r"\{\{.*?\}\}", alias):
+					alias = self.remove_templates(alias)
+					if alias:
+						self.aliases[alias] = self.get_alias_properties(None, None if not native_lang else native_lang)
+						a.append(m.span())
+			data = self.remove_spans(data, a)			
+			
+			data = re.sub(r"\{\{.*\}\}", "", data, flags=re.DOTALL)
+			data = re.sub(r"[ \t]+", " ", data)
+			data = data.strip()
+			if re.search(r"\w+", data):
+				self.aliases[data] = self.get_alias_properties(None, None if not native_lang else native_lang)
+
+	@staticmethod
+	def remove_spans(string, spans):
+		for span in sorted(spans, reverse=True):
+			start, end = span
+			string = string[:start] + string[end:]
+		return string
+
+	@staticmethod
+	def remove_outer_templates(content):
+		patterns = [
+			r"\{\{nobold\|",
+			r"\{\{small(?:er)?\|",
+			r"\{\{nowrap\|"
+		]
+		for p in patterns:
+			spans = []
+			match = re.finditer(p, content, flags=re.I)
+			for m in match:				
+				start = m.span()[0]
+				origin = start
+				end = start
+				found = False
+				indent = 0
+				for c in content[start:]:
+					if c == '{':
+						indent += 1
+					elif c == '}':
+						indent -= 1
+					elif c == '|' and not found:
+						origin = end + 1
+						found = True
+					end += 1
+					if indent == 0:
+						break
+				spans.append((start, origin, end-2))
+		
+			for span in sorted(spans, reverse=True):
+				start, origin, end = span
+				content = content[:start] + content[origin:end] + content[end+2:]
+		
+		content = re.sub(r"[ \t]+", " ", content)
+		
+		return content
+	
 	def get_lang_aliases(self):
-		spans = []
 		sentence = self.first_sentence
+		
+		sentence, aliases = self.remove_lang_templates(sentence)
+		for span in aliases:
+			alias, lang = span
+			self.aliases[alias] = self.get_alias_properties(None, lang)
+
+		self.first_sentence = sentence
+
+	def remove_lang_templates(self, data, replace=True):
+		spans = []
+		aliases = []
+
 		patterns = self.core_utils.KEYWORDS["lang_alias_patterns"]
 		for p in patterns:
-			match = re.finditer(p, sentence, flags=re.I)
+			match = re.finditer(p, data, flags=re.I)
 			for m in match:
 				lang = m.group(1).strip()
 				if len(lang) < 2 or len(lang) > 3:
 					debug.log_message(f"Error: invalid lang tag - {lang} ({self.link})")
 					continue
 				if len(lang) == 3:
-					lang = None if lang not in self.langmap else self.langmap[lang]					
+					lang = lang if lang not in self.langmap else self.langmap[lang]					
 				alias = m.group(2)
 				alias = alias.replace("'", "").strip()
 				if re.search(r"\{|\}|=", alias):
+					# debug.log_message(f"{data}")
 					continue
 				start, end = m.span()
-				self.aliases[alias] = self.get_alias_properties(None, lang)
+				aliases.append((alias, lang))
 				spans.append((start, end, alias))
 			
 		for s in sorted(spans, reverse=True):
 			start, end, alias = s
-			sentence = sentence[:start] + alias + sentence[end:]
-
-		self.first_sentence = sentence
+			if replace:
+				data = data[:start] + alias + data[end:]
+			else:
+				data = data[:start] + data[end:]
+		
+		return (data, aliases)
 
 	def serialize_aliases(self):
 		self.aliases.pop(self.title, None)
