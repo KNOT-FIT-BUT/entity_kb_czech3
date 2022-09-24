@@ -323,7 +323,7 @@ class WikiExtract(object):
 	def parse_xml_dump(self):
 		
 		redirects = self.load_redirects(self.redirects_dump_fpath)
-		langmap = self.load_langmap(os.path.join(os.path.dirname(sys.argv[0]), f"json/langmap.json"))
+		langmap = self.load_langmap(os.path.join(os.path.dirname(sys.argv[0]), f"json/langmap_{self.console_args.lang}.json"))
 		first_sentences = self.load_first_sentences("sentence_fpath")
 		patterns = self.load_patterns(os.path.join(os.path.dirname(sys.argv[0]), f"json/{self.console_args.lang}_identification.json"))
 
@@ -630,7 +630,8 @@ class WikiExtract(object):
 		clean_content = self.remove_ref_templates(clean_content)
 		
 		# remove break lines
-		clean_content = re.sub(r"<br\s*?/>", " ", clean_content, flags=re.DOTALL)
+		clean_content = re.sub(r"<br\s*?/>", "  ", clean_content, flags=re.DOTALL)
+		clean_content = re.sub(r"<br>", "  ", clean_content, flags=re.DOTALL)
 		clean_content = re.sub(r"<.*?/?>", "", clean_content, flags=re.DOTALL)
 
 		return clean_content

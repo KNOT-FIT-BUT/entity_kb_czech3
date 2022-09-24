@@ -59,17 +59,21 @@ class EntEvent(EntCore):
     # @brief tries to assign entity information (calls the appropriate functions)
 	def assign_values(self, lang):
 		lang_utils = utils[lang]
-
-		ent_data = {
-			"infobox_data": self.infobox_data,
-			"infobox_name": self.infobox_name
-		}
-
-		# extraction = lang_utils.extract_text(extraction, ent_data, self.d)
-
 		self.start_date, self.end_date = lang_utils.assign_dates(self.infobox_data)
 		self.assign_locations()
 		self.assign_type()
+
+		name = ""
+		if self.infobox_name and self.infobox_name != "event":
+			name = self.infobox_name.lower()
+
+		if not self.type:			
+			self.type = name
+		
+		if name == "election" and self.type:
+			self.type = f"{self.type} election"
+		else:
+			self.type = "election"
 	
 	##
     # @brief extracts and assigns locations from infobox

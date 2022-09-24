@@ -32,7 +32,11 @@ class CoreUtils:
 		"lang_alias_patterns": [
 			r"\{\{vjazyce\|(.+?)\}\}\s'{2}(.+?)'{2}",
 			r"'{0,3}\{\{(?:vjazyce2|cizojazyčně)\|([^\|]+)\|'{0,2}(.+?)'{0,2}\}\}'{0,3}"
-		]
+		],
+		"native_name_lang": ["iso2", "iso3"],
+		"native_name": "úřední název",
+		"infobox_name": ["chrámové jméno", "posmrtné jméno", "pseudonym", "rodné jméno", "úplné jméno"],
+		"infobox_names": ["jinak zvaný", "jiná jména"]
 	}
 
 	@staticmethod

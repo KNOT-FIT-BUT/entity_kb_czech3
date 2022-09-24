@@ -59,17 +59,13 @@ class EntOrganisation(EntCore):
     # @brief tries to assign entity information (calls the appropriate functions)
 	def assign_values(self, lang):
 		lang_utils = utils[lang]
-
-		ent_data = {
-			"infobox_data": self.infobox_data,
-			"infobox_name": self.infobox_name
-		}
-
-		# extraction = lang_utils.extract_text(extraction, ent_data, self.d)
-
 		self.founded, self.cancelled = lang_utils.assign_dates(self.infobox_data)
 		self.assign_location()
 		self.assign_type()
+
+		if not self.type:
+			if self.infobox_name and self.infobox_name.lower() != "organization":
+				self.type = self.infobox_name
 	
 	##
 	# @brief extracts and assigns location from infobox

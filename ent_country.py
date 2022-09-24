@@ -63,9 +63,6 @@ class EntCountry(EntCore):
     # @brief tries to assign entity information (calls the appropriate functions) and assigns prefix
 	def assign_values(self, lang):
 		lang_utils = utils[lang]
-
-		# extraction = lang_utils.extract_text(extraction, ent_data, self.d)
-
 		self.prefix = lang_utils.assign_prefix(self.categories)
 		self.latitude, self.longitude = self.core_utils.assign_coordinates(self)
 		self.area = self.assign_area()
@@ -80,7 +77,13 @@ class EntCountry(EntCore):
 			m = re.sub(r"\{\{.*?\}\}", "", m)
 			if m not in self.aliases:
 				self.aliases[m] = self.get_alias_properties(None, self.lang)
-		sentence = re.sub(r"'{3}", "", sentence)
+		# sentence = re.sub(r"'{2,3}", "", sentence)
+		# match = re.search(r"(\w+):", sentence)
+		# if match:
+		# 	lang = match.group(1).lower()
+		# 	if lang in self.langmap and len(lang) > 2:
+		# 		debug.log_message(lang)
+		# 		debug.log_message(sentence)
 		if sentence:
-			# debug.log_message(f"{sentence} [{self.serialize_aliases()}]")
+			debug.log_message(f"{sentence} [{self.serialize_aliases()}]")
 			pass

@@ -33,7 +33,7 @@
 # @date 28.07.2022
 
 from abc import ABCMeta, abstractmethod
-import re, regex
+import re
 from hashlib import md5, sha224
 import mwparserfromhell as parser
 
@@ -208,7 +208,7 @@ class EntCore(metaclass=ABCMeta):
 		return ""
 
 	##
-    # @brief extracts and assigns population from infobox
+	# @brief extracts and assigns population from infobox
 	def assign_population(self):
 		data = self.get_infobox_data(utils[self.lang].KEYWORDS["population"], return_first=True)
 		if data:
@@ -349,9 +349,6 @@ class EntCore(metaclass=ABCMeta):
 		image_path = f"wikimedia/commons/{image_hash[0]}/{image_hash}/{image}"
 		return image_path
 
-	# get_aliases
-	# get_description
-
 	##
 	# @brief tries to extract the first sentence from the first paragraph
 	# @param paragraph - first paragraph of the page <string>
@@ -373,6 +370,7 @@ class EntCore(metaclass=ABCMeta):
 			# removing templates
 			sentence = match.group(1)
 			sentence = re.sub(r"&nbsp;", " ", sentence)
+			sentence = re.sub(r"\[\[(?:file|soubor|image):.*?\]\]", "", sentence, flags=re.I)
 			sentence = re.sub(r"\[\[([^\|]*?)\]\]", r"\1", sentence)
 			sentence = re.sub(r"\[\[.*?\|([^\|]*?)\]\]", r"\1", sentence)
 			sentence = re.sub(r"\[|\]", "", sentence)
@@ -386,43 +384,153 @@ class EntCore(metaclass=ABCMeta):
 			# debug.log_message(sentence)
 			self.first_sentence = sentence
 
-	def serialize_aliases(self):
-		pass
-
+	##
+	# @brief serializes alias data
+	# @param nametype - ???
+	# @param lang - abbr
+	# @return dictionary with data
 	def get_alias_properties(self, nametype, lang=None):
 		return {KEY_LANG: lang, KEY_NAMETYPE: nametype}
 
+	##
+	# @brief gets aliases from infobox
 	def get_infobox_aliases(self):
-		keys = [
-			"name",			
-			"birth_name",
-			"birthname",
-			"other_names",
-			"name_other",
-			"nickname",
-			"alias",
-			"aliases"
+		keys = self.core_utils.KEYWORDS["infobox_name"]
+		data = self.get_infobox_data(keys, False)
+		for d in data:
+			d, aliases = self.remove_lang_templates(d)			
+			if len(aliases):
+				for span in aliases:
+					alias, lang = span
+					self.aliases[alias] = self.get_alias_properties(None, lang)
+				continue
+			
+			d = re.sub(r"'{2,3}", "", d)
+			d = re.sub(r"\{\{.*\}\}", "", d, flags=re.DOTALL)
+			if d:
+				# ""?
+				# ()?
+				self.aliases[d] = self.get_alias_properties(None, None)
+
+		keys = self.core_utils.KEYWORDS["infobox_names"]
+		data = self.get_infobox_data(keys, False)
+		for d in data:
+			d = d.replace("\n", " ")
+			d = re.sub(r"\[\[.*?\|([^\|]*?)\]\]", r"\1", d)
+			d = re.sub(r"\[|\]", "", d)
+			d = re.sub(r"\{\{small\|(.*?)\}\}", r"\1", d)
+			d = d.strip(".")
+
+			d, array = self.remove_list_templates(d)
+			if len(array):
+				for a in array:
+					a = re.sub(r"'{2,3}|\"", "", a)
+					a = re.sub(r"\(.*?\)", "", a).strip()
+					if re.search(r":$", a):
+						continue
+					self.aliases[a] = self.get_alias_properties(None, None)
+		
+			d = re.sub(r"[ \t]{2,}", "*", d)
+			# names separeted by a character
+			if re.search(r"[,*]", d):
+				d = re.sub(r"\(.*?\)", "", d)
+				d = re.sub(r"\"|'{2,}", "", d)
+				for sep in [",", "*"]:
+					d = d.split(sep)
+					if len(d) > 1:
+						d = [s.strip() for s in d if s]
+						for v in d:
+							v = re.sub(r"[\w\s]+:", "", v)
+							v = v.replace("*", "").strip()
+							lang = ""
+							match = re.search(r"\{\{in lang\|(.*?)\}\}", v)							
+							if match:
+								lang = match.group(1).strip()
+								v = re.sub(r"\{\{in lang\|.*?\}\}", "", v).strip()
+							v, array = self.remove_lang_templates(v, False)
+							if len(array):
+								for span in array:
+									alias, lang = span
+									self.aliases[alias] = self.get_alias_properties(None, lang)
+							else:
+								match = re.search(r"\{\{(?:native (?:name|phrase))\|(.*?)\|(.*?)(?:\|.*?)?\}\}", v)
+								if match:
+									lang = match.group(1)
+									v = match.group(2)
+								self.aliases[v] = self.get_alias_properties(None, lang if lang else None)
+						break
+					else:
+						d = d[0]
+				return
+
+			d, array = self.remove_lang_templates(d, False)
+			for span in array:
+				alias, lang = span
+				self.aliases[alias] = self.get_alias_properties(None, lang)
+
+			match = re.search(r"\{\{(?:native (?:name|phrase))\|(.*?)\|(.*?)(?:\|.*?)?\}\}", d)
+			if match:
+				lang = match.group(1)
+				alias = match.group(2)
+				self.aliases[alias] = self.get_alias_properties(None, lang)
+				return				
+
+			d = d.replace('"', "")
+			if d:
+				self.aliases[d] = self.get_alias_properties(None, None)
+
+	##
+	# @brief removes wikipedia link templates (plainlists, unbulleted lists, hlists, ...)
+	# @param value - string with list template
+	# @return tuple of the string without the template and array with data extracted from the template
+	@staticmethod
+	def remove_list_templates(value):
+		array = []
+		spans = []
+		
+		patterns = [
+			r"\{\{(?:(?:indented\s)?plainlist|flatlist)\s*?\|",
+			r"\{\{(?:hlist|ubl|(?:unbulleted|collapsible)\slist)\s*?\|"
 		]
 		
-		# keys = [
-		# 	"rodné jméno",
-		# 	"jiná jména",
-		#	"rodné jméno",
-		#	"jinak zvaný",
-		# 	"úplné jméno",
-		# 	"chrámové jméno",
-		# 	"posmrtné jméno",
-		# 	"pseudonym"
-		# ]
+		for p in patterns:
+			match = re.search(p, value, flags=re.I)
+			if match:
+				start = match.span()[0]
+				origin, end, found, indent = (start, start, False, 0)
+				for c in value[start:]:
+					if c == '{':
+						indent += 1
+					elif c == '}':
+						indent -= 1
+					elif c == '|' and not found:
+						origin = end + 1
+						found = True
+					elif c == '|' and indent == 2:
+						value = value[:end] + '*' + value[end+1:]
+					end += 1
+					if indent == 0:
+						break
+				spans.append((start, origin, end))
+		
+		for span in sorted(spans, reverse=True):
+			start, origin, end = span
+			array.append(value[origin:end-2])
+			value = value[:start] + value[end:]
+		
+		extracted = []
+		for a in array:
+			a = a.split("*")
+			a = [i.strip() for i in a]
+			a = [i for i in a if i]
+			extracted += a
 
-		for k in keys:
-			data = self.get_infobox_data(k)
-			if data:
-				debug.log_message(f"{k}:\t{data}")
-
+		return (value, extracted)
+	
+	##
+	# @brief gets native names from infobox and removes wikipedia formatting 
 	def get_native_names(self):
-		keys = "native_name_lang"
-		keys = ["iso2", "iso3"]
+		keys = self.core_utils.KEYWORDS["native_name_lang"]
 		native_lang = self.get_infobox_data(keys)
 		if native_lang:
 			native_lang = native_lang.strip(":").lower()
@@ -433,8 +541,7 @@ class EntCore(metaclass=ABCMeta):
 				native_lang = ""
 				debug.log_message(f"Error: unsoported language found in native name extraction -> {native_lang}")
 
-		keys = ["nativename", "native_name"]
-		keys = "úřední název"
+		keys = self.core_utils.KEYWORDS["native_name"]
 		data = self.get_infobox_data(keys)
 		if data:
 			data = re.sub(r"&nbsp;", " ", data, flags=re.I)
@@ -485,6 +592,11 @@ class EntCore(metaclass=ABCMeta):
 			if re.search(r"\w+", data):
 				self.aliases[data] = self.get_alias_properties(None, None if not native_lang else native_lang)
 
+	##
+	# @brief cuts out templates from string given an array of spans with string indexes
+	# @param string with templates
+	# @param array of spans with string indexes
+	# @return string without templates
 	@staticmethod
 	def remove_spans(string, spans):
 		for span in sorted(spans, reverse=True):
@@ -492,6 +604,10 @@ class EntCore(metaclass=ABCMeta):
 			string = string[:start] + string[end:]
 		return string
 
+	##
+	# @brief removes indented templates (e.g.: {{nobold|{{lang|en|example}}}})
+	# @param content - string with idented template
+	# @return string without indented template
 	@staticmethod
 	def remove_outer_templates(content):
 		patterns = [
@@ -515,7 +631,7 @@ class EntCore(metaclass=ABCMeta):
 						indent -= 1
 					elif c == '|' and not found:
 						origin = end + 1
-						found = True
+						found = True					
 					end += 1
 					if indent == 0:
 						break
@@ -529,6 +645,8 @@ class EntCore(metaclass=ABCMeta):
 		
 		return content
 	
+	##
+	# @brief removes wikipedia lang templates from the first sentence
 	def get_lang_aliases(self):
 		sentence = self.first_sentence
 		
@@ -539,6 +657,11 @@ class EntCore(metaclass=ABCMeta):
 
 		self.first_sentence = sentence
 
+	##
+	# @brief removes wikipedia lang templates from given string
+	# @param data - string with lang templates
+	# @param replace - bool, if true it leaves extracted data in, if false it removes the entire template
+	# @return tuple with string without templates and the extracted data
 	def remove_lang_templates(self, data, replace=True):
 		spans = []
 		aliases = []
@@ -571,6 +694,8 @@ class EntCore(metaclass=ABCMeta):
 		
 		return (data, aliases)
 
+	##
+	# @brief serializes all aliases into a string separated by |
 	def serialize_aliases(self):
 		self.aliases.pop(self.title, None)
 
@@ -585,128 +710,4 @@ class EntCore(metaclass=ABCMeta):
 			preserialized.add(alias + tmp_flags)
 
 		return "|".join(preserialized)
-
-	# ##
-	# # @brief extracts an alias in a native language
-	# # @param langs - aliases in a wikipedia format <array of strings>
-	# # 
-	# # e.g.: {{lang-rus|Васи́лий Васи́льевич Смысло́в|Vasíliy Vasíl'yevich Smyslóv}};
-	# def get_lang_aliases(self, langs):
-	# 	if len(langs) > 0:
-	# 		for lang in langs:
-	# 			lang = re.sub(r"{{lang(?:-|\|)(.*?)}}", r"\1", lang)
-	# 			split = lang.split("|")
-	# 			code = split[0].split("-")[0]
-	# 			if len(code) != 2:
-	# 				if code in self.langmap:
-	# 					code = self.langmap[code].split("|")[0]
-	# 				else:
-	# 					code = "??"
-				
-	# 			for s in split[1:]:
-	# 				if "=" in s:
-	# 					split.remove(s)
-
-	# 			if len(split) < 2:
-	# 				# self.d.log_message(f"couldn't split lang alias: {split[0]} [{self.link}]")
-	# 				return
-
-	# 			alias = split[1]
-	# 			if len(split) > 2:
-	# 				if "{" not in alias:
-	# 					if self.aliases:
-	# 						self.aliases += f"|{alias}#lang={code}"
-	# 					else:
-	# 						self.aliases = f"{alias}#lang={code}"
-
-	# ##
-	# # @brief extracts aliases from the first sentence
-	# def get_aliases(self):
-	# 	title = self.title
-	# 	sentence = self.first_sentence
-
-	# 	sentence = re.sub(r"\[\[[^\[]]*?\|(.*?)\]\]", r"\1", sentence)
-	# 	sentence = re.sub(r"\[|\]", "", sentence)
-		
-	# 	aliases = []
-	
-	# 	split = title.split(" ")
-	# 	name = split[0]
-	# 	surname = split[-1] if len(split) > 1 else ""
-		
-	# 	# finds all names in triple quotes and removes those that match the title 
-	# 	aliases = re.findall(r"(?:\"|\()?'''.*?'''(?:\"|\))?", sentence)
-	# 	aliases = [re.sub(r"'{3,5}", "", a) for a in aliases]
-	# 	aliases = [a for a in aliases if a != title]
-		
-	# 	title_data = title.split(" ")
-		
-	# 	# handles born surnames (née)
-	# 	born_name = ""
-	# 	m = re.search(r".*née\s'''(.*?)'''.*", sentence)
-	# 	if m:
-	# 		born_name = m.group(1)
-		
-	# 	# handles aliases in double quotes and brackets
-	# 	# surname is added to nicknames as a rule
-	# 	patterns = [r"\"(.*?)\"", r"\((.*?)\)"]
-	# 	nicknames = []
-	# 	for pattern in patterns:
-	# 		for i in range(len(aliases)):
-	# 			m = re.search(pattern, aliases[i])
-	# 			if m:
-	# 				if m.start():
-	# 					cut = f"{aliases[i][:m.start()].strip()} {aliases[i][m.end():].strip()}"
-	# 					aliases[i] = cut
-	# 				else:
-	# 					if i-1 >= 0 and i+1 < len(aliases):
-	# 						cut = f"{aliases[i-1]} {aliases[i+1]}"
-	# 						aliases[i-1] = cut
-	# 						aliases[i+1] = ""
-	# 				nicknames.append(m.group(1))
-		
-	# 	nicknames = [
-	# 		f"{nick} {surname}" for nick in nicknames 
-	# 		if f"{nick} {surname}" != title 
-	# 		and nick != title
-	# 	]
-		
-	# 	# remove previously handeled nicknames and born surname
-	# 	aliases = [
-	# 		item for item in aliases 
-	# 		if item 
-	# 		and item not in title_data 
-	# 		and '"' not in item
-	# 		and "(" not in item
-	# 		and item != title
-	# 	]
-	# 	if born_name and born_name != title:
-	# 		aliases = [item for item in aliases if item != born_name]
-		
-	# 	aliases = [re.sub(r"\(|\)", "", a).strip() for a in aliases]
-
-	# 	aliases += nicknames
-	# 	if born_name and born_name != title:
-	# 		aliases.append(f"{name} {born_name}")
-		
-	# 	self.aliases = self.aliases.split("|")
-	# 	self.aliases += aliases
-		
-	# 	# TODO: get aliases from infoboxes
-	# 	# keys = ["name", "birth_name", "birthname", "native_name", "nativename", "aliases"]
-	# 	# for key in keys:
-	# 	#     if key in self.infobox_data and self.infobox_data[key]:
-	# 	#         value = self.infobox_data[key]
-	# 	#         if value != title and value not in self.aliases:
-	# 	#             self.d.log_message(f"{key} -> {value}")
-
-	# 	self.aliases = [re.sub(r"\{\{.*?\}\}", "", a).strip() for a in self.aliases]
-	# 	self.aliases = [a for a in self.aliases if a != title]
-	# 	self.aliases = [a for a in self.aliases if a != ""]
-
-	# 	self.aliases = "|".join(self.aliases)
-
-	# 	# if self.aliases:
-	# 	#     self.d.log_message(f"{'|'.join(self.aliases)}")
-	# 	pass
 	

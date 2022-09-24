@@ -61,9 +61,6 @@ class EntWaterArea(EntCore):
     # @brief tries to assign entity information (calls the appropriate functions)
 	def assign_values(self, lang):
 		lang_utils = utils[lang]
-
-		# extraction = lang_utils.extract_text(extraction, ent_data, self.d)
-
 		self.latitude, self.longitude = self.core_utils.assign_coordinates(self)
 		self.area = self.assign_area()		
 		self.continents = lang_utils.assign_continents(self)

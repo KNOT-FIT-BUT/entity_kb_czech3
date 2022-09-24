@@ -87,15 +87,7 @@ class EntPerson(EntCore):
 	#
 	# this function is getting called from the main script after identification
 	def assign_values(self, lang):
-		lang_utils = utils[lang]
-		
 		self.prefix = utils[lang].assign_prefix(self)
-		
-		# extraction = {}
-		# extraction = lang_utils.extract_text(extraction, ent_data, self.d)
-		# if extraction["aliases"]:
-		# 	self.aliases	= extraction["aliases"] if self.aliases == "" else f"{self.aliases}|{extraction['aliases']}"
-		
 		self.birth_date, self.death_date = utils[lang].assign_dates(self)
 		self.assign_places()
 		self.assign_gender()
@@ -212,6 +204,8 @@ class EntPerson(EntCore):
 
 			self.jobs = "|".join(jobs)
 	
+	##
+	# @brief extracts nationality
 	def assign_nationality(self):
 		nationalities = []
 

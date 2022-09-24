@@ -18,16 +18,3 @@ class CountryUtils:
 			if re.search(r"former.*?countries", category.lower(), re.I):
 				return "country:former"
 		return "country"
-
-	##
-	# @brief
-	@staticmethod
-	def extract_text(extracted, ent_data, debugger):
-		coords = ent_data["coords"]
-
-		if coords != "" and (not extracted["latitude"] or not extracted["longitude"]):
-			coords = CoreUtils.get_coordinates(coords, debugger)
-			if all(coords):
-				extracted["latitude"], extracted["longitude"] = coords
-
-		return extracted

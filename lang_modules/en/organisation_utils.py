@@ -53,26 +53,3 @@ class OrganisationUtils:
 					break
 
 		return (founded, cancelled)
-
-	##
-	# @brief removes wikipedia formatting
-	# @param data - string with wikipedia formatting
-	# @return string without wikipedia formatting
-	@staticmethod
-	def remove_templates(data):
-		data = re.sub(r"\{\{.*?\}\}", "", data)
-		data = re.sub(r"\[\[.*?\|([^\|]*?)\]\]", r"\1", data)
-		data = re.sub(r"\[|\]|'|\(\)", "", data)
-		return data
-
-	@staticmethod
-	def extract_text(extracted, ent_data, debugger):
-
-		infobox_name = ent_data["infobox_name"]
-
-		if not extracted["type"]:
-			if infobox_name:
-				if infobox_name.lower() != "organization":
-					extracted["type"] = infobox_name
-
-		return extracted

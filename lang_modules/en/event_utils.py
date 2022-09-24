@@ -62,25 +62,3 @@ class EventUtils:
 					end_date = CoreUtils.extract_date(split[1])[0]
 
 		return (start_date, end_date)
-
-	def extract_text(extracted, ent_data, debugger):
-		infobox_name = ent_data["infobox_name"]
-
-		name = ""
-		type = extracted["type"]
-
-		if infobox_name != "" and infobox_name != "event":
-			name = infobox_name.lower()
-
-		if type:
-			extracted["type"] = type
-		else:
-			extracted["type"] = name
-		
-		if name == "election" and type:
-			extracted["type"] = f"{type} election"
-		else:
-			extracted["type"] = "election"
-
-		return extracted
-

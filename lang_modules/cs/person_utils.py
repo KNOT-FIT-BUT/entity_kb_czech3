@@ -48,24 +48,6 @@ class PersonUtils:
 		
 		return "person"
 
-	@classmethod
-	def extract_infobox(cls, ent_data, debugger):
-		extraction = {
-			"aliases": "",
-			"nationality": "",
-		}
-
-		title, categories, infobox_data, infobox_name = (
-			ent_data["title"],
-			ent_data["categories"],
-			ent_data["infobox_data"],
-			ent_data["infobox_name"]
-		)
-
-		extraction["aliases"] = cls.assign_aliases(infobox_data, infobox_name, title)
-		
-		return extraction
-
 	# @staticmethod
 	# def assign_gender(infobox_data, categories):
 	# 	# pohlaví

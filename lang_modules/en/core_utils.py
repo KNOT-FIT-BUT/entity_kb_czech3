@@ -18,10 +18,14 @@ class CoreUtils:
 		"area_other": ["area", "basin_size"],
 		"population": ["population", "population_total", "population_estimate", "population_census"],
 		"lang_alias_patterns": [
-			r"\{\{lang-([^\|]+?)(?:-.*?)?\|([^\|]+?)(?:\|.*?)?\}\}",
+			r"\{\{(?:lang|spell)-([^\|]+?)(?:-.*?)?\|([^\|]+?)(?:\|.*?)?\}\}",
 			r"\{\{lang\|([^\|]+?)(?:-.*?)?\|([^\|]+?)(?:\|.*?)?\}\}",
-			r"\{\{(zh)\|(?:[^\|]*?=)?([^\|]+?)(?:\|.*?)?\}\}"
-		]
+			r"\{\{(zh)\|(?:[^\|]*?=)?([^\|]+?)(?:\|.*?)?\}\}"			
+		],
+		"native_name_lang": "native_name_lang",
+		"native_name": ["nativename", "native_name"],
+		"infobox_name": ["name", "birth_name", "birthname", "common_name", "conventional_long_name"],
+		"infobox_names": ["other_names", "name_other", "nickname", "nicknames", "alias", "aliases"]
 	}
 
 	##
