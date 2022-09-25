@@ -109,7 +109,7 @@ class CoreUtils:
 		if re.search(r"[Cc]oords?missing", format):
 			return (None, None)
 
-		debugger.log_message(f"coords format no match ({format})")
+		debugger.log_message(f"Error: coords format no match ({format})")
 		return (None, None)
 
 	##
@@ -373,7 +373,7 @@ class CoreUtils:
 	#
 	# date extraction helper function
 	@staticmethod
-	def parse_string_format(string):     
+	def parse_string_format(string):
 		months = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"]
 
 		date = []

@@ -26,6 +26,8 @@
 
 import re
 
+from debugger import Debugger as debug
+
 from ent_core import EntCore
 
 from lang_modules.en.person_utils import PersonUtils as EnUtils
@@ -94,6 +96,8 @@ class EntPerson(EntCore):
 		self.assign_jobs()
 		self.assign_nationality()
 
+		self.extract_text()
+
 		# artist
 		if self.prefix == "person:artist":
 			self.assign_art_forms()
@@ -131,6 +135,7 @@ class EntPerson(EntCore):
 		value = self.get_infobox_data(utils[self.lang].KEYWORDS["gender"])
 		if value:
 			value = value.lower().strip()
+			value = re.sub(r"\(.*?\)", "", value).strip()			
 			if value in utils[self.lang].KEYWORDS["male"]:
 				self.gender = "M"
 			elif value in utils[self.lang].KEYWORDS["female"]:
@@ -242,8 +247,20 @@ class EntPerson(EntCore):
 			
 			self.nationality = "|".join(nationalities)
 
-	# TODO: extract text
-	# extract gender from categories 
+	##
+	# TODO: extract gender from categories
+	def extract_text(self):
+		# dates and places
+		if self.birth_date or self.death_date or self.birth_place or self.death_place:
+			birth_date, death_date, birth_place, death_place = utils[self.lang].extract_dates_and_places(self)
+			if not self.birth_date:
+				self.birth_date = birth_date
+			if not self.death_date:
+				self.death_date = death_date
+			if not self.birth_place:
+				self.birth_place = birth_place
+			if not self.death_place:
+				self.death_place = death_place
 
 	##
 	# @brief extracts and assigns art forms from the infobox

@@ -16,6 +16,8 @@
 
 import re
 
+from debugger import Debugger as debug
+
 from ent_core import EntCore
 from lang_modules.en.watercourse_utils import WatercourseUtils as EnUtils
 from lang_modules.cs.watercourse_utils import WatercourseUtils as CsUtils
@@ -116,6 +118,7 @@ class EntWaterCourse(EntCore):
 				flow = self.convert_units(number, unit)
 			flow = re.sub(r"(?<=\d)\s(?=\d)", "", flow)
 			flow = re.sub(r"^\D*(?=\d)", "", flow)
+			flow = flow.replace(",", ".")
 			match = re.search(r"^([\d\.,]+)(?:\s([^\s]+))?", flow)
 			if match:
 				number = match.group(1)
@@ -126,7 +129,6 @@ class EntWaterCourse(EntCore):
 					flow = number
 			else:
 				flow = ""
-			flow = re.sub(r"(?<=\d)\.(?=\d)", ",", flow)
 			return flow
 
 		data = self.get_infobox_data(utils[self.lang].KEYWORDS["streamflow"])
@@ -149,7 +151,7 @@ class EntWaterCourse(EntCore):
 				unit = match.group(2).strip()
 				length = self.convert_units(number, unit)
 			length = re.sub(r"\{\{.*?\}\}", "", length)
-			match = re.search(r"^([\d\.,]+)(?:\s?([^\s]+))?", length)
+			match = re.search(r"^([\d\.]+)(?:\s?([^\s]+))?", length)
 			if match:
 				number = match.group(1).strip()
 				unit = match.group(2)
@@ -160,7 +162,6 @@ class EntWaterCourse(EntCore):
 					length = number
 			else:
 				length = ""
-			length = re.sub(r"(?<=\d)\.(?=\d)", ",", length)
 			return length
 
 		data = self.get_infobox_data(utils[self.lang].KEYWORDS["length"])

@@ -64,9 +64,6 @@ class WikiExtract(object):
 	def __init__(self):
 		self.console_args = None
 		self.d = debug()
-		# self.first_sentence_version = "20210101"
-		# self.first_sentences_path = f"/mnt/minerva1/nlp/corpora_datasets/monolingual/english/wikipedia/1st_sentences_from_enwiki-20210101-pages-articles.tsv"
-		self.first_sentences_path = f"testing_data/xml/1st_sentences_from_enwiki-20210101-pages-articles.tsv"
 
 	##
 	# @brief parses the console arguments
@@ -121,6 +118,13 @@ class WikiExtract(object):
 			help="Source file of wiki redirects dump.",
 		)
 		parser.add_argument(
+			"-s",
+			"--first_sentences",
+			action="store",
+			type=str,
+			help="Source file of wiki dump of first sentences.",
+		)
+		parser.add_argument(
 			"--dev",
 			action="store_true",
 			help="Development version of KB",
@@ -143,6 +147,7 @@ class WikiExtract(object):
 		self.pages_dump_fpath = self.get_dump_fpath(self.console_args.pages, "{}wiki-{}-pages-articles.xml")
 		self.geotags_dump_fpath = self.get_dump_fpath(self.console_args.geotags, "{}wiki-{}-geo_tags.sql")
 		self.redirects_dump_fpath = self.get_dump_fpath(self.console_args.redirects, "redirects_from_{}wiki-{}-pages-articles.tsv")
+		self.fs_dump_path = self.get_dump_fpath(self.console_args.first_sentences, "1st_sentences_from_{}wiki-{}-pages-articles.tsv")
 		self.console_args._kb_stability = ""
 
 		if self.console_args.dev:
@@ -324,7 +329,7 @@ class WikiExtract(object):
 		
 		redirects = self.load_redirects(self.redirects_dump_fpath)
 		langmap = self.load_langmap(os.path.join(os.path.dirname(sys.argv[0]), f"json/langmap_{self.console_args.lang}.json"))
-		first_sentences = self.load_first_sentences("sentence_fpath")
+		first_sentences = self.load_first_sentences(self.fs_dump_path)
 		patterns = self.load_patterns(os.path.join(os.path.dirname(sys.argv[0]), f"json/{self.console_args.lang}_identification.json"))
 
 		# xml parser

@@ -28,6 +28,8 @@
 
 import re
 
+from debugger import Debugger as debug
+
 from ent_core import EntCore
 from lang_modules.en.geo_utils import GeoUtils as EnUtils
 from lang_modules.cs.geo_utils import GeoUtils as CsUtils
@@ -107,13 +109,13 @@ class EntGeo(EntCore):
 			height = re.sub(r"(?<=\d)\s(?=\d)", "", height)
 			height = re.sub(r",(?=\d{3})", "", height)
 			height = height.replace(",", ".")
-			match = re.search(r"\{\{(?:convert|cvt)\|([\d,\.]+)\|([^\|]+)(?:\|.*?)?\}\}", height, flags=re.I)
+			match = re.search(r"\{\{(?:convert|cvt)\|([\d\.]+)\|([^\|]+)(?:\|.*?)?\}\}", height, flags=re.I)
 			if match:
 				number = match.group(1).strip()
 				unit = match.group(2).strip()
 				height = self.convert_units(number, unit)
 			height = re.sub(r"\{\{.*?\}\}", "", height)
-			match = re.search(r"^([\d\.,]+)(?:\s?([^\s]+))?", height)
+			match = re.search(r"^([\d\.]+)(?:\s?([^\s]+))?", height)
 			if match:
 				number = match.group(1).strip()
 				unit = match.group(2)
@@ -124,7 +126,6 @@ class EntGeo(EntCore):
 					height = number
 			else:
 				height = ""
-			height = re.sub(r"(?<=\d)\.(?=\d)", ",", height)
 			return height
 		
 		data = self.get_infobox_data(utils[self.lang].KEYWORDS["height"], return_first=True)

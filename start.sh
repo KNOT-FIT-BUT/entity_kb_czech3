@@ -55,6 +55,7 @@ usage()
 CUSTOM_DUMP_PATH=false
 CUSTOM_REDIR_PATH=false
 REDIR_PATH=
+SENTENCE_PATH=
 DEPLOY=false
 MULTIPROC_PARAMS="-m ${NPROC}"
 EXTRACTION_ARGS=()
@@ -187,8 +188,16 @@ while read -r line; do
                     fi
                     break
                     ;;
+                SENTENCES)
+                    if [ "$use_config" = true ] 
+                    then
+                        # echo ${ADDR[i+1]}
+                        SENTENCE_PATH=${ADDR[i+1]}
+                    fi
+                    break
+                    ;;
                 *)
-                    echo "Infalid config argument"
+                    echo "Invalid config argument"
                     ;;
                 esac
             done  
@@ -231,7 +240,9 @@ fi
 
 EXTRACTION_ARGS+=(${KB_STABILITY})
 EXTRACTION_ARGS+=(${MULTIPROC_PARAMS})
-
+if [ -n "$var" ]; then
+    EXTRACTION_ARGS+=("-s ${SENTENCE_PATH}")
+fi
 # Run CS Wikipedia extractor to create new KB
 # old code:
 # CMD="python3 wiki_cs_extract.py --lang ${LANG} --dump ${DUMP_VERSION} --indir \"${DUMP_PATH}\" ${EXTRACTION_ARGS[@]} 2>entities_processing.log"

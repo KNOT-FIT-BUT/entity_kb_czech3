@@ -164,7 +164,7 @@ class EntCore(metaclass=ABCMeta):
 			area = re.sub(r"\{\{.*\}\}", "", area)
 			area = re.sub(r",(?=\d{3})", "", area)
 			area = area.replace(",", ".")
-			area = re.sub(r"(\d+(?:\.\d+)?).+", r"\1", area)
+			area = re.sub(r"(\d+(?:\.\d+)?)(?:.+|$)", r"\1", area)
 			return area.strip()
 
 		# km2
@@ -250,11 +250,12 @@ class EntCore(metaclass=ABCMeta):
 		try:
 			number = float(number)
 		except:
-			debug.log_message(f"couldn't conver string to float: {number}")
+			debug.log_message(f"Error: couldn't conver string to float: {number}")
 			return ""
 		unit = unit.lower()
 
 		SQMI_TO_KM2 = 2.589988
+		SQFT_TO_KM2 = 9.2903E-8
 		HA_TO_KM2 = 0.01
 		ACRE_TO_KM2 = 0.00404685642
 		M2_TO_KM2 = 0.000001
@@ -265,12 +266,14 @@ class EntCore(metaclass=ABCMeta):
 		FT3_TO_M3 = 0.0283168466
 		L_TO_M3 = 0.001
 
-		accepted_untis = ["sqkm", "km2", "km²", "km", "m", "meters", "metres", "m3", "m3/s", "m³/s"]
+		accepted_untis = ["sqkm", "km2", "km²", "sq km", "square kilometres", "km", "kilometres", "kilometers", "m", "meters", "metres", "m3", "m3/s", "m³/s"]
 		if unit in accepted_untis:
 			return str(number if number % 1 != 0 else int(number))
 
 		if unit == "sqmi":
 			number = round(number * SQMI_TO_KM2, round_to)
+		elif unit == "sqft":
+			number = round(number * SQFT_TO_KM2, 5)
 		elif unit in ("mi", "mile", "miles"):
 			number = round(number * MI_TO_KM,round_to)
 		elif unit in ("ft", "feet"):
@@ -534,11 +537,17 @@ class EntCore(metaclass=ABCMeta):
 		native_lang = self.get_infobox_data(keys)
 		if native_lang:
 			native_lang = native_lang.strip(":").lower()
+			native_lang = re.sub(r"\[|\]", "", native_lang)
+			match = re.search(r"lang-(\w+)", native_lang)
+			if match:
+				native_lang = match.group(1)
+			native_lang = native_lang.replace(",", "-")
+			native_lang = native_lang.split("-")
+			native_lang = native_lang[0]
 			if len(native_lang) != 2:
 				if native_lang in self.langmap:
 					native_lang = self.langmap[native_lang]
 			if len(native_lang) > 3:
-				native_lang = ""
 				debug.log_message(f"Error: unsoported language found in native name extraction -> {native_lang}")
 
 		keys = self.core_utils.KEYWORDS["native_name"]

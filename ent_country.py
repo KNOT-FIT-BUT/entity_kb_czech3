@@ -85,5 +85,5 @@ class EntCountry(EntCore):
 		# 		debug.log_message(lang)
 		# 		debug.log_message(sentence)
 		if sentence:
-			debug.log_message(f"{sentence} [{self.serialize_aliases()}]")
+			# debug.log_message(f"{sentence} [{self.serialize_aliases()}]")
 			pass

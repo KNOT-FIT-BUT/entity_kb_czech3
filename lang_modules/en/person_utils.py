@@ -1,6 +1,8 @@
 
 import re
 
+from debugger import Debugger as debug
+
 from lang_modules.en.core_utils import CoreUtils
 
 class PersonUtils:
@@ -69,6 +71,59 @@ class PersonUtils:
 		# debugger.log_message((birth_date, death_date))
 		return (birth_date, death_date)
 
+	def extract_dates_and_places(person):
+		birth_date = ""
+		death_date = ""
+		birth_place = ""
+		death_place = ""
+		sentence = person.first_sentence
+		
+		match = re.search(r"\((.*?)\)", sentence)
+		if match:
+			group = match.group(1)
+			group = re.sub(r"\[\[.*?\]\]", "", group)
+			group = re.sub(r"\{\{.*?\}\};?", "", group)
+			group = re.sub(r"&ndash;|{{spaced ndash}}|{{snd}}|{{ndash}}|{{spaced en dash}}|{{snds}}|{{spnd}}", "–", group).strip()
+			group = re.sub(r"{{Spaces}}|{{nbsp}}", " ", group)
+			group = group.split("–")
+			if len(group) == 2:
+				# get rid of born and died
+				born = group[0].replace("born", "").strip()
+				died = group[1].replace("died", "").strip()
+				if "BC" in died and "BC" not in born:
+					born += " BC"
+				birth_date = CoreUtils.extract_date(born)[0]
+				death_date = CoreUtils.extract_date(died)[0]
+			else:
+				date = group[0]
+				# look for born and died
+				if "born" in date:
+					date = date.replace("born", "").strip()
+					birth_date = CoreUtils.extract_date(date)[0]
+				elif "died" in date:
+					date = date.replace("died", "").strip()
+					death_date = CoreUtils.extract_date(date)[0]
+				else:
+					birth_date = CoreUtils.extract_date(date)[0]
+
+			if len(group) == 2:
+				match = re.search(r"\s+in\s+(.*)", group[0])
+				if match:
+					birth_place = match.group(1).strip()
+				match = re.search(r"\s+in\s+(.*)", group[1])
+				if match:					
+					death_place = match.group(1).strip()
+			else:
+				group = group[0]
+				match = re.search(r".*?born.*?\s+in\s+([^\d]+)", group)
+				if match:
+					birth_place = match.group(1).strip()
+				match = re.search(r".*?died.*?\s+in\s+([^\d]+)", group)
+				if match:					
+					death_place = match.group(1).strip()
+
+		return (birth_date, death_date, birth_place, death_place)
+	
 	##
 	# @brief extracts data from the first paragraph and categories
 	@staticmethod

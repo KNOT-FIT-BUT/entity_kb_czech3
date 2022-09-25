@@ -48,28 +48,6 @@ class PersonUtils:
 		
 		return "person"
 
-	# @staticmethod
-	# def assign_gender(infobox_data, categories):
-	# 	# pohlaví
-	# 	# TODO: temp content
-	# 	gender = ""
-	# 	content = "\n".join(categories)
-
-	# 	if re.search(r"muži", content, re.I):
-	# 		gender = "M"
-	# 	elif re.search(r"ženy", content, re.I):
-	# 		gender = "F"
-	# 	else:
-	# 		# pohlaví as a field in the infobox
-	# 		if "pohlaví" in infobox_data and infobox_data["pohlaví"]:
-	# 			value = infobox_data["pohlaví"].lower().strip()
-	# 			if value == "muž":
-	# 				gender = "M"
-	# 			elif value == "žena":
-	# 				gender = "F"
-
-	# 	return gender
-
 	@classmethod
 	def assign_dates(cls, person):
 		birth_date = ""
@@ -150,6 +128,82 @@ class PersonUtils:
 
 		return aliases
 
+	@classmethod
+	def extract_dates_and_places(cls, person):
+		birth_date = ""
+		death_date = ""
+		birth_place = ""
+		death_place = ""
+		text = person.first_sentence
+
+		# (* 2000)
+		if not person.birth_date:
+			rexp = re.search(r"\(\s*\*\s*(\d+)\s*\)", text)
+			if rexp and rexp.group(1):
+				birth_date = cls._convert_date(rexp.group(1), True)
+
+		# (* 1. ledna 2000)
+		if not person.birth_date:
+			rexp = re.search(r"\(\s*\*\s*(\d+\.\s*\w+\.?\s+\d{1,4})\s*\)", text)
+			if rexp and rexp.group(1):
+				birth_date = cls._convert_date(rexp.group(1), True)
+
+		# (* 1. ledna 2000, Brno), (* 1. ledna 200 Brno, Česká republika)
+		if not person.birth_date or not person.birth_place:
+			rexp = re.search(
+				r"\(\s*\*\s*(\d+\.\s*\w+\.?\s+\d{1,4})\s*(?:,\s*)?([^\W\d_][\w\s\-–—−,]+[^\W\d_])\s*(?![\-–—−])\)",
+				text,
+			)
+			if rexp:
+				if rexp.group(1) and not person.birth_date:
+					birth_date = cls._convert_date(rexp.group(1), True)
+				if rexp.group(2) and not person.birth_place:
+					birth_place = cls.get_place(rexp.group(2))
+
+		# (* 2000 – † 2018), (* 2000, Brno - † 2018 Brno, Česká republika)
+		if (
+			not person.birth_date
+			or not person.death_date
+			or not person.birth_place
+			or not person.death_place
+		):
+			rexp = re.search(
+				r"\(\s*(?:\*\s*)?(\d{1,4})\s*(?:,\s*)?([^\W\d_][\w\s\-–—−,]+[^\W\d_])?\s*[\-–—−]\s*(?:†\s*)?(\d{1,4})\s*(?:,\s*)?([^\W\d_][\w\s\-–—−,]+[^\W\d_])?\s*\)",
+				text,
+			)
+			if rexp:
+				if rexp.group(1) and not person.birth_date:
+					birth_date = cls._convert_date(rexp.group(1), True)
+				if rexp.group(2) and not person.birth_place:
+					birth_place = cls.get_place(rexp.group(2))
+				if rexp.group(3) and not person.death_date:
+					death_date = cls._convert_date(rexp.group(3), False)
+				if rexp.group(4) and not person.death_place:
+					death_place = cls.get_place(rexp.group(4))
+
+		# (* 1. ledna 2000 – † 1. ledna 2018), (* 1. ledna 2000, Brno - † 1. ledna 2018 Brno, Česká republika)
+		if (
+			not person.birth_date
+			or not person.death_date
+			or not person.birth_place
+			or not person.death_place
+		):
+			rexp = re.search(
+				r"\(\s*(?:\*\s*)?(\d+\.\s*\w+\.?\s+\d{1,4})\s*(?:,\s*)?([^\W\d_][\w\s\-–—−,]+[^\W\d_])?\s*[\-–—−]\s*(?:†\s*)?(\d+\.\s*\w+\.?\s+\d{1,4})\s*(?:,\s*)?([^\W\d_][\w\s\-–—−,]+[^\W\d_])?\s*\)",
+				text,
+			)
+			if rexp:
+				if rexp.group(1) and not person.birth_date:
+					birth_date = cls._convert_date(rexp.group(1), True)
+				if rexp.group(2) and not person.birth_place:
+					birth_place = cls.get_place(rexp.group(2))
+				if rexp.group(3) and not person.death_date:
+					death_date = cls._convert_date(rexp.group(3), False)
+				if rexp.group(4) and not person.death_place:
+					death_place = cls.get_place(rexp.group(4))
+
+		return (birth_date, death_date, birth_place, death_place)
+	
 	# TODO aliases - extract_text
 	@classmethod
 	def extract_text(cls, extracted, ent_data, debugger):
@@ -181,78 +235,6 @@ class PersonUtils:
 		)
 		if match:
 			text = cls.get_first_sentence(CoreUtils.del_redundant_text(match.group(0), ", "), title)
-
-			# TODO: do this?
-			# if not self.description:
-			# 	self.description = text
-
-			# získání data/místa narození/úmrtí z první věty - začátek
-			# (* 2000)
-			if not extracted["birth_date"]:
-				rexp = re.search(r"\(\s*\*\s*(\d+)\s*\)", text)
-				if rexp and rexp.group(1):
-					extracted["birth_date"] = cls._convert_date(rexp.group(1), True)
-
-			# (* 1. ledna 2000)
-			if not extracted["birth_date"]:
-				rexp = re.search(r"\(\s*\*\s*(\d+\.\s*\w+\.?\s+\d{1,4})\s*\)", text)
-				if rexp and rexp.group(1):
-					extracted["birth_date"] = cls._convert_date(rexp.group(1), True)
-
-			# (* 1. ledna 2000, Brno), (* 1. ledna 200 Brno, Česká republika)
-			if not extracted["birth_date"] or not extracted["birth_place"]:
-				rexp = re.search(
-					r"\(\s*\*\s*(\d+\.\s*\w+\.?\s+\d{1,4})\s*(?:,\s*)?([^\W\d_][\w\s\-–—−,]+[^\W\d_])\s*(?![\-–—−])\)",
-					text,
-				)
-				if rexp:
-					if rexp.group(1) and not extracted["birth_date"]:
-						extracted["birth_date"] = cls._convert_date(rexp.group(1), True)
-					if rexp.group(2) and not extracted["birth_place"]:
-						extracted["birth_place"] = cls.get_place(rexp.group(2))
-
-			# (* 2000 – † 2018), (* 2000, Brno - † 2018 Brno, Česká republika)
-			if (
-				not extracted["birth_date"]
-				or not extracted["death_date"]
-				or not extracted["birth_place"]
-				or not extracted["death_place"]
-			):
-				rexp = re.search(
-					r"\(\s*(?:\*\s*)?(\d{1,4})\s*(?:,\s*)?([^\W\d_][\w\s\-–—−,]+[^\W\d_])?\s*[\-–—−]\s*(?:†\s*)?(\d{1,4})\s*(?:,\s*)?([^\W\d_][\w\s\-–—−,]+[^\W\d_])?\s*\)",
-					text,
-				)
-				if rexp:
-					if rexp.group(1) and not extracted["birth_date"]:
-						extracted["birth_date"] = cls._convert_date(rexp.group(1), True)
-					if rexp.group(2) and not extracted["birth_place"]:
-						extracted["birth_place"] = cls.get_place(rexp.group(2))
-					if rexp.group(3) and not extracted["death_date"]:
-						extracted["death_date"] = cls._convert_date(rexp.group(3), False)
-					if rexp.group(4) and not extracted["death_place"]:
-						extracted["death_place"] = cls.get_place(rexp.group(4))
-
-			# (* 1. ledna 2000 – † 1. ledna 2018), (* 1. ledna 2000, Brno - † 1. ledna 2018 Brno, Česká republika)
-			if (
-				not extracted["birth_date"]
-				or not extracted["death_date"]
-				or not extracted["birth_place"]
-				or not extracted["death_place"]
-			):
-				rexp = re.search(
-					r"\(\s*(?:\*\s*)?(\d+\.\s*\w+\.?\s+\d{1,4})\s*(?:,\s*)?([^\W\d_][\w\s\-–—−,]+[^\W\d_])?\s*[\-–—−]\s*(?:†\s*)?(\d+\.\s*\w+\.?\s+\d{1,4})\s*(?:,\s*)?([^\W\d_][\w\s\-–—−,]+[^\W\d_])?\s*\)",
-					text,
-				)
-				if rexp:
-					if rexp.group(1) and not extracted["birth_date"]:
-						extracted["birth_date"] = cls._convert_date(rexp.group(1), True)
-					if rexp.group(2) and not extracted["birth_place"]:
-						extracted["birth_place"] = cls.get_place(rexp.group(2))
-					if rexp.group(3) and not extracted["death_date"]:
-						extracted["death_date"] = cls._convert_date(rexp.group(3), False)
-					if rexp.group(4) and not extracted["death_place"]:
-						extracted["death_place"] = cls.get_place(rexp.group(4))
-			# získání data/místa narození/úmrtí z první věty - konec
 
 			# TODO: different langmap?
 			# tmp_first_sentence = match.group(0)
