@@ -103,6 +103,61 @@ class EntPerson(EntCore):
 			self.assign_art_forms()
 			self.assign_urls()
 
+		self.extract_aliases()
+
+	def extract_aliases(self):
+		sentence = self.first_sentence
+		if not sentence:
+			return
+
+		# '''name (name2) surname''' -> name surname, name2 surname
+		# '''name "name2" surname''' -> name surname, name2 surname
+		patterns = [			
+			r"^'''([^,\(]*?)\(([^\(]*?)\)\s*[^\w]*?([^']+)(?<![\s\"])'''",
+			r"'''([^\(]*?)\"(.*?)\"\s.*?([^']+)'''"
+		]
+		for p in patterns:
+			match = re.search(p, sentence)		
+			if match:
+				start, end = match.span()
+				matches = [group for group in match.groups()]
+				matches = [re.sub(r"(?:někdy|nebo)?\s*(?:také|též|či|alias|or)", "", m) for m in matches]
+				matches = [re.sub(r"\(|\)", "", m) for m in matches]
+				matches = [m.replace("'", "").strip() for m in matches]
+				if len(matches) == 3:
+					al_a = f"{matches[0]} {matches[2]}"
+					al_b = f"{matches[1]} {matches[2]}"
+					self.aliases[al_a] = self.get_alias_properties(None, self.lang)
+					self.aliases[al_b] = self.get_alias_properties(None, self.lang)
+				sentence = sentence[:start] + " ".join(matches) + sentence[end:]
+
+		# '''name''' '''surname''' -> '''name surname'''
+		sentence = re.sub(r"'{3}\s*'{3}", " ", sentence)
+		
+		# surnames of women
+		match = re.search(r"\{\{nee\|(.*?)\}\}", sentence)
+		if match:
+			start, end = match.span()
+			surname = match.group(1)
+			surname = surname.replace("'", "")
+			name = self.title.split(" ")
+			name.pop()
+			name = " ".join(name)
+			alias = f"{name} {surname}"
+			self.aliases[alias] = self.get_alias_properties(None, None)
+			sentence = sentence[:start] + surname + sentence[end:]
+
+		matches = re.findall(r"'{3}(.*?)'{3}", sentence)
+		for match in matches:
+			alias = match
+			alias = re.sub(r"\(|\)|;", "", alias)
+			self.aliases[alias] = self.get_alias_properties(None, None)
+
+		sentence = re.sub(r"'{3}", "", sentence)
+		self.first_sentence = sentence
+		if sentence:
+			debug.log_message(self.first_sentence)
+
 	##
 	# @brief extracts and assigns places from infobox, removes wikipedia formatting
 	def assign_places(self):
