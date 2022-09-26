@@ -74,6 +74,8 @@ class EntEvent(EntCore):
 			self.type = f"{self.type} election"
 		else:
 			self.type = "election"
+
+		self.extract_non_person_aliases()
 	
 	##
     # @brief extracts and assigns locations from infobox

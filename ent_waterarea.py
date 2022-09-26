@@ -65,3 +65,5 @@ class EntWaterArea(EntCore):
 		self.area = self.assign_area()		
 		self.continents = lang_utils.assign_continents(self)
 
+		self.extract_non_person_aliases()
+

@@ -30,7 +30,7 @@ class CoreUtils:
 		"area_other": 	"",
 		"population": 	["počet obyvatel", "počet_obyvatel", "pocet obyvatel", "pocet_obyvatel"],
 		"lang_alias_patterns": [
-			r"\{\{vjazyce\|(.+?)\}\}\s'{2}(.+?)'{2}",
+			r"\{\{vjazyce\|([^{]+?)\}\}\s'{2}(.+?)'{2}",
 			r"'{0,3}\{\{(?:vjazyce2|cizojazyčně)\|([^\|]+)\|'{0,2}(.+?)'{0,2}\}\}'{0,3}"
 		],
 		"native_name_lang": ["iso2", "iso3"],

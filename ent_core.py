@@ -374,6 +374,7 @@ class EntCore(metaclass=ABCMeta):
 			sentence = match.group(1)
 			sentence = re.sub(r"&nbsp;", " ", sentence)
 			sentence = re.sub(r"\[\[(?:file|soubor|image):.*?\]\]", "", sentence, flags=re.I)
+			sentence = re.sub(r"\[http.*?\s(.+?)\]", r"\1", sentence)
 			sentence = re.sub(r"\[\[([^\|]*?)\]\]", r"\1", sentence)
 			sentence = re.sub(r"\[\[.*?\|([^\|]*?)\]\]", r"\1", sentence)
 			sentence = re.sub(r"\[|\]", "", sentence)
@@ -409,7 +410,11 @@ class EntCore(metaclass=ABCMeta):
 				continue
 			
 			d = re.sub(r"'{2,3}", "", d)
+			d = re.sub(r"&#39;", "'", d)
+			d = re.sub(r"&zwj;", "'", d)
 			d = re.sub(r"\{\{.*\}\}", "", d, flags=re.DOTALL)
+			d = re.sub(r"\[|\]", "", d)
+			d = re.sub(r"\(.*?\)", "", d).strip()
 			if d:
 				# ""?
 				# ()?
@@ -702,6 +707,39 @@ class EntCore(metaclass=ABCMeta):
 				data = data[:start] + data[end:]
 		
 		return (data, aliases)
+
+	def extract_non_person_aliases(self):
+		sentence = self.first_sentence
+		match = re.findall(r"'{3}(.*?)'{3}", sentence)
+		for m in match:
+			m = re.sub(r"\{\{.*?\}\}", "", m)
+			if m not in self.aliases:
+				m = re.sub(r"'{2,}", "", m)
+				# TODO: test this on more data, maybe you don't need to sub this, rather make it another alias
+				# e.g.: Kuban People's Republic (KPR), Kuban National Republic (KNR)
+				m = re.sub(r"\"", "", m)
+				m = re.sub(r"\(.*?\)", "", m).strip()
+				m = re.sub(r"[ ,]{2,}", ", ", m).strip()
+				m = m.strip(",;")
+				# i ě -> https://cs.wikipedia.org/wiki/Chrudim
+				if len(m) > 1:				
+					self.aliases[m] = self.get_alias_properties(None, self.lang)
+		sentence = re.sub(r"'{3}", "", sentence)
+		
+		# can't extract aliases from "" 
+		# quotes don't always contain aliases 
+		
+		match = re.search(r"(\w+):\s*([^\(]+?)(?:'{2,}|,|;|\))", sentence)
+		# sentence = re.sub(r"'{2,3}", "", sentence)
+		if match:
+			lang = match.group(1).lower()
+			alias = match.group(2)
+			alias = re.sub(r"\{\{.*?\}\}", "", alias).strip()
+			alias = re.sub(r"\"", "", alias)
+			alias = re.sub(r"'{2,3}", "", alias)
+			if alias and lang in self.langmap and len(lang) > 2:
+				lang = self.langmap[lang]
+				self.aliases[alias] = self.get_alias_properties(None, self.lang)
 
 	##
 	# @brief serializes all aliases into a string separated by |

@@ -77,6 +77,7 @@ class EntWaterCourse(EntCore):
 		self.assign_stremflow()
 		self.assign_source()
 
+		self.extract_non_person_aliases()
 
 	##
 	# @brief extracts and assigns continents from infobox

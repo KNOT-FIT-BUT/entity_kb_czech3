@@ -66,6 +66,8 @@ class EntOrganisation(EntCore):
 		if not self.type:
 			if self.infobox_name and self.infobox_name.lower() != "organization":
 				self.type = self.infobox_name
+
+		self.extract_non_person_aliases()
 	
 	##
 	# @brief extracts and assigns location from infobox

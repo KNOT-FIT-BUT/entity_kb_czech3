@@ -100,6 +100,8 @@ class EntGeo(EntCore):
 		if self.prefix in ("geo:island", "geo:relief", "geo:waterfall"):
 			self.assign_continent()
 
+		self.extract_non_person_aliases()
+
 	##
     # @brief extracts and assigns height from infobox
 	def assign_height(self):

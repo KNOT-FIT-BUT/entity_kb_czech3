@@ -637,18 +637,22 @@ class WikiExtract(object):
 		# remove break lines
 		clean_content = re.sub(r"<br\s*?/>", "  ", clean_content, flags=re.DOTALL)
 		clean_content = re.sub(r"<br>", "  ", clean_content, flags=re.DOTALL)
+		clean_content = re.sub(r"<nowiki/>", " ", clean_content, flags=re.DOTALL)
 		clean_content = re.sub(r"<.*?/?>", "", clean_content, flags=re.DOTALL)
 
 		return clean_content
 
 	@staticmethod
 	def remove_ref_templates(content):
+		# TODO: maybe not a good idea to remove all of them?
+		# e.g.: you can extract langs from {{efn}} in https://en.wikipedia.org/wiki/Protectorate_of_Bohemia_and_Moravia
 		patterns = [
 			r"\{\{efn",
 			r"\{\{refn",
 			r"\{\{citation",
 			r"\{\{notetag",
 			r"\{\{snf",
+			r"\{\{sfn",
 			r"\{\{#tag:ref",
 			r"\{\{ref label"
 		]

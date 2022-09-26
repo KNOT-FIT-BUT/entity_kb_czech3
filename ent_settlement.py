@@ -69,6 +69,8 @@ class EntSettlement(EntCore):
 		self.area = self.assign_area()
 		self.population = self.assign_population()
 
+		self.extract_non_person_aliases()
+
 	##
     # @brief extracts and assigns country from infobox
 	def assign_country(self):
