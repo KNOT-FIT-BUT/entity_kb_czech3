@@ -240,7 +240,7 @@ fi
 
 EXTRACTION_ARGS+=(${KB_STABILITY})
 EXTRACTION_ARGS+=(${MULTIPROC_PARAMS})
-if [ -n "$var" ]; then
+if [ -n "$SENTENCE_PATH" ]; then
     EXTRACTION_ARGS+=("-s ${SENTENCE_PATH}")
 fi
 # Run CS Wikipedia extractor to create new KB

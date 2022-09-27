@@ -241,26 +241,26 @@ class WikiExtract(object):
 	# @return dictionary with redirects
 	def load_redirects(self, redirects_fpath):
 		redirects = dict()
-		
 		try:
 			with open(redirects_fpath, "r") as f:
+				start_time = datetime.now()
 				debug.update("loading redirects")
 				i = 0
 				for line in f:
 					i += 1
 					debug.update(i)
 					redirect_from, redirect_to = line.strip().split("\t")
-
 					if redirect_to not in redirects:
 						redirects[redirect_to] = [redirect_from]
 					else:
 						redirects[redirect_to].append(redirect_from)
-
-				debug.print(f"loaded redirects ({i})")
+				end_time = datetime.now()
+				tdelta = end_time - start_time
+				debug.print(f"loaded aliases ({i} in {debug.pretty_time_delta(tdelta.total_seconds())})")
 		except OSError:            
 			debug.print("redirect file was not found - skipping...")
 		
-		return redirects
+		return redirects	
 
 	##
 	# @brief loads langmap
@@ -290,6 +290,7 @@ class WikiExtract(object):
 
 		try:
 			with open(senteces_fpath, "r") as f:
+				start_time = datetime.now()
 				debug.update("loading first sentences")
 				i = 0
 				for line in f:
@@ -299,8 +300,9 @@ class WikiExtract(object):
 					link = split[0]
 					sentence = split[1] if len(split) > 1 else ""
 					first_sentences[link] = sentence
-
-				debug.print(f"loaded first sentences ({i})")
+				end_time = datetime.now()
+				tdelta = end_time - start_time
+				debug.print(f"loaded first sentences ({i} in {debug.pretty_time_delta(tdelta.total_seconds())})")
 		except OSError:            
 			debug.print("first sentence file was not found - skipping...")
 		

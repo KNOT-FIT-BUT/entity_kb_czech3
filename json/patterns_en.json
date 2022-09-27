@@ -71,7 +71,6 @@
 			"names": [],
 			"titles": [],
 			"fields": [
-				"first_aired",
 				"election_date",
 				"venue",
 				"host_city",

@@ -12,9 +12,8 @@
 # @date 15.07.2022
 
 import re
-
+from debugger import Debugger as debug
 from ent_core import EntCore
-
 from lang_modules.en.event_utils import EventUtils as EnUtils
 
 utils = {
@@ -39,7 +38,7 @@ class EntEvent(EntCore):
 
 		self.start_date = ""
 		self.end_date = ""
-		self.locations = []
+		self.locations = ""
 		self.type = ""
 
 	##
@@ -49,7 +48,7 @@ class EntEvent(EntCore):
 		data = [
 			self.start_date,
 			self.end_date,
-			'|'.join(self.locations),
+			self.locations,
 			self.type
 		]
 		return self.serialize("\t".join(data))
@@ -60,6 +59,8 @@ class EntEvent(EntCore):
 		lang_utils = utils[lang]
 		self.start_date, self.end_date = lang_utils.assign_dates(self.infobox_data)
 		self.assign_locations()
+		if self.locations:
+			debug.log_message(f"info: {self.locations} ({self.title})")
 		self.assign_type()
 
 		name = ""
@@ -71,7 +72,7 @@ class EntEvent(EntCore):
 		
 		if name == "election" and self.type:
 			self.type = f"{self.type} election"
-		else:
+		elif name == "election":
 			self.type = "election"
 
 		self.extract_non_person_aliases()
@@ -95,22 +96,10 @@ class EntEvent(EntCore):
 		]
 		data = self.get_infobox_data(keys, return_first=True)
 		if data:
+			debug.log_message(f"info: event locations -> {data}")
 			data = self.remove_templates(data)
-			
-			if re.search(r"[a-z][A-Z]", data):
-				string = re.sub(r"([a-z])([A-Z])", r"\1|\2", data)
-				split = string.split("|")
-				found = False
-				for s in split:
-					if "," not in s:
-						found = True
-						break
-				if found:
-					string = re.sub(r"([a-z])([A-Z])", r"\1, \2", data)
-					locations.append(string)
-				else:
-					locations = split
-				self.locations = "|".join(locations)
+			if re.search(r"[ \t]{2,}", data):
+				self.locations = re.sub(r"[ \t]{2,}", "|", data)
 				return
 			
 			if "," in data:
@@ -120,8 +109,7 @@ class EntEvent(EntCore):
 					self.locations = "|".join(locations)
 					return
 
-			locations.append(data)
-			self.locations = "|".join(locations)
+			self.locations = data
 
 	##
     # @brief extracts and assigns type from infobox
