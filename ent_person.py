@@ -51,10 +51,9 @@ class EntPerson(EntCore):
 	# @param langmap - language abbreviations <dictionary>
 	# @param redirects - redirects to the wikipedia page <array of strings>
 	# @param sentence - first sentence of the page <string>
-	# @param debugger - instance of the Debugger class used for debugging <Debugger>
-	def __init__(self, title, prefix, link, data, langmap, redirects, sentence, debugger):
+	def __init__(self, title, prefix, link, data, langmap, redirects, sentence, keywords):
 		# vyvolání inicializátoru nadřazené třídy
-		super(EntPerson, self).__init__(title, prefix, link, data, langmap, redirects, sentence, debugger)
+		super(EntPerson, self).__init__(title, prefix, link, data, langmap, redirects, sentence, keywords)
 
 		# inicializace údajů specifických pro entitu
 		self.birth_date = ""
@@ -155,8 +154,8 @@ class EntPerson(EntCore):
 
 		sentence = re.sub(r"'{3}", "", sentence)
 		self.first_sentence = sentence
-		if sentence:
-			debug.log_message(self.first_sentence)
+		# if sentence:
+		# 	debug.log_message(self.first_sentence)
 
 	##
 	# @brief extracts and assigns places from infobox, removes wikipedia formatting
@@ -173,12 +172,12 @@ class EntPerson(EntCore):
 			p = re.sub(r"\s+", " ", p)
 			return p.strip()
 
-		value = self.get_infobox_data(utils[self.lang].KEYWORDS["birth_place"])
+		value = self.get_infobox_data(self.keywords["birth_place"])
 		if value:
 			birth_place = fix_place(value)
 			self.birth_place = birth_place
 
-		value = self.get_infobox_data(utils[self.lang].KEYWORDS["birth_place"])
+		value = self.get_infobox_data(self.keywords["birth_place"])
 		if value:
 			death_place = fix_place(value)
 			self.death_place = death_place
@@ -187,29 +186,29 @@ class EntPerson(EntCore):
 	# @brief extracts and assigns gender
 	def assign_gender(self):
 		# infobox search
-		value = self.get_infobox_data(utils[self.lang].KEYWORDS["gender"])
+		value = self.get_infobox_data(self.keywords["gender"])
 		if value:
 			value = value.lower().strip()
 			value = re.sub(r"\(.*?\)", "", value).strip()			
-			if value in utils[self.lang].KEYWORDS["male"]:
+			if value in self.keywords["male"]:
 				self.gender = "M"
-			elif value in utils[self.lang].KEYWORDS["female"]:
+			elif value in self.keywords["female"]:
 				self.gender = "F"
 			else:
-				self.d.log_message(f"Error: invalid gender - {value}")
+				debug.log_message(f"Error: invalid gender - {value}")
 
 		# look for keywords in categories
 		if not self.gender and self.prefix != "person:fictional":
 			for c in self.categories:
-				if re.search("|".join(utils[self.lang].KEYWORDS["female"]), c.lower()):
+				if re.search("|".join(self.keywords["female"]), c.lower()):
 					self.gender = "F"
-				if re.search("|".join(utils[self.lang].KEYWORDS["male"]), c.lower()):
+				if re.search("|".join(self.keywords["male"]), c.lower()):
 					self.gender = "M"
 	
 	##
 	# @brief extracts and assigns jobs from the infobox
 	def assign_jobs(self):
-		data = self.get_infobox_data(utils[self.lang].KEYWORDS["jobs"])
+		data = self.get_infobox_data(self.keywords["jobs"])
 		if data:
 			jobs = []
 
@@ -269,7 +268,7 @@ class EntPerson(EntCore):
 	def assign_nationality(self):
 		nationalities = []
 
-		data = self.get_infobox_data(utils[self.lang].KEYWORDS["nationality"])
+		data = self.get_infobox_data(self.keywords["nationality"])
 		if data:
 			# remove irrelevant wiki templates
 			value = re.sub(r"\{\{(?:citation|flagicon)[^}]*?\}\}", "", data, flags=re.I)

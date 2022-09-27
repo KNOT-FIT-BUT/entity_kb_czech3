@@ -1,14 +1,7 @@
 
-import re
-
 from lang_modules.en.core_utils import CoreUtils
 
 class OrganisationUtils:
-
-	KEYWORDS = {
-		"type": ["type"]
-	}
-
 	##
     # @brief extracts and assigns founded and cancelled variables from infobox
 	@staticmethod

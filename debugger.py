@@ -21,7 +21,7 @@ SCORE = 10
 # @brief used for TUI, debugging and logging
 class Debugger:
 	##
-	# @brief initializes debugger entity
+	# @brief initializes debugger entity	
 	def __init__(self):
 		# TODO: add debug mode on/off switch
 		

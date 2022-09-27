@@ -34,9 +34,8 @@ class EntEvent(EntCore):
     # @param langmap - language abbreviations <dictionary>
     # @param redirects - redirects to the wikipedia page <array of strings>
     # @param sentence - first sentence of the page <string>
-    # @param debugger - instance of the Debugger class used for debugging <Debugger>
-	def __init__(self, title, prefix, link, data, langmap, redirects, sentence, debugger):
-		super(EntEvent, self).__init__(title, prefix, link, data, langmap, redirects, sentence, debugger)
+	def __init__(self, title, prefix, link, data, langmap, redirects, sentence, keywords):
+		super(EntEvent, self).__init__(title, prefix, link, data, langmap, redirects, sentence, keywords)
 
 		self.start_date = ""
 		self.end_date = ""

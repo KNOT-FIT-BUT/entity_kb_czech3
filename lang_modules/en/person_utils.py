@@ -1,22 +1,9 @@
 
 import re
-
 from debugger import Debugger as debug
-
 from lang_modules.en.core_utils import CoreUtils
 
 class PersonUtils:
-
-	KEYWORDS = {
-		"birth_place":	"birth_place",
-		"death_place": 	"death_place",
-		"gender": 		"gender",
-		"male": 		["male"],
-		"female": 		["female", "women"],
-		"jobs":			"occupation",
-		"nationality":	"nationality"
-	}
-
 	##
 	# @brief assigns prefix based on entity categories or infobox names
 	#

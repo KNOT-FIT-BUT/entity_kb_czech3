@@ -13,17 +13,7 @@
 # @date 15.07.2022
 
 import re
-
 from ent_core import EntCore
-
-from lang_modules.en.settlement_utils import SettlementUtils as EnUtils
-from lang_modules.cs.settlement_utils import SettlementUtils as CsUtils
-
-utils = {
-	"en": EnUtils,
-	"cs": CsUtils
-}
-
 
 ##
 # @class EntSettlement
@@ -38,9 +28,8 @@ class EntSettlement(EntCore):
     # @param langmap - language abbreviations <dictionary>
     # @param redirects - redirects to the wikipedia page <array of strings>
     # @param sentence - first sentence of the page <string>
-    # @param debugger - instance of the Debugger class used for debugging <Debugger>
-	def __init__(self, title, prefix, link, data, langmap, redirects, sentence, debugger):
-		super(EntSettlement, self).__init__(title, prefix, link, data, langmap, redirects, sentence, debugger)
+	def __init__(self, title, prefix, link, data, langmap, redirects, sentence, keywords):
+		super(EntSettlement, self).__init__(title, prefix, link, data, langmap, redirects, sentence, keywords)
 
 		self.area = ""
 		self.population = ""
@@ -64,11 +53,11 @@ class EntSettlement(EntCore):
 	##
     # @brief tries to assign entity information (calls the appropriate functions)
 	def assign_values(self, lang):
+		self.lang = lang
 		self.assign_country()
 		self.latitude, self.longitude = self.core_utils.assign_coordinates(self)
 		self.area = self.assign_area()
 		self.population = self.assign_population()
-
 		self.extract_non_person_aliases()
 
 	##
@@ -97,7 +86,7 @@ class EntSettlement(EntCore):
 			return
 		
 		# subdivision_name
-		data = self.get_infobox_data(utils[self.lang].KEYWORDS["country"])
+		data = self.get_infobox_data(self.keywords["country"])
 		if data:
 			data = fix_country(data)
 			self.country = data

@@ -52,9 +52,8 @@ class EntGeo(EntCore):
     # @param langmap - language abbreviations <dictionary>
     # @param redirects - redirects to the wikipedia page <array of strings>
     # @param sentence - first sentence of the page <string>
-    # @param debugger - instance of the Debugger class used for debugging <Debugger>
-	def __init__(self, title, prefix, link, data, langmap, redirects, sentence, debugger):
-		super(EntGeo, self).__init__(title, prefix, link, data, langmap, redirects, sentence, debugger)
+	def __init__(self, title, prefix, link, data, langmap, redirects, sentence, keywords):
+		super(EntGeo, self).__init__(title, prefix, link, data, langmap, redirects, sentence, keywords)
 
 		self.continent = ""
 		self.latitude = ""
@@ -130,7 +129,7 @@ class EntGeo(EntCore):
 				height = ""
 			return height
 		
-		data = self.get_infobox_data(utils[self.lang].KEYWORDS["height"], return_first=True)
+		data = self.get_infobox_data(self.keywords["height"], return_first=True)
 		if data:
 			data = fix_height(data)
 			self.total_height = data

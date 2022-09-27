@@ -15,17 +15,8 @@
 # @date 15.07.2022
 
 import re
-
 from debugger import Debugger as debug
-
 from ent_core import EntCore
-from lang_modules.en.watercourse_utils import WatercourseUtils as EnUtils
-from lang_modules.cs.watercourse_utils import WatercourseUtils as CsUtils
-
-utils = {
-	"en": EnUtils,
-	"cs": CsUtils
-}
 
 ##
 # @class EntWaterCourse
@@ -40,9 +31,8 @@ class EntWaterCourse(EntCore):
     # @param langmap - language abbreviations <dictionary>
     # @param redirects - redirects to the wikipedia page <array of strings>
     # @param sentence - first sentence of the page <string>
-    # @param debugger - instance of the Debugger class used for debugging <Debugger>
-	def __init__(self, title, prefix, link, data, langmap, redirects, sentence, debugger):
-		super(EntWaterCourse, self).__init__(title, prefix, link, data, langmap, redirects, sentence, debugger)
+	def __init__(self, title, prefix, link, data, langmap, redirects, sentence, keywords):
+		super(EntWaterCourse, self).__init__(title, prefix, link, data, langmap, redirects, sentence, keywords)
 
 		self.continents = ""
 		self.latitude = ""
@@ -70,13 +60,13 @@ class EntWaterCourse(EntCore):
 	##
     # @brief tries to assign entity information (calls the appropriate functions)
 	def assign_values(self, lang):		
+		self.lang = lang
 		self.assign_continent()
 		self.latitude, self.longitude = self.core_utils.assign_coordinates(self)
 		self.area = self.assign_area()
 		self.assign_length()
 		self.assign_stremflow()
 		self.assign_source()
-
 		self.extract_non_person_aliases()
 
 	##
@@ -100,7 +90,7 @@ class EntWaterCourse(EntCore):
 			source = source.strip().strip(",").strip()
 			return source
 
-		data = self.get_infobox_data(utils[self.lang].KEYWORDS["source"])
+		data = self.get_infobox_data(self.keywords["source"])
 		if data:
 			data = fix_source(data)
 			self.source_loc = data
@@ -132,7 +122,7 @@ class EntWaterCourse(EntCore):
 				flow = ""
 			return flow
 
-		data = self.get_infobox_data(utils[self.lang].KEYWORDS["streamflow"])
+		data = self.get_infobox_data(self.keywords["streamflow"])
 		if data:
 			data = fix_streamflow(data)
 			self.streamflow = data
@@ -165,7 +155,7 @@ class EntWaterCourse(EntCore):
 				length = ""
 			return length
 
-		data = self.get_infobox_data(utils[self.lang].KEYWORDS["length"])
+		data = self.get_infobox_data(self.keywords["length"])
 		if data:
 			data = fix_length(data)
 			self.length = data

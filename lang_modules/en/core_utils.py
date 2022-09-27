@@ -1,33 +1,9 @@
 
 import re
 import mwparserfromhell as parser
-
 from debugger import Debugger as debug
 
 class CoreUtils:
-
-	DISAMBIG_PATTERN = r"{{[^}]*?(?:disambiguation|disambig|dab)(?:\|[^}]*?)?}}"
-	CATEGORY_PATTERN = r"\[\[Category:\s?(.*?)\]\]"
-
-	# lang specific keywords
-	KEYWORDS = {
-		"sentence": ["was", "is", "are", "were"],
-		"image": ["image", "photo", "image_name", "image_flag", "image_coat", "image_map", "map_image", "logo"],
-		"area_km2": ["area_km2", "area_total_km2"],
-		"area_sqmi": ["area_sq_mi", "area_total_sq_mi"],
-		"area_other": ["area", "basin_size"],
-		"population": ["population", "population_total", "population_estimate", "population_census"],
-		"lang_alias_patterns": [
-			r"\{\{(?:lang|spell)-([^\|]+?)(?:-.*?)?\|([^\|]+?)(?:\|.*?)?\}\}",
-			r"\{\{lang\|([^\|]+?)(?:-.*?)?\|([^\|]+?)(?:\|.*?)?\}\}",
-			r"\{\{(zh)\|(?:[^\|]*?=)?([^\|]+?)(?:\|.*?)?\}\}"			
-		],
-		"native_name_lang": "native_name_lang",
-		"native_name": ["nativename", "native_name"],
-		"infobox_name": ["name", "birth_name", "birthname", "common_name", "conventional_long_name"],
-		"infobox_names": ["other_names", "name_other", "nickname", "nicknames", "alias", "aliases"]
-	}
-
 	##
 	# @brief determines if page is an entity or not
 	#  
@@ -75,7 +51,7 @@ class CoreUtils:
 	# 
 	# e.g.: {{Coord|59|56|N|10|41|E|type:city}}
 	@staticmethod
-	def get_coordinates(format, debugger):
+	def get_coordinates(format):
 		# matching coords format with directions
 		# {{Coord|59|56|N|10|41|E|type:city}}
 		format = re.sub(r"\s", "", format)
@@ -109,7 +85,7 @@ class CoreUtils:
 		if re.search(r"[Cc]oords?missing", format):
 			return (None, None)
 
-		debugger.log_message(f"Error: coords format no match ({format})")
+		debug.log_message(f"Error: coords format no match ({format})")
 		return (None, None)
 
 	##
@@ -119,12 +95,12 @@ class CoreUtils:
 	@staticmethod
 	def assign_coordinates(country):
 		if "coordinates" in country.infobox_data and country.infobox_data["coordinates"]:
-			coords = CoreUtils.get_coordinates(country.infobox_data["coordinates"], country.d)
+			coords = CoreUtils.get_coordinates(country.infobox_data["coordinates"])
 			if all(coords):
 				return coords
 
 		if country.coords:
-			coords = CoreUtils.get_coordinates(country.coords, country.d)			
+			coords = CoreUtils.get_coordinates(country.coords)
 			if all(coords):
 				return coords
 
@@ -133,7 +109,7 @@ class CoreUtils:
 	##
     # @brief extracts and assigns area from infobox
 	@classmethod
-	def assign_area(cls, infobox_data, debugger):
+	def assign_area(cls, infobox_data):
 		def fix_area(value):
 			value = value.replace(",", "").strip()
 			value = re.sub(r"\{\{.+\}\}", "", value)
@@ -154,7 +130,7 @@ class CoreUtils:
 			if key in infobox_data and infobox_data[key]:
 				value = infobox_data[key]
 				area = fix_area(value)
-				area = cls.convert_units(area, "sqmi", debugger)
+				area = cls.convert_units(area, "sqmi")
 				if area:
 					return area
 
@@ -170,7 +146,7 @@ class CoreUtils:
 					if len(area) >= 2:
 						number, unit = (area[0].strip(), area[1].strip())
 						number = fix_area(number)
-						number = cls.convert_units(number, unit, debugger)
+						number = cls.convert_units(number, unit)
 						return number if number else ""
 
 				# e.g.: '20sqmi', '10 km2', ...
@@ -179,7 +155,7 @@ class CoreUtils:
 				if match:
 					number, unit = (match.group(1), match.group(2).strip())
 					number = fix_area(number)
-					number = cls.convert_units(number, unit, debugger)
+					number = cls.convert_units(number, unit)
 					return number if number else ""
 
 		# debugger.log_message(f"Error: unidentified area")
@@ -190,62 +166,6 @@ class CoreUtils:
 		if re.search(r"billion", value, flags=re.I):
 			return 10e9
 		return 1
-
-	##
-	# @brief converts units to metric system
-	# @param number - number to be converted <string>
-	# @param unit - unit abbreviation
-	# @param round_to - to how many decimal points will be rounded to (default: 2)
-	# @return converted rounded number as a string
-	@staticmethod
-	def convert_units(number, unit, debugger, round_to=2):
-		try:
-			number = float(number)
-		except:
-			debugger.log_message(f"couldn't conver string to float: {number}")
-			return ""
-		unit = unit.lower()
-
-		SQMI_TO_KM2 = 2.589988
-		HA_TO_KM2 = 0.01
-		ACRE_TO_KM2 = 0.00404685642
-		M2_TO_KM2 = 0.000001
-		MI2_TO_KM2 = 2.589988
-		FT_TO_M = 3.2808
-		MI_TO_KM = 1.609344
-		CUFT_TO_M3 = 0.028317
-		FT3_TO_M3 = 0.0283168466
-		L_TO_M3 = 0.001
-
-		accepted_untis = ["sqkm", "km2", "km²", "km", "m", "meters", "metres", "m3", "m3/s", "m³/s"]
-		if unit in accepted_untis:
-			return str(number if number % 1 != 0 else int(number))
-
-		if unit == "sqmi":
-			number = round(number * SQMI_TO_KM2, round_to)
-		elif unit in ("mi", "mile", "miles"):
-			number = round(number * MI_TO_KM,round_to)
-		elif unit in ("ft", "feet"):
-			number = round(number / FT_TO_M, round_to)
-		elif unit in ("cuft/s", "cuft"):
-			number = round(number * CUFT_TO_M3,round_to)
-		elif unit == "ft3/s":
-			number = round(number * FT3_TO_M3, round_to)
-		elif unit == "l/s":
-			number = round(number * L_TO_M3, round_to)
-		elif unit == "ha":
-			number = round(number * HA_TO_KM2, round_to)
-		elif unit in ("acres", "acre"):
-			number = round(number * ACRE_TO_KM2, round_to)
-		elif unit == "m2":
-			number = round(number * M2_TO_KM2, round_to)
-		elif unit == "mi2":
-			number = round(number * MI2_TO_KM2, round_to)
-		else:
-			debugger.log_message(f"Error: unit conversion error ({unit})")
-			return ""
-
-		return str(number if number % 1 != 0 else int(number))
 
 	##
 	# @brief tries to conver a string to a date with YYYY-MM-DD

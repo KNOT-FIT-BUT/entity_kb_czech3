@@ -1,26 +1,10 @@
 
-import re, regex
-
+import re
 from debugger import Debugger as debug
-
 from lang_modules.cs.core_utils import CoreUtils
-
 from lang_modules.cs.libs.natToKB import *
-from lang_modules.cs.libs.DictOfUniqueDict import *
-from lang_modules.cs.libs.UniqueDict import KEY_LANG, LANG_ORIG, LANG_UNKNOWN
 
 class PersonUtils:
-
-	KEYWORDS = {
-		"birth_place": 	["místo narození", "místo_narození"],
-		"death_place": 	["místo úmrtí", "místo_úmrtí"],
-		"gender": 		"pohlaví",
-		"male": 		["muž", "muži"],
-		"female": 		["žena", "ženy"],
-		"jobs":			["profese", "zaměstnání", "povolání"],
-		"nationality":	"národnost"
-	}
-
 	##
 	# @brief assigns prefix to the person entity
 	#
@@ -72,61 +56,6 @@ class PersonUtils:
 				break
 
 		return (birth_date, death_date)
-
-	@classmethod
-	def assign_aliases(cls, infobox_data, infobox_name, title):
-		NT_PSEUDO = "pseudo"
-		NT_NICK = "nick"
-		
-		aliases = DictOfUniqueDict()
-		n_marked_czech = 0
-		first_alias = None
-		
-		# Aliases - infobox extraction
-		
-		keys = ["jiná jména", "rodné jméno", "celé jméno", "úplné jméno", "posmrtné jméno", "chrámové jméno", "trůnní jméno",
-			"pseudonym", "přezdívka", "alias"]
-
-		for key in keys:
-			if key in infobox_data and infobox_data[key]:
-				value = infobox_data[key]
-				if re.search(r"nezveřejněn|neznám", value, re.I):
-					continue
-				
-				nametype = None
-				tmp_alias = value
-				tmp_name_type = key
-
-				if tmp_name_type == "pseudonym":
-					nametype = NT_PSEUDO
-				elif tmp_name_type in ["přezdívka", "alias"]:
-					nametype = NT_NICK
-				elif tmp_name_type == "rodné jméno":
-					alias_spaces = len(re.findall(r"[^\s]+\s+[^\s]+", tmp_alias))
-					if not alias_spaces:
-						tmp_alias_new, was_replaced = re.subn(
-							r"(?<=\s)(?:ze?|of|von)\s+.*",
-							tmp_alias,
-							title,
-							flags=re.I,
-						)
-						if was_replaced:
-							tmp_alias = tmp_alias_new
-						else:
-							tmp_alias = re.sub(r"[^\s]+$", tmp_alias, title)
-
-				# https://cs.wikipedia.org/wiki/Marie_Gabriela_Bavorská =>   | celé jméno = německyː ''Marie Gabrielle Mathilde Isabelle Therese Antoinette Sabine Herzogin in Bayern''
-				tmp_alias = re.sub(r"^\s*německyː\s*", "", tmp_alias, flags=re.I)
-				# https://cs.wikipedia.org/wiki/T%C3%BArin =>   | přezdívka = viz [[Túrin#Jména, přezdívky a tituly|Jména, přezdívky a tituly]]
-				tmp_alias = re.sub(r"^\s*(?:viz\s+)?\[\[[^\]]+\]\]", "", tmp_alias, flags=re.I)  
-				tmp_alias = CoreUtils.del_redundant_text(tmp_alias)
-				custom_data = {"infobox_name": infobox_name}
-				result, n_marked_czech, first_alias = CoreUtils.get_aliases(tmp_alias, aliases, cls.custom_transform_alias, custom_data, nametype=nametype) 
-				aliases.update(result)
-		
-		aliases = CoreUtils.serialize_aliases(aliases, title, n_marked_czech, first_alias)
-
-		return aliases
 
 	@classmethod
 	def extract_dates_and_places(cls, person):
@@ -203,131 +132,33 @@ class PersonUtils:
 					death_place = cls.get_place(rexp.group(4))
 
 		return (birth_date, death_date, birth_place, death_place)
-	
-	# TODO aliases - extract_text
-	@classmethod
-	def extract_text(cls, extracted, ent_data, debugger):
-		
-		title, first_paragraph = (
-			ent_data["title"],
-			ent_data["first_paragraph"]
-		)
 
-		# # Female surname variants with or without suffix "-ová"
-		# if extracted["gender"] == "F":
-		# 	female_variant = (title[:-3] if title[-3:] == "ová" else (title + "ová"))
-		# 	# if redirects and female_variant in redirects:
-		# 	# 	# TODO: fix this
-		# 	# 	# self.aliases[female_variant][KEY_LANG] = (self.LANG_CZECH if self.title[-3:] == "ová" else LANG_UNKNOWN)
-		# 	# 	return extracted
-
-		abbrs = "".join((
-			r"(?<!\s(?:tzv|at[pd]|roz))",
-			r"(?<!\s(?:apod|(?:ku|na|po)př|příp))",
-			r"(?<!\s[amt]j)",
-			r"(?<!\d)",
-		))
-		match = re.search(
-			r".*?'''.+?'''.*?\s(?:byl[aiy]?|je|jsou|(?:patř|působ)(?:í|il|ila|ily)|stal).*?"
-			+ abbrs
-			+ "\.(?![^[]*?\]\])",
-			first_paragraph,
-		)
-		if match:
-			text = cls.get_first_sentence(CoreUtils.del_redundant_text(match.group(0), ", "), title)
-
-			# TODO: different langmap?
-			# tmp_first_sentence = match.group(0)
-			# fs_first_aliases = []
-			# # extrakce alternativních pojmenování z první věty
-			# #  '''Jiří''' (též '''Jura''') '''Mandel''' -> vygenerovat "Jiří Mandel" a "Jura Mandel" (negenerovat "Jiří", "Jura", "Mandel")
-			# tmp_fs_first_aliases = regex.search(
-			#     r"^((?:'{3}(?:[\"\p{L} ]|'(?!''))+'{3}\s+)+)\((?:(?:někdy|nebo)?\s*(?:také|též|rozená))?\s*(?:('{3}[^\)]+'{3}))?(?:'(?!'')|[^\)])*\)\s*((?:'{3}\p{L}+'{3}\s+)*)(.*)",
-			#     tmp_first_sentence, flags=re.I,
-			# )
-			
-			# if tmp_fs_first_aliases:
-			# 	fs_fa_before_bracket = tmp_fs_first_aliases.group(1).strip()
-			# 	fs_fa_after_bracket = tmp_fs_first_aliases.group(3).strip()
-			# 	if fs_fa_after_bracket:
-			# 		fs_first_aliases.append(
-			# 			fs_fa_before_bracket + " " + fs_fa_after_bracket
-			# 		)
-			# 		if tmp_fs_first_aliases.group(2):
-			# 			name_variants = re.findall(
-			# 				r"'{3}(.+?)'{3}", tmp_fs_first_aliases.group(2).strip()
-			# 			)
-			# 			if name_variants:
-			# 				for name_variant in name_variants:
-			# 					fs_first_aliases.append(
-			# 						re.sub("[^ ]+$", name_variant, fs_fa_before_bracket)
-			# 						+ " " + fs_fa_after_bracket
-			# 					)
-			# 	else:
-			# 		if tmp_fs_first_aliases.group(2):
-			# 			fs_first_aliases += re.findall(r"'{3}(.+?)'{3}", tmp_fs_first_aliases.group(2).strip())
-			# 	tmp_first_sentence = tmp_fs_first_aliases.group(4)
-			
-			# else:
-			# 	#  '''Jiří''' '''Jindra''' -> vygenerovat "Jiří Jindra" (negenerovat "Jiří" a "Jindra")
-			# 	tmp_fs_first_aliases = regex.search(
-			# 	    r"^((?:'{3}\p{L}+'{3}\s+)+)(.*)", tmp_first_sentence
-			# 	)
-			# 	if tmp_fs_first_aliases:
-			# 		fs_first_aliases.append(tmp_fs_first_aliases.group(1).strip())
-			# 		tmp_first_sentence = tmp_fs_first_aliases.group(2).strip()
-
-			# fs_aliases_lang_links = []
-			# link_lang_aliases = re.findall(
-			# 	r"\[\[(?:[^\[]* )?([^\[\] |]+)(?:\|(?:[^\]]* )?([^\] ]+))?\]\]\s*('{3}.+?'{3})",
-			# 	tmp_first_sentence,
-			# 	flags=re.I,
-			# )
-			# link_lang_aliases += re.findall(
-			# 	r"(" + "|".join(self.langmap.keys()) + r")():?\s+('{3}.+?'{3})",
-			# 	tmp_first_sentence,
-			# 	flags=re.I,
-			# )
-			# for link_lang_alias in link_lang_aliases:
-			# 	for i_group in [0, 1]:
-			# 		if (
-			# 			link_lang_alias[i_group]
-			# 			and link_lang_alias[i_group] in self.langmap
-			# 		):
-			# 			fs_aliases_lang_links.append(
-			# 				"{{{{Vjazyce|{}}}}} {}".format(
-			# 					self.langmap[link_lang_alias[i_group]],
-			# 					link_lang_alias[2],
-			# 				)
-			# 			)
-			# 			tmp_first_sentence = tmp_first_sentence.replace(
-			# 				link_lang_alias[2], ""
-			# 			)
-			# 			break
-			# fs_aliases = re.findall(
-			# 	r"((?:{{(?:Cj|Cizojazyčně|Vjazyce2?)[^}]+}}\s+)?'{3}.+?'{3})",
-			# 	tmp_first_sentence,
-			# 	flags=re.I,
-			# )
-			# fs_aliases += [
-			# 	" ".join(
-			# 		str
-			# 		for tup in re.findall(
-			# 			r"([Ss]v(?:\.|at[áéíý]))\s+'{3}(.+?)'{3}",
-			# 			tmp_first_sentence,
-			# 		)
-			# 		for str in tup
-			# 	)
-			# ]
-			# fs_aliases += fs_aliases_lang_links
-			# fs_aliases += fs_first_aliases
-
-			# for fs_alias in fs_aliases:
-			# 	self.aliases.update(
-			# 		self.get_aliases(self.del_redundant_text(fs_alias).strip("'"))
-			# 	)		
-
-		return extracted
+	# TODO: infobox aliases
+	# if re.search(r"nezveřejněn|neznám", value, re.I):
+	# 	continue
+	# TODO: aliases
+	# look at assign_aliases
+	# TODO: aliases - extract_text
+	# # Female surname variants with or without suffix "-ová"
+	# if extracted["gender"] == "F":
+	# 	female_variant = (title[:-3] if title[-3:] == "ová" else (title + "ová"))
+	# 	# if redirects and female_variant in redirects:
+	# 	# 	# TODO: fix this
+	# 	# 	# self.aliases[female_variant][KEY_LANG] = (self.LANG_CZECH if self.title[-3:] == "ová" else LANG_UNKNOWN)
+	# 	# 	return extracted
+	#
+	# abbrs = "".join((
+	# 	r"(?<!\s(?:tzv|at[pd]|roz))",
+	# 	r"(?<!\s(?:apod|(?:ku|na|po)př|příp))",
+	# 	r"(?<!\s[amt]j)",
+	# 	r"(?<!\d)",
+	# ))
+	# match = re.search(
+	# 	r".*?'''.+?'''.*?\s(?:byl[aiy]?|je|jsou|(?:patř|působ)(?:í|il|ila|ily)|stal).*?"
+	# 	+ abbrs
+	# 	+ "\.(?![^[]*?\]\])",
+	# 	first_paragraph,
+	# )	
 
 	##
 	# @brief Převádí místo narození/úmrtí osoby do jednotného formátu.
@@ -365,215 +196,128 @@ class PersonUtils:
 		return place
 
 	##
-	# @brief Převádí zaměstnání osoby do jednotného formátu.
-	# @param job - zaměstnání osoby (str)
-	@staticmethod
-	def get_jobs(job):
-		
-		job = re.sub(
-			r"(?:Soubor|File):.*?\.(?:jpe?g|png|gif|bmp|ico|tif|tga|svg)(?:\|[\w\s]+)?\|[\w\s]+\|[\w\s]+(?:,\s*)?",
-			"",
-			job,
-			flags=re.I,
-		)
-		job = re.sub(r"\d+\s*px", "", job, flags=re.I)
-		job = re.sub(r"^[\s,]+", "", job)
-		job = re.sub(r"\[.*?\]", "", job)
-		job = re.sub(r"\s*/\s*", ", ", job)
-		job = re.sub(r"\s+", " ", job).strip().strip(".,;")
-
-		if ";" in job:
-			job = re.sub(r"\s*;\s*", "|", job)
-		else:
-			job = re.sub(r"\s*,\s*", "|", job)
-
-		return job
-
-	##
-	# @brief Převádí národnost osoby do jednotného formátu
-	# @param nationality - národnost osoby (str)	
-	@staticmethod
-	def get_nationality(nationality):
-		nationality = re.sub(
-			r"{{Vlajka a název\|(.*?)(?:\|.*?)?}}", r"\1", nationality, flags=re.I
-		)
-		nationality = re.sub(r"{{malé\|(.*?)}}", r"\1", nationality, flags=re.I)
-		nationality = re.sub(r"{{.*?}}", "", nationality)
-		nationality = re.sub(r"<.*?>", "", nationality)
-		nationality = re.sub(r"(.*?)\|.*$", r"\1", nationality)
-		nationality = re.sub(r"\d+\s*px", "", nationality, flags=re.I)
-		nationality = re.sub(r"\(.*?\)", "", nationality)
-		nationality = re.sub(r"\s+", " ", nationality).strip().strip(".,;")
-		nationality = re.sub(
-			r"\s*[,;/]\s*|\s+(?:či|[\-–—−]|a|nebo)\s+", "|", nationality
-		)
-
-		return nationality
-
-	##
-	# @brief Převádí první větu stránky do jednotného formátu a získává z ní popis a datum a místo narození/úmrtí.
-	# @param text - první věta stránky (str)
-	@classmethod
-	def get_first_sentence(cls, text, title):
-		# TODO: refactorize
-		text = re.sub(r"{{(?:vjazyce2|cizojazyčně|audio|cj)\|.*?\|(.+?)}}", r"\1", text, flags=re.I)
-		text = re.sub(r"{{IPA\d?\|(.+?)}}", r"\1", text, flags=re.I)
-		text = re.sub(r"{{výslovnost\|(.+?)\|.*?}}", r"\1", text, flags=re.I)
-		text = cls._subx(
-			r".*?{{\s*datum[\s_]+(?:narození|úmrtí)\D*\|\s*(\d*)\s*\|\s*(\d*)\s*\|\s*(\d*)[^}]*}}.*",
-			lambda x: cls._regex_date(x, 3),
-			text,
-			flags=re.I,
-		)
-		text = cls._subx(
-			r".*?{{\s*JULGREGDATUM\s*\|\s*(\d+)\s*\|\s*(\d+)\s*\|\s*(\d+)[^}]*}}.*",
-			lambda x: cls._regex_date(x, 4),
-			text,
-			flags=re.I,
-		)
-		text = re.sub(
-			r"{{čínsky(.+?)}}",
-			lambda x: re.sub(
-				"(?:znaky|pchin-jin|tradiční|zjednodušené|pinyin)\s*=\s*(.*?)(?:\||}})",
-				r"\1 ",
-				x.group(1),
-				flags=re.I,
-			),
-			text,
-			flags=re.I,
-		)
-		text = re.sub(r"{{malé\|(.*?)}}", r"\1", text, flags=re.I)
-		text = re.sub(r"{{PAGENAME}}", title, text, flags=re.I)
-		text = re.sub(r"{{.*?}}", "", text)
-		text = re.sub(r"<.*?>", "", text)
-		text = re.sub(r"\s+", " ", text).strip()
-		text = re.sub(r"^\s*}}", "", text)  # Eliminate the end of a template
-
-		return text
-
-	##
 	# @brief Umožňuje provádět vlastní transformace aliasů entity do jednotného formátu.
 	# @param alias - alternativní pojmenování entity (str)
-	# TODO aliases
-	@staticmethod
-	def custom_transform_alias(alias, data):
+	# TODO custom aliases?
+	# @staticmethod
+	# def custom_transform_alias(alias, data):
 		
-		re_titles_religious = []
-		if data["infobox_name"] in ["křesťanský vůdce", "světec"]:
-			# https://cs.wikipedia.org/wiki/Seznam_zkratek_c%C3%ADrkevn%C3%ADch_%C5%99%C3%A1d%C5%AF_a_kongregac%C3%AD
-			# https://cs.qwe.wiki/wiki/List_of_ecclesiastical_abbreviations#Abbreviations_of_titles_of_the_principal_religious_orders_and_congregations_of_priests
-			# http://www.katolik.cz/otazky/ot.asp?ot=657
-			re_titles_religious = [
-				"A(?:\. ?)?(?:F|M)\.?",  # AF, AM
-				"A(?:\. ?)?(?:B(?:\. ?)?)?A\.?",  # AA, ABA
-				"A(?:\. ?)?C(?:\. ?)?S\.?",  # ACS
-				"A(?:\. ?)?M(?:\. ?)?B(?:\. ?)?V\.?",  # AMBV
-				"B\.?",  # B
-				"C(?:\. ?)?C\.?(?: ?G\.?)?",  # CC, CCG
-				"C(?:\. ?)?F(?:\. ?)?C\.?",  # CFC
-				"C(?:\. ?)?F(?:\. ?)?Ss(?:\. ?)?S\.?",  # CFSsS
-				"C(?:\. ?)?C(?:\. ?)?R(?:\. ?)?R(?:\. ?)?M(?:\. ?)?M\.?",  # CCRRMM
-				"C(?:\. ?)?(?:J(?:\. ?)?)?M\.?",  # CJM, CM
-				"C(?:\. ?)?M(?:\. ?)?F\.?",  # CMF
-				"C(?:\. ?)?M(?:\. ?)?S(?:\. ?)?Sp(?:\. ?)?S\.?",  # CMSSpS
-				"C(?:\. ?)?P\.?(?: ?P(?:\. ?)?S\.?)?",  # CP, CPPS
-				"Č(?:\. ?)?R\.?",  # ČR
-				"C(?:\. ?)?R(?:\. ?)?C(?:\. ?)?S\.?",  # CRCS
-				"C(?:\. ?)?R(?:\. ?)?I(?:\. ?)?C\.?",  # CRIC
-				"C(?:\. ?)?R(?:\. ?)?(?:L|M|T|V)\.?",  # CRL, CRM, CRT, CRV
-				"C(?:\. ?)?R(?:\. ?)?M(?:\. ?)?(?:D|I)\.?",  # CRMD, CRMI
-				"C(?:\. ?)?R(?:\. ?)?(?:S(?:\. ?)?)?P\.?",  # CRP, CRSP
-				"C(?:\. ?)?S(?:\. ?)?(?:B|C|J|P|V)\.?",  # CSB, CSC, CSJ, CSP, CSV
-				"C(?:\. ?)?S(?:\. ?)?C(?:\. ?)?D(?:\. ?)?I(?:\. ?)?J\.?",  # CSCDIJ
-				"C(?:\. ?)?S(?:\. ?)?S(?:\. ?)?E\.?",  # CSSE
-				"C(?:\. ?)?S(?:\. ?)?Sp\.?",  # CSSp
-				"C(?:\. ?)?Ss(?:\. ?)?(?:CC|Cc|R)\.?",  # CSsCC, CSsR
-				"C(?:\. ?)?S(?:\. ?)?T(?:\. ?)?F\.?",  # CSTF
-				"D(?:\. ?)?K(?:\. ?)?L\.?",  # DKL
-				"D(?:\. ?)?N(?:\. ?)?S\.?",  # DNS
-				"F(?:\. ?)?D(?:\. ?)?C\.?",  # FDC
-				"F(?:\. ?)?M(?:\. ?)?A\.?",  # FMA
-				"F(?:\. ?)?M(?:\. ?)?C(?:\. ?)?S\.?",  # FMCS
-				"F(?:\. ?)?M(?:\. ?)?D(?:\. ?)?D\.?",  # FMDD
-				"F(?:\. ?)?S(?:\. ?)?C(?:\. ?)?I\.?",  # FSCI
-				"F(?:\. ?)?S(?:\. ?)?P\.?",  # FSP
-				"I(?:\. ?)?B(?:\. ?)?M(?:\. ?)?V\.?",  # IBMV
-				"Inst(?:\. ?)?Char\.?",  # Inst. Char.
-				"I(?:\. ?)?Sch\.?",  # ISch
-				"I(?:\. ?)?S(?:\. ?)?P(?:\. ?)?X\.?",  # ISPX
-				"I(?:\. ?)?S(?:\. ?)?S(?:\. ?)?M\.?",  # ISSM
-				"K(?:\. ?)?M(?:\. ?)?B(?:\. ?)?M\.?",  # KMBM
-				"K(?:\. ?)?S(?:\. ?)?H\.?",  # KSH
-				"K(?:\. ?)?S(?:\. ?)?N(?:\. ?)?S\.?",  # KSNS
-				"(?:L|M|O|S)(?:\. ?)?C\.?",  # LC, MC, OC, SC
-				"M(?:\. ?)?I(?:\. ?)?C\.?",  # MIC
-				"N(?:\. ?)?Id\.?",  # MId
-				"M(?:\. ?)?S\.?(?: ?(?:C|J)\.?)?",  # MS, MSC, MSJ
-				"N(?:\. ?)?D\.?",  # ND
-				"O(?:\. ?)?(?:Camald|Carm|Cart|Cist|Cr|Crucig|F|H|M|Melit|Merced|P|Praed|Praem|T|Trinit)\.?",  # OCamald, OCarm, OCart, OCist, OCr, OCrucig, OF, OH, OM, OMelit, OMerced, OP, OPraed, OPraem, OT, OTrinit
-				"O(?:\. ?)?C(?:\. ?)?(?:C|D|R)\.?",  # OCC, OCD, OCR
-				"O(?:\. ?)?C(?:\. ?)?S(?:\. ?)?O\.?",  # OCSO
-				"O(?:\. ?)?F(?:\. ?)?M\.?(?: ?(?:Cap|Conv|Rec)\.?)?",  # OFM, OFM Cap., OFM Conv., OFM Rec.
-				"O(?:\. ?)?M(\. ?)?(?:C|I)\.?",  # OMC, OMI
-				"O(?:\. ?)?(?:F(\. ?)?)?M(\. ?)?Cap\.?",  # OM Cap. OFM Cap.
-				"O(?:\. ?)?S(?:\. ?)?(?:A|B|C|E|F|H|M|U)\.?",  # OSA, OSB, OSC, OSE, OSF, OSH, OSM, OSU
-				"O(?:\. ?)?S(?:\. ?)?B(\. ?)?M\.?",  # OSBM
-				"O(?:\. ?)?S(?:\. ?)?C(\. ?)?(?:Cap|O)\.?",  # OSC Cap., OSCO
-				"O(?:\. ?)?S(?:\. ?)?F(?:\. ?)?(?:C|S)\.?",  # OSFC, OSFS
-				"O(?:\. ?)?S(?:\. ?)?F(\. ?)?Gr\.?",  # OSFGr
-				"O(?:\. ?)?Ss(?:\. ?)?C\.?",  # OSsC
-				"O(?:\. ?)?V(?:\. ?)?M\.?",  # OVM
-				"P(?:\. ?)?D(?:\. ?)?D(\. ?)?M\.?",  # PDDM
-				"P(?:\. ?)?O\.?",  # PO
-				"P(?:\. ?)?S(?:\. ?)?(?:M|S)\.?",  # PSM, PSS
-				"R(?:\. ?)?G(?:\. ?)?S\.?",  # RGS
-				"S(?:\. ?)?(?:A|J|S)(?:\. ?)?C\.?",  # SAC, SJC, SSC
-				"S(?:\. ?)?C(?:\. ?)?(?:B|H|M)\.?",  # SCB, SCH, SCM
-				"S(?:\. ?)?C(?:\. ?)?S(\. ?)?C\.?",  # SCSC
-				"S(?:\. ?)?D(?:\. ?)?(?:B|J|S)\.?",  # SDB, SDJ, SDS
-				"Sch(?:\. ?)?P\.?",  # SchP
-				"(?:S|T)(?:\. ?)?(?:I|J)\.?",  # SI, SJ, TI, TJ
-				"S(?:\. ?)?(?:P(?:\. ?)?)?M\.?",  # SM, SPM
-				"S(?:\. ?)?M(?:\. ?)?F(?:\. ?)?O\.?",  # SMFO
-				"S(?:\. ?)?M(?:\. ?)?O(?:\. ?)?M\.?",  # SMOM
-				"S(?:\. ?)?(?:P|Praem)\.?",  # SP, SPraem
-				"S(?:\. ?)?S(?:\. ?)?J\.?",  # SSJ
-				"S(?:\. ?)?S(?:\. ?)?N(?:\. ?)?D\.?",  # SSND
-				"S(?:\. ?)?(?:S|T)(?:\. ?)?S\.?",  # SSS, STS
-				"S(?:\. ?)?V\.?(?: ?D\.?)?",  # SV, SVD
-			]
-		# u titulů bez teček je třeba kontrolova mezeru, čárku nebo konec (například MA jinak vezme následující příjmení začínající "Ma..." a bude toto jméno považovat za součást předchozího)
-		re_titles_civil = [
-			r"J[rn]\.?",
-			"Sr\.?",
-			"ml(?:\.|adší)?",
-			"st(?:\.|arší)?",
-			"jun(\.|ior)?",
-			"[PT]h(\.\s?)?D\.?",
-			"MBA",
-			"M\.?A\.?",
-			"M\.?S\.?",
-			"M\.?Sc\.?",
-			"CSc\.",
-			"D(?:\.|r\.?)Sc\.",
-			"[Dd]r\. ?h\. ?c\.",
-			"DiS\.",
-			"CC",
-		]
-		#                 v---- need to be space without asterisk - with asterisk the comma will be replaced
-		alias = re.sub(
-			r", (?!("
-			+ "|".join(re_titles_civil + re_titles_religious)
-			+ r")(\.|,| |$))",
-			"|",
-			alias,
-			flags=re.I,
-		)
-		alias = regex.sub(
-		    r"(?<=^|\|)\p{Lu}\.(?:\s*\p{Lu}\.)+(\||$)", "\g<1>", alias
-		)  # Elimination of initials like "V. H." (also in infobox pseudonymes, nicknames, ...)
+	# 	re_titles_religious = []
+	# 	if data["infobox_name"] in ["křesťanský vůdce", "světec"]:
+	# 		# https://cs.wikipedia.org/wiki/Seznam_zkratek_c%C3%ADrkevn%C3%ADch_%C5%99%C3%A1d%C5%AF_a_kongregac%C3%AD
+	# 		# https://cs.qwe.wiki/wiki/List_of_ecclesiastical_abbreviations#Abbreviations_of_titles_of_the_principal_religious_orders_and_congregations_of_priests
+	# 		# http://www.katolik.cz/otazky/ot.asp?ot=657
+	# 		re_titles_religious = [
+	# 			"A(?:\. ?)?(?:F|M)\.?",  # AF, AM
+	# 			"A(?:\. ?)?(?:B(?:\. ?)?)?A\.?",  # AA, ABA
+	# 			"A(?:\. ?)?C(?:\. ?)?S\.?",  # ACS
+	# 			"A(?:\. ?)?M(?:\. ?)?B(?:\. ?)?V\.?",  # AMBV
+	# 			"B\.?",  # B
+	# 			"C(?:\. ?)?C\.?(?: ?G\.?)?",  # CC, CCG
+	# 			"C(?:\. ?)?F(?:\. ?)?C\.?",  # CFC
+	# 			"C(?:\. ?)?F(?:\. ?)?Ss(?:\. ?)?S\.?",  # CFSsS
+	# 			"C(?:\. ?)?C(?:\. ?)?R(?:\. ?)?R(?:\. ?)?M(?:\. ?)?M\.?",  # CCRRMM
+	# 			"C(?:\. ?)?(?:J(?:\. ?)?)?M\.?",  # CJM, CM
+	# 			"C(?:\. ?)?M(?:\. ?)?F\.?",  # CMF
+	# 			"C(?:\. ?)?M(?:\. ?)?S(?:\. ?)?Sp(?:\. ?)?S\.?",  # CMSSpS
+	# 			"C(?:\. ?)?P\.?(?: ?P(?:\. ?)?S\.?)?",  # CP, CPPS
+	# 			"Č(?:\. ?)?R\.?",  # ČR
+	# 			"C(?:\. ?)?R(?:\. ?)?C(?:\. ?)?S\.?",  # CRCS
+	# 			"C(?:\. ?)?R(?:\. ?)?I(?:\. ?)?C\.?",  # CRIC
+	# 			"C(?:\. ?)?R(?:\. ?)?(?:L|M|T|V)\.?",  # CRL, CRM, CRT, CRV
+	# 			"C(?:\. ?)?R(?:\. ?)?M(?:\. ?)?(?:D|I)\.?",  # CRMD, CRMI
+	# 			"C(?:\. ?)?R(?:\. ?)?(?:S(?:\. ?)?)?P\.?",  # CRP, CRSP
+	# 			"C(?:\. ?)?S(?:\. ?)?(?:B|C|J|P|V)\.?",  # CSB, CSC, CSJ, CSP, CSV
+	# 			"C(?:\. ?)?S(?:\. ?)?C(?:\. ?)?D(?:\. ?)?I(?:\. ?)?J\.?",  # CSCDIJ
+	# 			"C(?:\. ?)?S(?:\. ?)?S(?:\. ?)?E\.?",  # CSSE
+	# 			"C(?:\. ?)?S(?:\. ?)?Sp\.?",  # CSSp
+	# 			"C(?:\. ?)?Ss(?:\. ?)?(?:CC|Cc|R)\.?",  # CSsCC, CSsR
+	# 			"C(?:\. ?)?S(?:\. ?)?T(?:\. ?)?F\.?",  # CSTF
+	# 			"D(?:\. ?)?K(?:\. ?)?L\.?",  # DKL
+	# 			"D(?:\. ?)?N(?:\. ?)?S\.?",  # DNS
+	# 			"F(?:\. ?)?D(?:\. ?)?C\.?",  # FDC
+	# 			"F(?:\. ?)?M(?:\. ?)?A\.?",  # FMA
+	# 			"F(?:\. ?)?M(?:\. ?)?C(?:\. ?)?S\.?",  # FMCS
+	# 			"F(?:\. ?)?M(?:\. ?)?D(?:\. ?)?D\.?",  # FMDD
+	# 			"F(?:\. ?)?S(?:\. ?)?C(?:\. ?)?I\.?",  # FSCI
+	# 			"F(?:\. ?)?S(?:\. ?)?P\.?",  # FSP
+	# 			"I(?:\. ?)?B(?:\. ?)?M(?:\. ?)?V\.?",  # IBMV
+	# 			"Inst(?:\. ?)?Char\.?",  # Inst. Char.
+	# 			"I(?:\. ?)?Sch\.?",  # ISch
+	# 			"I(?:\. ?)?S(?:\. ?)?P(?:\. ?)?X\.?",  # ISPX
+	# 			"I(?:\. ?)?S(?:\. ?)?S(?:\. ?)?M\.?",  # ISSM
+	# 			"K(?:\. ?)?M(?:\. ?)?B(?:\. ?)?M\.?",  # KMBM
+	# 			"K(?:\. ?)?S(?:\. ?)?H\.?",  # KSH
+	# 			"K(?:\. ?)?S(?:\. ?)?N(?:\. ?)?S\.?",  # KSNS
+	# 			"(?:L|M|O|S)(?:\. ?)?C\.?",  # LC, MC, OC, SC
+	# 			"M(?:\. ?)?I(?:\. ?)?C\.?",  # MIC
+	# 			"N(?:\. ?)?Id\.?",  # MId
+	# 			"M(?:\. ?)?S\.?(?: ?(?:C|J)\.?)?",  # MS, MSC, MSJ
+	# 			"N(?:\. ?)?D\.?",  # ND
+	# 			"O(?:\. ?)?(?:Camald|Carm|Cart|Cist|Cr|Crucig|F|H|M|Melit|Merced|P|Praed|Praem|T|Trinit)\.?",  # OCamald, OCarm, OCart, OCist, OCr, OCrucig, OF, OH, OM, OMelit, OMerced, OP, OPraed, OPraem, OT, OTrinit
+	# 			"O(?:\. ?)?C(?:\. ?)?(?:C|D|R)\.?",  # OCC, OCD, OCR
+	# 			"O(?:\. ?)?C(?:\. ?)?S(?:\. ?)?O\.?",  # OCSO
+	# 			"O(?:\. ?)?F(?:\. ?)?M\.?(?: ?(?:Cap|Conv|Rec)\.?)?",  # OFM, OFM Cap., OFM Conv., OFM Rec.
+	# 			"O(?:\. ?)?M(\. ?)?(?:C|I)\.?",  # OMC, OMI
+	# 			"O(?:\. ?)?(?:F(\. ?)?)?M(\. ?)?Cap\.?",  # OM Cap. OFM Cap.
+	# 			"O(?:\. ?)?S(?:\. ?)?(?:A|B|C|E|F|H|M|U)\.?",  # OSA, OSB, OSC, OSE, OSF, OSH, OSM, OSU
+	# 			"O(?:\. ?)?S(?:\. ?)?B(\. ?)?M\.?",  # OSBM
+	# 			"O(?:\. ?)?S(?:\. ?)?C(\. ?)?(?:Cap|O)\.?",  # OSC Cap., OSCO
+	# 			"O(?:\. ?)?S(?:\. ?)?F(?:\. ?)?(?:C|S)\.?",  # OSFC, OSFS
+	# 			"O(?:\. ?)?S(?:\. ?)?F(\. ?)?Gr\.?",  # OSFGr
+	# 			"O(?:\. ?)?Ss(?:\. ?)?C\.?",  # OSsC
+	# 			"O(?:\. ?)?V(?:\. ?)?M\.?",  # OVM
+	# 			"P(?:\. ?)?D(?:\. ?)?D(\. ?)?M\.?",  # PDDM
+	# 			"P(?:\. ?)?O\.?",  # PO
+	# 			"P(?:\. ?)?S(?:\. ?)?(?:M|S)\.?",  # PSM, PSS
+	# 			"R(?:\. ?)?G(?:\. ?)?S\.?",  # RGS
+	# 			"S(?:\. ?)?(?:A|J|S)(?:\. ?)?C\.?",  # SAC, SJC, SSC
+	# 			"S(?:\. ?)?C(?:\. ?)?(?:B|H|M)\.?",  # SCB, SCH, SCM
+	# 			"S(?:\. ?)?C(?:\. ?)?S(\. ?)?C\.?",  # SCSC
+	# 			"S(?:\. ?)?D(?:\. ?)?(?:B|J|S)\.?",  # SDB, SDJ, SDS
+	# 			"Sch(?:\. ?)?P\.?",  # SchP
+	# 			"(?:S|T)(?:\. ?)?(?:I|J)\.?",  # SI, SJ, TI, TJ
+	# 			"S(?:\. ?)?(?:P(?:\. ?)?)?M\.?",  # SM, SPM
+	# 			"S(?:\. ?)?M(?:\. ?)?F(?:\. ?)?O\.?",  # SMFO
+	# 			"S(?:\. ?)?M(?:\. ?)?O(?:\. ?)?M\.?",  # SMOM
+	# 			"S(?:\. ?)?(?:P|Praem)\.?",  # SP, SPraem
+	# 			"S(?:\. ?)?S(?:\. ?)?J\.?",  # SSJ
+	# 			"S(?:\. ?)?S(?:\. ?)?N(?:\. ?)?D\.?",  # SSND
+	# 			"S(?:\. ?)?(?:S|T)(?:\. ?)?S\.?",  # SSS, STS
+	# 			"S(?:\. ?)?V\.?(?: ?D\.?)?",  # SV, SVD
+	# 		]
+	# 	# u titulů bez teček je třeba kontrolova mezeru, čárku nebo konec (například MA jinak vezme následující příjmení začínající "Ma..." a bude toto jméno považovat za součást předchozího)
+	# 	re_titles_civil = [
+	# 		r"J[rn]\.?",
+	# 		"Sr\.?",
+	# 		"ml(?:\.|adší)?",
+	# 		"st(?:\.|arší)?",
+	# 		"jun(\.|ior)?",
+	# 		"[PT]h(\.\s?)?D\.?",
+	# 		"MBA",
+	# 		"M\.?A\.?",
+	# 		"M\.?S\.?",
+	# 		"M\.?Sc\.?",
+	# 		"CSc\.",
+	# 		"D(?:\.|r\.?)Sc\.",
+	# 		"[Dd]r\. ?h\. ?c\.",
+	# 		"DiS\.",
+	# 		"CC",
+	# 	]
+	# 	#                 v---- need to be space without asterisk - with asterisk the comma will be replaced
+	# 	alias = re.sub(
+	# 		r", (?!("
+	# 		+ "|".join(re_titles_civil + re_titles_religious)
+	# 		+ r")(\.|,| |$))",
+	# 		"|",
+	# 		alias,
+	# 		flags=re.I,
+	# 	)
+	# 	alias = regex.sub(
+	# 	    r"(?<=^|\|)\p{Lu}\.(?:\s*\p{Lu}\.)+(\||$)", "\g<1>", alias
+	# 	)  # Elimination of initials like "V. H." (also in infobox pseudonymes, nicknames, ...)
 
-		return alias
+	# 	return alias
 
 	##
 	# @brief Zpracuje a konvertuje datum narození/úmrtí osoby do jednotného formátu.
@@ -831,7 +575,7 @@ class PersonUtils:
 	# @param count - počet výskytů, na kterých má být úkon proveden (int)
 	# @param flags - speciální značky, které ovlivňují chování funkce (int)
 	@staticmethod
-	def _subx(pattern, repl, string, count=0, flags=0):		
+	def _subx(pattern, repl, string, count=0, flags=0):
 		if re.match(r"[\d?]+-[\d?]+-[\d?]+", string):
 			return string
 		return re.sub(pattern, repl, string, count, flags)

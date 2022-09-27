@@ -34,9 +34,8 @@ class EntOrganisation(EntCore):
     # @param langmap - language abbreviations <dictionary>
     # @param redirects - redirects to the wikipedia page <array of strings>
     # @param sentence - first sentence of the page <string>
-    # @param debugger - instance of the Debugger class used for debugging <Debugger>
-	def __init__(self, title, prefix, link, data, langmap, redirects, sentence, debugger):
-		super(EntOrganisation, self).__init__(title, prefix, link, data, langmap, redirects, sentence, debugger)
+	def __init__(self, title, prefix, link, data, langmap, redirects, sentence, keywords):
+		super(EntOrganisation, self).__init__(title, prefix, link, data, langmap, redirects, sentence, keywords)
 
 		self.founded = ""
 		self.cancelled = ""
@@ -107,7 +106,7 @@ class EntOrganisation(EntCore):
 	##
     # @brief extracts and assigns type from infobox
 	def assign_type(self):
-		data = self.get_infobox_data(utils[self.lang].KEYWORDS["type"], return_first=True)
+		data = self.get_infobox_data(self.keywords["type"], return_first=True)
 		if data:
 			data = self.remove_templates(data)
 			self.type = data

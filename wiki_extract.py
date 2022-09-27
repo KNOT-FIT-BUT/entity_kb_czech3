@@ -63,7 +63,7 @@ class WikiExtract(object):
 	# @brief initializes the console_args variable and debugger class
 	def __init__(self):
 		self.console_args = None
-		self.d = debug()
+		self.tracker = debug()
 
 	##
 	# @brief parses the console arguments
@@ -244,11 +244,11 @@ class WikiExtract(object):
 		
 		try:
 			with open(redirects_fpath, "r") as f:
-				self.d.update("loading redirects")
+				debug.update("loading redirects")
 				i = 0
 				for line in f:
 					i += 1
-					self.d.update(i)
+					debug.update(i)
 					redirect_from, redirect_to = line.strip().split("\t")
 
 					if redirect_to not in redirects:
@@ -256,9 +256,9 @@ class WikiExtract(object):
 					else:
 						redirects[redirect_to].append(redirect_from)
 
-				self.d.print(f"loaded redirects ({i})")
+				debug.print(f"loaded redirects ({i})")
 		except OSError:            
-			self.d.print("redirect file was not found - skipping...")
+			debug.print("redirect file was not found - skipping...")
 		
 		return redirects
 
@@ -271,12 +271,12 @@ class WikiExtract(object):
 		
 		try:
 			with open(langmap_fpath, "r") as file:
-				self.d.update("loading langmap")
+				debug.update("loading langmap")
 				langmap = json.load(file)
-				self.d.print("loaded langmap")
+				debug.print("loaded langmap")
 		except OSError:
-			self.d.print(f"langmap file 'langmap.json' was not found")
-			self.d.print(f"please generate langmap.json (use generate_langmap.json)")
+			debug.print(f"langmap file 'langmap.json' was not found")
+			debug.print(f"please generate langmap.json (use generate_langmap.json)")
 			# exit(1)
 
 		return langmap
@@ -290,19 +290,19 @@ class WikiExtract(object):
 
 		try:
 			with open(senteces_fpath, "r") as f:
-				self.d.update("loading first sentences")
+				debug.update("loading first sentences")
 				i = 0
 				for line in f:
 					i += 1
-					self.d.update(i)
+					debug.update(i)
 					split = line.strip().split("\t")
 					link = split[0]
 					sentence = split[1] if len(split) > 1 else ""
 					first_sentences[link] = sentence
 
-				self.d.print(f"loaded first sentences ({i})")
+				debug.print(f"loaded first sentences ({i})")
 		except OSError:            
-			self.d.print("first sentence file was not found - skipping...")
+			debug.print("first sentence file was not found - skipping...")
 		
 		return first_sentences
 
@@ -311,26 +311,31 @@ class WikiExtract(object):
 	# @param patterns_fpath path to the file with patterns
 	# @return dictionary with patterns
 	def load_patterns(self, patterns_fpath):
-		patterns = dict()
+		d = dict()
 
 		try:
 			with open(patterns_fpath, "r") as file:
-				patterns = json.load(file)
-			self.d.print("loaded identification patterns")
+				d = json.load(file)
+			debug.print("loaded identification patterns")
 		except OSError:
-			self.d.print("entity identification patterns were not found - exiting...")
-			# exit(1)
+			debug.print("entity identification patterns were not found - exiting...")
+			exit(1)
 
-		return patterns
+		keywords = d["keywords"]
+		identification = d["identification"]		
+		return identification, keywords
+
+	@staticmethod
+	def get_path(fpath):
+		return os.path.join(os.path.dirname(sys.argv[0]), fpath)
 
 	## 
 	# @brief loads redirects, first sentences, langmap and patterns, then parses xml dump
 	def parse_xml_dump(self):
-		
-		redirects = self.load_redirects(self.redirects_dump_fpath)
-		langmap = self.load_langmap(os.path.join(os.path.dirname(sys.argv[0]), f"json/langmap_{self.console_args.lang}.json"))
+		redirects =self.load_redirects(self.redirects_dump_fpath)
+		langmap = self.load_langmap(self.get_path(f"json/langmap_{self.console_args.lang}.json"))
 		first_sentences = self.load_first_sentences(self.fs_dump_path)
-		patterns = self.load_patterns(os.path.join(os.path.dirname(sys.argv[0]), f"json/{self.console_args.lang}_identification.json"))
+		patterns, keywords = self.load_patterns(self.get_path(f"json/patterns_{self.console_args.lang}.json"))
 
 		# xml parser
 		context = CElTree.iterparse(self.pages_dump_fpath, events=("start", "end"))
@@ -370,8 +375,8 @@ class WikiExtract(object):
 						elif "revision" in child.tag:
 							for grandchild in child:
 								if "text" in grandchild.tag and is_entity and grandchild.text:
-									if re.search(utils[self.console_args.lang].DISAMBIG_PATTERN, grandchild.text, re.I):
-										self.d.update("found disambiguation")
+									if re.search(keywords["disambig_pattern"], grandchild.text, re.I):
+										debug.update("found disambiguation")
 										break                    
 
 									# nalezení nové entity
@@ -386,29 +391,29 @@ class WikiExtract(object):
 									curr_page_cnt += 1
 									all_page_cnt += 1
 
-									self.d.update(f"found new page ({all_page_cnt})")
+									debug.update(f"found new page ({all_page_cnt})")
 
-									if self.d.debug_limit is not None and all_page_cnt >= self.d.debug_limit:
-										self.d.print(f"debug limit hit (number of pages: {all_page_cnt})")
+									if self.tracker.debug_limit is not None and all_page_cnt >= self.tracker.debug_limit:
+										debug.print(f"debug limit hit (number of pages: {all_page_cnt})")
 										debug_limit_hit = True
 										break
 
 									if curr_page_cnt == LOOP_CYCLE:
-										ent_count += self.output(file, ent_data, langmap, patterns)
+										ent_count += self.output(file, ent_data, langmap, patterns, keywords)
 										ent_data.clear()
 										curr_page_cnt = 0    
 						elif "redirect" in child.tag:
-							self.d.update(f"found redirect ({all_page_cnt})")
+							debug.update(f"found redirect ({all_page_cnt})")
 							break
 
 					root.clear()
 
 			if len(ent_data):
-				ent_count += self.output(file, ent_data, langmap, patterns)
+				ent_count += self.output(file, ent_data, langmap, patterns, keywords)
 
-		self.d.print("----------------------------", print_time=False)
-		self.d.print(f"parsed xml dump (number of pages: {all_page_cnt})", print_time=False)
-		self.d.print(f"processed {ent_count} entities", print_time=False)
+		debug.print("----------------------------", print_time=False)
+		debug.print(f"parsed xml dump (number of pages: {all_page_cnt})", print_time=False)
+		debug.print(f"processed {ent_count} entities", print_time=False)
 
 	##
 	# @brief extracts the entities with multiprocessing and outputs the data to a file
@@ -417,14 +422,14 @@ class WikiExtract(object):
 	# @param langmap - dictionary of language abbreviations
 	# @param patterns - dictionary containing identification patterns
 	# @return number of pages that were identified as entities (count of extracted entities)
-	def output(self, file, ent_data, langmap, patterns):
+	def output(self, file, ent_data, langmap, patterns, keywords):
 		if len(ent_data):
 			start_time = datetime.now()
 
 			pool = Pool(processes=self.console_args.m)
 			serialized_entities = pool.starmap(
 				self.process_entity,
-				zip(ent_data, repeat(langmap), repeat(patterns))                    
+				zip(ent_data, repeat(langmap), repeat(patterns), repeat(keywords))                    
 			)
 			l = list(filter(None, serialized_entities))
 			file.write("\n".join(l) + "\n")
@@ -434,8 +439,8 @@ class WikiExtract(object):
 
 			end_time = datetime.now()
 			tdelta = end_time - start_time
-			self.d.print(f"processed {count} entities (in {self.d.pretty_time_delta(tdelta.total_seconds())})")
-			self.d.log_message(f"time_avg,{tdelta},{len(ent_data)};")
+			debug.print(f"processed {count} entities (in {debug.pretty_time_delta(tdelta.total_seconds())})")
+			debug.log_message(f"time_avg,{tdelta},{len(ent_data)};")
 			return count
 
 	##
@@ -444,12 +449,12 @@ class WikiExtract(object):
 	# @param langmap - dictionary of language abbreviations
 	# @param patterns - dictionary containing identification patterns
 	# @return tab separated string with entity data or None if entity is unidentified
-	def process_entity(self, ent_data, langmap, patterns):
+	def process_entity(self, ent_data, langmap, patterns, keywords):
 		title, content, redirects, sentence = ent_data
 
-		self.d.update(f"processing {title}")
+		debug.update(f"processing {title}")
 
-		extraction = self.extract_entity_data(content)
+		extraction = self.extract_entity_data(content, keywords)
 		identification = self.identify_entity(title, extraction, patterns).most_common()
 
 		count = 0
@@ -471,11 +476,11 @@ class WikiExtract(object):
 		if count != 0:
 			key = identification[0][0]
 			if key in entities:
-				entity = entities[key](title, key, self.get_link(title), extraction, langmap, redirects, sentence, self.d)
+				entity = entities[key](title, key, self.get_link(title), extraction, langmap, redirects, sentence, keywords)
 				entity.assign_values(self.console_args.lang)
 				return repr(entity)
 		
-		# self.d.log_message(f"Error: unidentified page: {title}")
+		# debug.log_message(f"Error: unidentified page: {title}")
 		return None
 
 	##
@@ -484,7 +489,7 @@ class WikiExtract(object):
 	# @return dictionary of extracted entity data
 	#
 	# uses the mwparserfromhell library
-	def extract_entity_data(self, content):
+	def extract_entity_data(self, content, keywords):
 
 		content = self.remove_not_improtant(content)
 
@@ -548,13 +553,13 @@ class WikiExtract(object):
 					result["paragraph"] = s.strip()
 					break
 		else:
-			self.d.log_message("Error: no first section found")
+			debug.log_message("Error: no first section found")
 
 		# extract categories
 		lines = content.splitlines()
 		for line in lines:
 			# categories
-			pattern = utils[self.console_args.lang].CATEGORY_PATTERN
+			pattern = keywords["category_pattern"]
 			match = re.search(pattern, line, re.I)
 			if match:
 				result["categories"].append(match.group(1).strip())
@@ -691,4 +696,4 @@ if __name__ == "__main__":
 	wiki_extract.create_head_kb()
 	wiki_extract.assign_version()    
 	wiki_extract.parse_xml_dump()
-	wiki_extract.d.log()
+	wiki_extract.tracker.log()

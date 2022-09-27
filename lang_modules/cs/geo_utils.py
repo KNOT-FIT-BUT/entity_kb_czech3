@@ -1,14 +1,7 @@
 
 import re
-from lang_modules.cs.core_utils import CoreUtils
 
 class GeoUtils:
-
-	KEYWORDS = {
-		"height": ["celková výška", "celková_výška"],
-		"population": ["počet obyvatel", "počet_obyvatel"]
-	}
-	
 	@staticmethod
 	def assign_prefix(geo):
 		if (re.search(r"poloostrovy\s+(?:na|ve?)", "\n".join(geo.categories), re.I)

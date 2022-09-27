@@ -3,7 +3,6 @@ import re
 from lang_modules.cs.core_utils import CoreUtils
 
 class WaterareaUtils:
-		
 	@classmethod
 	def assign_continents(cls, waterarea):
 		continent = ""

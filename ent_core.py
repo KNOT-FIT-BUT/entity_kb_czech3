@@ -70,11 +70,9 @@ class EntCore(metaclass=ABCMeta):
 	# @param langmap - language abbreviations <dictionary>
 	# @param redirects - redirects to the wikipedia page <array of strings>
 	# @param sentence - first sentence of the page <string>
-	# @param debugger - instance of the Debugger class used for debugging <Debugger>
 	@abstractmethod
-	def __init__(self, title, prefix, link, data, langmap, redirects, sentence, debugger):
+	def __init__(self, title, prefix, link, data, langmap, redirects, sentence, keywords):
 		EntCore.counter += 1
-		self.d = debugger
 
 		# general information
 		self.eid = sha224(str(EntCore.counter).encode("utf-8")).hexdigest()[:10]
@@ -87,6 +85,7 @@ class EntCore(metaclass=ABCMeta):
 		self.images = ""
 		self.link = link
 		self.langmap = langmap
+		self.keywords = keywords
 
 		self.lang = link[8:10]
 		self.core_utils = utils[self.lang]
@@ -168,21 +167,21 @@ class EntCore(metaclass=ABCMeta):
 			return area.strip()
 
 		# km2
-		data = self.get_infobox_data(utils[self.lang].KEYWORDS["area_km2"], return_first=False)
+		data = self.get_infobox_data(self.keywords["area_km2"], return_first=False)
 		for d in data:
 			area = fix_area(d)
 			if area:
 				return area
 
 		# sq_mi
-		data = self.get_infobox_data(utils[self.lang].KEYWORDS["area_sqmi"], return_first=False)
+		data = self.get_infobox_data(self.keywords["area_sqmi"], return_first=False)
 		for d in data:
 			area = fix_area(d)
 			area = self.convert_units(area, "sqmi")
 			if area:
 				return area
 
-		data = self.get_infobox_data(utils[self.lang].KEYWORDS["area_other"], return_first=False)
+		data = self.get_infobox_data(self.keywords["area_other"], return_first=False)
 		for d in data:
 			# look for convert template - {{convert|...}}
 			match = re.search(r"\{\{(?:convert|cvt)\|([^\}]+)\}\}", d, re.I)
@@ -210,7 +209,7 @@ class EntCore(metaclass=ABCMeta):
 	##
 	# @brief extracts and assigns population from infobox
 	def assign_population(self):
-		data = self.get_infobox_data(utils[self.lang].KEYWORDS["population"], return_first=True)
+		data = self.get_infobox_data(self.keywords["population"], return_first=True)
 		if data:
 			pop = re.sub(r"\(.*?\)", "", data)
 			pop = re.sub(r"\{\{nowrap\|([^\{]*?)\}\}", r"\1", pop)
@@ -306,7 +305,7 @@ class EntCore(metaclass=ABCMeta):
 			extracted_images = [self.get_image_path(img) for img in extracted_images]
 			self.images = "|".join(extracted_images)
 
-		data = self.get_infobox_data(utils[self.lang].KEYWORDS["image"], return_first=False)
+		data = self.get_infobox_data(self.keywords["image"], return_first=False)
 		for d in data:
 			image = d.replace("\n", "")
 			if not image.startswith("http"):
@@ -366,7 +365,7 @@ class EntCore(metaclass=ABCMeta):
 			paragraph += '.'
 
 		# TODO: make this better -> e.g.: Boleslav Bárta - ... 90. let ...
-		keywords = self.core_utils.KEYWORDS["sentence"]
+		keywords = self.keywords["sentence"]
 		pattern = r"('''.*?'''.*?(?: (?:" + f"{'|'.join(keywords)}" + r") ).*?(?<!\s[A-Z][a-z])(?<!\s[A-Z])\.)"		
 		match = re.search(pattern, paragraph)
 		if match:
@@ -399,7 +398,7 @@ class EntCore(metaclass=ABCMeta):
 	##
 	# @brief gets aliases from infobox
 	def get_infobox_aliases(self):
-		keys = self.core_utils.KEYWORDS["infobox_name"]
+		keys = self.keywords["infobox_name"]
 		data = self.get_infobox_data(keys, False)
 		for d in data:
 			d, aliases = self.remove_lang_templates(d)			
@@ -420,7 +419,7 @@ class EntCore(metaclass=ABCMeta):
 				# ()?
 				self.aliases[d] = self.get_alias_properties(None, None)
 
-		keys = self.core_utils.KEYWORDS["infobox_names"]
+		keys = self.keywords["infobox_names"]
 		data = self.get_infobox_data(keys, False)
 		for d in data:
 			d = d.replace("\n", " ")
@@ -538,7 +537,7 @@ class EntCore(metaclass=ABCMeta):
 	##
 	# @brief gets native names from infobox and removes wikipedia formatting 
 	def get_native_names(self):
-		keys = self.core_utils.KEYWORDS["native_name_lang"]
+		keys = self.keywords["native_name_lang"]
 		native_lang = self.get_infobox_data(keys)
 		if native_lang:
 			native_lang = native_lang.strip(":").lower()
@@ -555,7 +554,7 @@ class EntCore(metaclass=ABCMeta):
 			if len(native_lang) > 3:
 				debug.log_message(f"Error: unsoported language found in native name extraction -> {native_lang}")
 
-		keys = self.core_utils.KEYWORDS["native_name"]
+		keys = self.keywords["native_name"]
 		data = self.get_infobox_data(keys)
 		if data:
 			data = re.sub(r"&nbsp;", " ", data, flags=re.I)
@@ -680,7 +679,7 @@ class EntCore(metaclass=ABCMeta):
 		spans = []
 		aliases = []
 
-		patterns = self.core_utils.KEYWORDS["lang_alias_patterns"]
+		patterns = self.keywords["lang_alias_patterns"]
 		for p in patterns:
 			match = re.finditer(p, data, flags=re.I)
 			for m in match:
