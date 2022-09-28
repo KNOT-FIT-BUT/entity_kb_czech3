@@ -167,6 +167,9 @@ class CoreUtils:
 			return 10e9
 		return 1
 
+	def specific_aliases(entity):
+		return []
+
 	##
 	# @brief tries to conver a string to a date with YYYY-MM-DD
 	# @param data - string containing a date to be converted

@@ -484,7 +484,7 @@ class WikiExtract(object):
 				entity.assign_values(self.console_args.lang)
 				return repr(entity)
 		
-		debug.log_message(f"Error: unidentified page: {title}")
+		# debug.log_message(f"Error: unidentified page: {title}")
 		return None
 
 	##

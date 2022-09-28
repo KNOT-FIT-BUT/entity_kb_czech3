@@ -109,6 +109,8 @@ class EntPerson(EntCore):
 		if not sentence:
 			return
 
+		self.core_utils.specific_aliases(self)
+
 		# '''name (name2) surname''' -> name surname, name2 surname
 		# '''name "name2" surname''' -> name surname, name2 surname
 		patterns = [			

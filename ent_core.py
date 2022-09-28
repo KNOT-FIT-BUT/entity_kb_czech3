@@ -401,6 +401,32 @@ class EntCore(metaclass=ABCMeta):
 		keys = self.keywords["infobox_name"]
 		data = self.get_infobox_data(keys, False)
 		for d in data:
+			if self.prefix.startswith("person"):
+				match = re.search(r"\((.*?)\)$", d)
+				if match:					
+					alias = re.sub(r"\(.*?\)", "", match.group(1)).strip()
+					alias = alias.replace("\"", "")
+					match = re.search(r"^in (\w+) (.+)", alias)
+					if match:
+						lang = match.group(1).lower()
+						alias = match.group(2)
+						if lang in self.langmap:
+							lang = self.langmap[lang]
+							self.aliases[alias] = self.get_alias_properties(None, lang)
+						else:
+							self.aliases[alias] = self.get_alias_properties(None, None)
+					else:
+						self.aliases[alias] = self.get_alias_properties(None, None)
+					d = re.sub(r"\(.*?\)$", "", d).strip()
+				
+				match = re.search(r"^.+?[\"\(](.+?)[\"\)].+$", d)
+				if match:
+					surname = self.title.split()[-1]
+					name = match.group(1)
+					alias = f"{name} {surname}"
+					self.aliases[alias] = self.get_alias_properties(None, None)
+					d = re.sub(r"(^.+?)\s[\"\(].+?[\"\)](.+$)", r"\1\2", d)
+
 			d, aliases = self.remove_lang_templates(d)			
 			if len(aliases):
 				for span in aliases:
@@ -415,8 +441,6 @@ class EntCore(metaclass=ABCMeta):
 			d = re.sub(r"\[|\]", "", d)
 			d = re.sub(r"\(.*?\)", "", d).strip()
 			if d:
-				# ""?
-				# ()?
 				self.aliases[d] = self.get_alias_properties(None, None)
 
 		keys = self.keywords["infobox_names"]
@@ -739,6 +763,11 @@ class EntCore(metaclass=ABCMeta):
 			if alias and lang in self.langmap and len(lang) > 2:
 				lang = self.langmap[lang]
 				self.aliases[alias] = self.get_alias_properties(None, self.lang)
+
+		aliases = self.core_utils.specific_aliases(self)
+		for span in aliases:
+			alias, lang = span
+			self.aliases[alias] = self.get_alias_properties(None, "")
 
 	##
 	# @brief serializes all aliases into a string separated by |

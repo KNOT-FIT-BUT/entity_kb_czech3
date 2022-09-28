@@ -59,8 +59,6 @@ class EntEvent(EntCore):
 		lang_utils = utils[lang]
 		self.start_date, self.end_date = lang_utils.assign_dates(self.infobox_data)
 		self.assign_locations()
-		if self.locations:
-			debug.log_message(f"info: {self.locations} ({self.title})")
 		self.assign_type()
 
 		name = ""

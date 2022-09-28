@@ -175,21 +175,40 @@ class CoreUtils:
 	# TODO: specific infobox aliases (countries)
 	def specific_aliases(entity):
 		# cs specific
-		keys = entity.infobox_data.keys()
-		for key in keys:
-			match = re.search(r"úřední\snázev\s(\w+)", key)
-			if match:
-				lang = match.group(1)
-				# TODO: cs langmap
-				lang_abbr = ""
-				alias = entity.infobox_data[key]
-				alias = re.sub(r"&nbsp;", " ", alias)
-				alias = re.sub(r"\[\[.*?\|(.*?)\]\]", r"\1", alias)
-				alias = re.sub(r"\[\[(.*?)\]\]", r"\1", alias)
-				match = re.search(r"\{\{Cizojazyčně\|(.*?)\|(.*?)\}\}", alias, flags=re.I)
+		aliases = []
+
+		if not entity.prefix.startswith("person"):
+			keys = entity.infobox_data.keys()
+			for key in keys:
+				match = re.search(r"úřední\snázev\s(\w+)", key)
 				if match:
-					lang_abbr = match.group(1)
-					alias = match.group(2)
-				alias = re.sub(r"\{\{(malé|small).*?\}\}", "", alias).strip()
-				alias = re.sub(r"'{2}", "", alias)
-				debug.log_message(f"{lang}: {alias}")
+					lang = match.group(1)
+					# TODO: cs langmap
+					lang_abbr = ""
+					alias = entity.infobox_data[key]
+					alias = re.sub(r"&nbsp;", " ", alias)
+					alias = re.sub(r"\[\[.*?\|(.*?)\]\]", r"\1", alias)
+					alias = re.sub(r"\[\[(.*?)\]\]", r"\1", alias)
+					match = re.search(r"\{\{Cizojazyčně\|(.*?)\|(.*?)\}\}", alias, flags=re.I)
+					if match:
+						lang_abbr = match.group(1)
+						alias = match.group(2)
+						aliases += [(alias, lang_abbr)]
+						break
+					alias = re.sub(r"\{\{(malé|small).*?\}\}", "", alias).strip()
+					alias = re.sub(r"'{2}", "", alias)
+					alias = re.sub(r"[ \t]{2,3}", "|", alias)
+					alias = alias.split("|")
+					alias = [re.sub(r"\(.*?\)", "", a).strip() for a in alias]
+					if lang in entity.langmap:
+						lang = entity.langmap[lang]
+						aliases += [(a, lang) for a in alias]
+						break
+					aliases += [(a, "") for a in alias]
+					break
+
+		if entity.prefix.startswith("person") and entity.gender == "F":
+			if entity.title[-3:] not in ("ová", "ská") and entity.title[-2:] != "tá":
+				aliases += [(f"{entity.title}ová", "cs")]
+
+		return aliases
