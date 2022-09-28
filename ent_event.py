@@ -96,7 +96,7 @@ class EntEvent(EntCore):
 		]
 		data = self.get_infobox_data(keys, return_first=True)
 		if data:
-			debug.log_message(f"info: event locations -> {data}")
+			# debug.log_message(f"info: event locations -> {data}")
 			data = self.remove_templates(data)
 			if re.search(r"[ \t]{2,}", data):
 				self.locations = re.sub(r"[ \t]{2,}", "|", data)
@@ -106,15 +106,17 @@ class EntEvent(EntCore):
 				split = data.split(",") 
 				if len(split) > 5:
 					locations = [item.strip() for item in split]
+					locations = [l for l in locations if l]
 					self.locations = "|".join(locations)
 					return
-
-			self.locations = data
+			
+			if data:
+				self.locations = data
 
 	##
     # @brief extracts and assigns type from infobox
 	def assign_type(self):
 		data = self.get_infobox_data(["type"], return_first=True)
 		if data:
-			self.type = self.remove_templates(data).lower()
+			self.type = self.remove_templates(data).lower().strip()
 

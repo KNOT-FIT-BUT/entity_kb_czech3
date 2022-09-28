@@ -37,7 +37,8 @@
 				".*?\\bbirths?\\b.*?",
 				".*?\\bdeaths?\\b.*?",
 				".*?\\b(wo)?men\\b.*",
-				".*?\\bcharacters\\b.*?"
+				".*?\\bcharacters\\b.*?",
+				"living people"
 			],
 			"names": [
 				"person"
@@ -58,7 +59,11 @@
 				"Member\\s+states\\s+of\\s+(?:the\\sUnited\\sNations|the\\sCommonwealth\\sof\\sNations|the\\sEuropean\\sUnion|NATO)",
 				"States\\s+(?:of\\sthe\\sUnited\\sStates|with\\slimited\\srecognition)",
 				"States\\s+(?:of\\sthe\\sUnited\\sStates|with\\slimited\\srecognition)",
-				".*?former.*?countries.*?"
+				".*?former.*?countries.*?",
+				"countries and territories",
+				"States and territories",
+				"member states",
+				"nations"
 			],
 			"names": [],
 			"titles": [],
@@ -66,13 +71,12 @@
 		},
 		"event": {
 			"categories": [
-				".*?event.*?"
+				"(?:^|\\s)(?<!based on actual )(?<!about impact )(?<!Endosymbiotic )events?(\\s|$)"
 			],
 			"names": [],
 			"titles": [],
 			"fields": [
 				"election_date",
-				"venue",
 				"host_city",
 				"affected",
 				"site"
@@ -80,7 +84,7 @@
 		},
 		"organisation": {
 			"categories": [
-				".*?(?:organizations?|organized crime (?:gangs|groups)|compan(?:y|ies)).*?"
+				"(?:^|\\s)(?:organizations?|organized crime (?:gangs|groups)|compan(?:y|ies))(\\s|$)"
 			],
 			"names": [],
 			"titles": [],

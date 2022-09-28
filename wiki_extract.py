@@ -463,6 +463,8 @@ class WikiExtract(object):
 		for _, value in identification:
 			count += value
 
+		if count:
+			debug.log_message(f"id_stats,{identification[0][0]},{count};")
 
 		entities = {
 			"person":       EntPerson,
@@ -482,7 +484,7 @@ class WikiExtract(object):
 				entity.assign_values(self.console_args.lang)
 				return repr(entity)
 		
-		# debug.log_message(f"Error: unidentified page: {title}")
+		debug.log_message(f"Error: unidentified page: {title}")
 		return None
 
 	##

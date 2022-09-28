@@ -25,7 +25,7 @@ class Debugger:
 	def __init__(self):
 		# TODO: add debug mode on/off switch
 		
-		self.debug_limit = 10000
+		self.debug_limit = 50000
 
 		# time
 		self.start_time = datetime.datetime.now()
