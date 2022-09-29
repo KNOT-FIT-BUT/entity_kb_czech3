@@ -1,3 +1,8 @@
+##
+# @file geo_utils.py
+# @brief cs specific geo utilities
+# @author created by Jan Kapsa (xkapsa00)
+# @date 29.09.2022
 
 import re
 
@@ -21,11 +26,3 @@ class GeoUtils:
 			return "geo:waterfall"
 		else:
 			return "geo:unknown"
-
-	@staticmethod
-	def get_coef(value):
-		if re.search(r"mil\.|mili[oó]n", value, re.I):
-			return 10e6
-		if re.search(r"tis\.|tis[ií]c", value, re.I):
-			return 10e3
-		return 1

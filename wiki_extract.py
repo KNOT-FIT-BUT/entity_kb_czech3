@@ -552,7 +552,6 @@ class WikiExtract(object):
 			split = [s for s in section.strip().split("\n") if s != ""]
 			while len(split):
 				s = split.pop(0)
-				# if re.search(r"^(?:'''|The ''')", s, flags=re.I):
 				match = re.search(r"'''|The '''", s, flags=re.I)
 				if match:
 					s = s[match.span()[0]:]

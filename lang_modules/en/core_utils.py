@@ -1,3 +1,13 @@
+##
+# @file core_utils.py
+# @brief en specific core utilities
+#
+# contains:
+# - is_entity function - non entity function for page identification
+# - general functions for all cs entities (assign_coordinates, ...)
+#
+# @author created by Jan Kapsa (xkapsa00)
+# @date 29.09.2022
 
 import re
 import mwparserfromhell as parser

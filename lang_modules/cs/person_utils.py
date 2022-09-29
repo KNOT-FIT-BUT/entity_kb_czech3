@@ -1,8 +1,13 @@
+##
+# @file person_utils.py
+# @brief cs specific preson utilities
+# @author created by Jan Kapsa (xkapsa00)
+# @date 29.09.2022
 
 import re
 from debugger import Debugger as debug
 from lang_modules.cs.core_utils import CoreUtils
-from lang_modules.cs.libs.natToKB import *
+from libs.natToKB import *
 
 class PersonUtils:
 	##

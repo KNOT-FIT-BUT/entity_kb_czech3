@@ -227,7 +227,7 @@ class EntCore(metaclass=ABCMeta):
 				coef = match.group(2)
 				if coef:
 					coef = coef.strip()
-					coef = utils[self.lang].get_coef(coef)
+					coef = self.core_utils.get_coef(coef)
 					number = str(int(float(number) * coef))
 					pop = number
 				else:
@@ -735,6 +735,8 @@ class EntCore(metaclass=ABCMeta):
 		
 		return (data, aliases)
 
+	##
+	# @brief extracts aliases from the first sentence for non person entities
 	def extract_non_person_aliases(self):
 		sentence = self.first_sentence
 		match = re.findall(r"'{3}(.*?)'{3}", sentence)

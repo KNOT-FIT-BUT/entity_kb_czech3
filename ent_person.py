@@ -156,8 +156,6 @@ class EntPerson(EntCore):
 
 		sentence = re.sub(r"'{3}", "", sentence)
 		self.first_sentence = sentence
-		# if sentence:
-		# 	debug.log_message(self.first_sentence)
 
 	##
 	# @brief extracts and assigns places from infobox, removes wikipedia formatting

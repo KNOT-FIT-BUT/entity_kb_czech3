@@ -1,3 +1,8 @@
+##
+# @file person_utils.py
+# @brief en specific person utilities
+# @author created by Jan Kapsa (xkapsa00)
+# @date 29.09.2022
 
 import re
 from debugger import Debugger as debug

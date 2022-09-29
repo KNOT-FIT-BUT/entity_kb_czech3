@@ -1,3 +1,13 @@
+##
+# @file core_utils.py
+# @brief cs specific core utilities
+#
+# contains:
+# - is_entity function - non entity function for page identification
+# - general functions for all cs entities (del_redundant_text, assign_coordinates, ...)
+#
+# @author created by Jan Kapsa (xkapsa00)
+# @date 29.09.2022
 
 import re, requests
 from debugger import Debugger as debug
@@ -9,6 +19,8 @@ WIKI_API_PARAMS_BASE = {
 }
 
 class CoreUtils:
+	##
+	# @brief function used in wiki_extract.py for for page identification
 	@staticmethod
 	def is_entity(title):
 		# speciální stránky Wikipedie nepojednávají o entitách
@@ -87,6 +99,9 @@ class CoreUtils:
 
 		return clean_text
 
+	##
+	# @brief extracts coordinates - tries to extract from infoboxes queries wikipedia if unsuccessful
+	# @return tuple with string coordinates 
 	@classmethod
 	def assign_coordinates(cls, entity):
 		latitude = ""
@@ -113,6 +128,10 @@ class CoreUtils:
 		else:
 			return cls.get_wiki_api_location(entity.title)
 
+	##
+	# @brief queries wikipedia for coordinates based on title
+	# @param title page title to query
+	# @return tuple with string coordinates 
 	@staticmethod
 	def get_wiki_api_location(title):
 		wiki_api_params = WIKI_API_PARAMS_BASE.copy()
@@ -164,6 +183,10 @@ class CoreUtils:
 
 		return longitude
 
+	##
+	# @brief handels coeficients like millions, tousands, ...
+	# @param value string with possible coeficient
+	# @return int coeficient
 	@staticmethod
 	def get_coef(value):
 		if re.search(r"mil\.|mili[oó]n", value, re.I):
@@ -172,6 +195,10 @@ class CoreUtils:
 			return 10e3
 		return 1
 
+	##
+	# @brief extracts language specific aliases
+	# @param entity object with entity data
+	# @return array of tules with aliases ([(alias, language abbreviation), (...), ...])
 	# TODO: specific infobox aliases (countries)
 	def specific_aliases(entity):
 		# cs specific

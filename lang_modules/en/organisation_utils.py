@@ -1,3 +1,8 @@
+##
+# @file organisation_utils.py
+# @brief en specific organisation utilities
+# @author created by Jan Kapsa (xkapsa00)
+# @date 29.09.2022
 
 from lang_modules.en.core_utils import CoreUtils
 

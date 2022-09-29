@@ -135,7 +135,7 @@ class EntGeo(EntCore):
 			self.total_height = data
 
 	##
-	# @brief description
+	# @brief extracts continent form infobox
 	#
 	# NOT UNIFIED - en version is not currently extracting continents in watercourse entities
 	def assign_continent(self):
