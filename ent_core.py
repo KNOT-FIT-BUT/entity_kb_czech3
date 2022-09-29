@@ -362,11 +362,11 @@ class EntCore(metaclass=ABCMeta):
 	def get_first_sentence(self):
 		paragraph = self.first_paragraph.strip()		
 		if paragraph and paragraph[-1] != '.':
-			paragraph += '.'
+			paragraph += '.'		
 
 		# TODO: make this better -> e.g.: Boleslav Bárta - ... 90. let ...
 		keywords = self.keywords["sentence"]
-		pattern = r"('''.*?'''.*?(?: (?:" + f"{'|'.join(keywords)}" + r") ).*?(?<!\s[A-Z][a-z])(?<!\s[A-Z])\.)"		
+		pattern = r"('''.*?'''.*?(?: (?:" + f"{'|'.join(keywords)}" + r") ).*?(?<!\s[A-Z][a-z])(?<!\s[A-Z])\.)"
 		match = re.search(pattern, paragraph)
 		if match:
 			# removing templates
@@ -585,6 +585,7 @@ class EntCore(metaclass=ABCMeta):
 			data = re.sub(r"{{okina}}|{{wbr}}", "", data, flags=re.I)
 			data = re.sub(r"\{\{Nastaliq\|(.*?)\}\}", "\1", data, flags=re.I)
 			data = re.sub(r"\(.*?\)", "", data)
+			data = re.sub(r"\[\[(?:File|Soubor):.*?\]\]", "", data, flags=re.I)			
 			
 			data = self.remove_outer_templates(data).strip()
 			
@@ -599,6 +600,8 @@ class EntCore(metaclass=ABCMeta):
 				for m in match:
 					lang_abbr = m.group(1)
 					alias = m.group(2)
+					if not alias:
+						continue
 					alias = re.sub(r"'{2,3}", "", alias)
 					self.aliases[alias] = self.get_alias_properties(None, lang_abbr)
 					a.append(m.span())
@@ -708,11 +711,12 @@ class EntCore(metaclass=ABCMeta):
 			match = re.finditer(p, data, flags=re.I)
 			for m in match:
 				lang = m.group(1).strip()
+				if len(lang) > 2:
+					lang = lang if lang not in self.langmap else self.langmap[lang]
 				if len(lang) < 2 or len(lang) > 3:
 					debug.log_message(f"Error: invalid lang tag - {lang} ({self.link})")
 					continue
-				if len(lang) == 3:
-					lang = lang if lang not in self.langmap else self.langmap[lang]					
+										
 				alias = m.group(2)
 				alias = alias.replace("'", "").strip()
 				if re.search(r"\{|\}|=", alias):
@@ -752,11 +756,13 @@ class EntCore(metaclass=ABCMeta):
 		# can't extract aliases from "" 
 		# quotes don't always contain aliases 
 		
-		match = re.search(r"(\w+):\s*([^\(]+?)(?:'{2,}|,|;|\))", sentence)
+		match = re.search(r"(\w+):\s*([^\(\{]+?)(?:'{2,}|,|;|\))", sentence)
 		# sentence = re.sub(r"'{2,3}", "", sentence)
 		if match:
 			lang = match.group(1).lower()
 			alias = match.group(2)
+			if self.title == "Brazil":
+					debug.log_message(alias)
 			alias = re.sub(r"\{\{.*?\}\}", "", alias).strip()
 			alias = re.sub(r"\"", "", alias)
 			alias = re.sub(r"'{2,3}", "", alias)
@@ -767,7 +773,7 @@ class EntCore(metaclass=ABCMeta):
 		aliases = self.core_utils.specific_aliases(self)
 		for span in aliases:
 			alias, lang = span
-			self.aliases[alias] = self.get_alias_properties(None, "")
+			self.aliases[alias] = self.get_alias_properties(None, None)
 
 	##
 	# @brief serializes all aliases into a string separated by |

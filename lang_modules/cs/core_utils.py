@@ -204,7 +204,7 @@ class CoreUtils:
 						lang = entity.langmap[lang]
 						aliases += [(a, lang) for a in alias]
 						break
-					aliases += [(a, "") for a in alias]
+					aliases += [(a, None) for a in alias]
 					break
 
 		if entity.prefix.startswith("person") and entity.gender == "F":
