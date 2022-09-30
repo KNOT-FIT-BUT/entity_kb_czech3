@@ -30,4 +30,15 @@ class GeoUtils:
 		else:
 			prefix += name
 
+		if prefix == "geo:":
+			categories = " ".join(geo.categories).lower()
+			if "mountain ranges" in categories or "mountains" in categories:
+				prefix += "relief"
+			elif "waterfalls" in categories:
+				prefix += "waterfall"
+			elif "islands" in categories or "atols" in categories:
+				prefix += "island"
+			elif "peninsulas" in categories:
+				prefix += "peninsula"
+
 		return prefix

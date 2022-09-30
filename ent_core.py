@@ -164,6 +164,7 @@ class EntCore(metaclass=ABCMeta):
 			area = re.sub(r",(?=\d{3})", "", area)
 			area = area.replace(",", ".")
 			area = re.sub(r"(\d+(?:\.\d+)?)(?:.+|$)", r"\1", area)
+
 			return area.strip()
 
 		# km2
@@ -190,15 +191,18 @@ class EntCore(metaclass=ABCMeta):
 				area = area.split("|")
 				if len(area) >= 2:
 					number, unit = (area[0].strip(), area[1].strip())
+					if unit == "-":
+						unit = area[3].strip()
 					number = fix_area(number)
 					number = self.convert_units(number, unit)
 					return number if number else ""
-
+			
 			# e.g.: '20sqmi', '10 km2', ...
 			area = re.sub(r"\(.+\)", "", d).strip()
 			match = re.search(r"^([\d,\.]+)(.*)", area, re.I)
 			if match:
-				number, unit = (match.group(1), match.group(2).strip())
+				number, unit = (match.group(1), match.group(2).strip())				
+				unit = unit if unit else "km2"
 				number = fix_area(number)
 				number = self.convert_units(number, unit)
 				return number if number else ""

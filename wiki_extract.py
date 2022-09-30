@@ -465,6 +465,9 @@ class WikiExtract(object):
 
 		if count:
 			debug.log_message(f"id_stats,{identification[0][0]},{count};")
+		
+		if count == 1:
+			debug.log_message(f"{title} - {identification[0][0]}")
 
 		entities = {
 			"person":       EntPerson,

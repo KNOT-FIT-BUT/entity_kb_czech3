@@ -65,7 +65,7 @@ class EntWaterCourse(EntCore):
 		self.latitude, self.longitude = self.core_utils.assign_coordinates(self)
 		self.area = self.assign_area()
 		self.assign_length()
-		self.assign_stremflow()
+		self.assign_streamflow()
 		self.assign_source()
 		self.extract_non_person_aliases()
 
@@ -97,7 +97,7 @@ class EntWaterCourse(EntCore):
 
 	##
     # @brief extracts and assigns streamflow from infobox
-	def assign_stremflow(self):
+	def assign_streamflow(self):
 		def fix_streamflow(flow):
 			flow = re.sub(r"\(.*?\)", "", flow).strip()
 			flow = re.sub(r"&nbsp;", "", flow)

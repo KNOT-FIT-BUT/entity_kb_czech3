@@ -1,15 +1,11 @@
 
-import unittest
-import os
-import sys
-import inspect
+import unittest, json, os, sys, inspect
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
 
 from ent_person import EntPerson
-from debugger import Debugger
 
 from lang_modules.en.person_utils import PersonUtils as EnUtils
 from lang_modules.cs.person_utils import PersonUtils as CsUtils
@@ -19,11 +15,27 @@ utils = {
 	"cs": CsUtils
 }
 
+def load_json(lang):
+	d = dict()
+	patterns_fpath = f"json/patterns_{lang}.json"
+	try:
+		with open(patterns_fpath, "r") as file:
+			d = json.load(file)
+	except OSError:
+		exit(1)
+
+	keywords = d["keywords"]
+	identification = d["identification"]		
+	return identification, keywords
+
 class PersonTests(unittest.TestCase):
 
 	def __init__(self, *args, **kwargs):
 		super(PersonTests, self).__init__(*args, **kwargs)
-		self.d = Debugger()
+		
+		_, self.keywords_en = load_json("en")
+		_, self.keywords_cs = load_json("cs")
+		
 		self.person = EntPerson(
 			"title", 
 			"person", 
@@ -39,11 +51,18 @@ class PersonTests(unittest.TestCase):
 			{},
 			["redirects"],
 			"sentence",
-			self.d
+			self.keywords_en
 		)
 		self.person.core_utils = utils["en"]
+
+	def change_keywords(self, lang=None):
+		if lang == "cs":
+			self.person.keywords = self.keywords_cs
+		else:
+			self.person.keywords = self.keywords_en
 				
 	def test_dates(self):
+		self.change_keywords()		
 		birth_values = [
 			# en
 			("1950", ("1950-??-??", "")),
@@ -94,6 +113,7 @@ class PersonTests(unittest.TestCase):
 			if value == "change lang":
 				self.person.lang = result
 				self.person.core_utils = utils[result]
+				self.change_keywords(result)
 				continue
 			self.person.infobox_data["birth_date"] = value
 			self.person.infobox_data["datum narození"] = value
@@ -110,6 +130,7 @@ class PersonTests(unittest.TestCase):
 			if value == "change lang":
 				self.person.lang = result
 				self.person.core_utils = utils[result]
+				self.change_keywords(result)
 				continue
 			self.person.infobox_data["death_date"] = value
 			self.person.infobox_data["datum úmrtí"] = value
@@ -118,6 +139,7 @@ class PersonTests(unittest.TestCase):
 			self.assertEqual(self.person.death_date, result[1])
 
 	def test_places(self):
+		self.change_keywords()
 		infobox_values = [
 			# en
 			("Beijing, China", "Beijing, China"),
@@ -127,6 +149,8 @@ class PersonTests(unittest.TestCase):
 			("[[Virginia]], United States [[File:Flag of the United States.svg|20px]]", "Virginia, United States"),
 			("[[Belgrade]], [[Kingdom of Serbs, Croats and Slovenes]]{{small|(now [[Serbia]])}}", "Belgrade, Kingdom of Serbs, Croats and Slovenes(now Serbia)"),
 			("[[Yerevan]], [[Armenian Soviet Socialist Republic|Armenian SSR]], {{nowrap|Soviet Union}}", "Yerevan, Armenian SSR, Soviet Union"),
+			
+			("change lang", "cs"),
 			# cs
 			("[[Benátky nad Jizerou]] {{Vlajka a název|Rakousko-Uhersko}}", "Benátky nad Jizerou Rakousko-Uhersko"),
 			("{{flagicon|TCH}} [[Praha]], [[Československo]]", "TCH Praha, Československo"),
@@ -137,12 +161,18 @@ class PersonTests(unittest.TestCase):
 
 		for i in infobox_values:
 			value, result = i
+			if value == "change lang":
+				self.person.lang = result
+				self.person.core_utils = utils[result]
+				self.change_keywords(result)
+				continue
 			self.person.infobox_data["birth_place"] = value
 			self.person.infobox_data["místo narození"] = value
 			self.person.assign_places()
 			self.assertEqual(self.person.birth_place, result)
 
 	def test_gender(self):
+		self.change_keywords()
 		infobox_values = [
 			# en
 			("male", "M"),
@@ -171,6 +201,7 @@ class PersonTests(unittest.TestCase):
 			value, result = i
 			if value == "change lang":
 				self.person.lang = result
+				self.change_keywords(result)
 				continue
 			self.person.infobox_data["gender"] = value
 			self.person.infobox_data["pohlaví"] = value
@@ -181,17 +212,21 @@ class PersonTests(unittest.TestCase):
 			value, result = i
 			if value == "change lang":
 				self.person.lang = result
+				self.change_keywords(result)
 				continue
 			self.person.categories = [c]
 			self.person.assign_gender()
 			self.assertEqual(self.person.gender, result)
 
 	def test_jobs(self):
+		self.change_keywords("cs")
 		infobox_values = [
 			# cs
 			("režisér, scenárista, producent", "režisér|scenárista|producent"),
 			("[[herec]], [[moderátor (profese)|moderátor]], [[komik]], [[bavič]], [[humorista]], [[tanečník]], [[baleťák]], [[zpěvák]], [[dabér]], [[scenárista]]", "herec|moderátor|komik|bavič|humorista|tanečník|baleťák|zpěvák|dabér|scenárista"),
 			("[[zpěvák]], muzikálový herec a&nbsp;zpěvák", "zpěvák|muzikálový herec a zpěvák"),
+			
+			("change lang", "en"),
 			# en
 			("{{hlist | Computer programmer | businessperson}}", "Computer programmer|businessperson"),
 			("[[Programmer]]; [[Politician]]", "Programmer|Politician"),
@@ -202,12 +237,17 @@ class PersonTests(unittest.TestCase):
 
 		for i in infobox_values:
 			value, result = i
+			if value == "change lang":
+				self.person.lang = result
+				self.change_keywords(result)
+				continue
 			self.person.infobox_data["occupation"] = value
 			self.person.infobox_data["profese"] = value
 			self.person.assign_jobs()
 			self.assertEqual(self.person.jobs, result)	
 
 	def test_nationality(self):
+		self.change_keywords()
 		infobox_values = [
 			# en
 			("{{flag|United States}}", "United States"),
@@ -216,6 +256,8 @@ class PersonTests(unittest.TestCase):
 			("Dreamlander, Maruvian", "Dreamlander|Maruvian"),
 			("[[French people|French]]-[[Austrians|Austrian]]", "French|Austrian"),
 			("British/Oceanian (in film)", "British|Oceanian"),
+			
+			("change lang", "cs"),
 			# cs
 			("{{flagicon|CRO}} [[Chorvati|chorvatká]]", "chorvatká"),
 			("[[Češi|česká]]", "česká")
@@ -223,11 +265,14 @@ class PersonTests(unittest.TestCase):
 
 		for i in infobox_values:
 			value, result = i
+			if value == "change lang":
+				self.person.lang = result
+				self.change_keywords(result)
+				continue
 			self.person.infobox_data["nationality"] = value
 			self.person.infobox_data["národnost"] = value
 			self.person.assign_nationality()
 			self.assertEqual(self.person.nationality, result)	
-
 
 if __name__ == "__main__":
 	unittest.main()

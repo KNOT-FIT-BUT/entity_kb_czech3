@@ -16,7 +16,7 @@
 		],
 		"native_name_lang": "native_name_lang",
 		"native_name": ["nativename", "native_name"],
-		"infobox_name": ["name", "birth_name", "birthname", "common_name", "conventional_long_name"],
+		"infobox_name": ["name", "subject_name", "birth_name", "birthname", "common_name", "conventional_long_name"],
 		"infobox_names": ["other_names", "name_other", "nickname", "nicknames", "alias", "aliases"],
 		"height": "height",
 		"birth_place":	"birth_place",
@@ -134,7 +134,14 @@
 			"fields": []
 		},
 		"geo": {
-			"categories": [],
+			"categories": [
+				"mountain ranges",
+				"mountains",
+				"waterfalls",
+				"islands",
+				"atolls",
+				"peninsulas"
+			],
 			"names": [
 				"waterfall", 
 				"(island)s?", 
