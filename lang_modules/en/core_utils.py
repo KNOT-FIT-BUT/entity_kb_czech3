@@ -181,6 +181,29 @@ class CoreUtils:
 		return []
 
 	##
+    # @brief extracts and assigns continents from infobox
+	@staticmethod
+	def assign_continents(entity):
+		continents = ["Asia", "Africa", "Europe", "North America", "South America", "Australia", "Oceania", "Antarctica"]
+		if entity.prefix == "waterarea":
+			if "location" in entity.infobox_data:
+				location = entity.infobox_data['location']
+				if location != "":
+					patterns = [r"Asia", r"Africa", r"Europe", r"North[^,]+America", r"South[^,]+America", r"Australia", r"Oceania", r"Antarctica"]
+					curr_continents = []
+					for i in range(len(continents)):
+						match = re.search(patterns[i], location)
+						if match:					
+							curr_continents.append(continents[i])
+					return "|".join(curr_continents)
+
+		for c in continents:
+			if re.search(r"\b" + c + r"\b", entity.first_sentence):
+				return c
+
+		return ""
+
+	##
 	# @brief tries to conver a string to a date with YYYY-MM-DD
 	# @param data - string containing a date to be converted
 	# @return array with 2 ordered dates

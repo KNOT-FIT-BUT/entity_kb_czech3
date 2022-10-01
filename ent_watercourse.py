@@ -61,23 +61,13 @@ class EntWaterCourse(EntCore):
     # @brief tries to assign entity information (calls the appropriate functions)
 	def assign_values(self, lang):		
 		self.lang = lang
-		self.assign_continent()
+		self.continents = self.core_utils.assign_continents(self)
 		self.latitude, self.longitude = self.core_utils.assign_coordinates(self)
 		self.area = self.assign_area()
 		self.assign_length()
 		self.assign_streamflow()
 		self.assign_source()
 		self.extract_non_person_aliases()
-
-	##
-	# @brief extracts and assigns continents from infobox
-	#
-	# NOT UNIFIED - en version is not currently extracting continents in watercourse entities
-	def assign_continent(self):
-		data = self.get_infobox_data(["světadíl"])
-		if data:
-			data = self.get_continent(self.core_utils.del_redundant_text(data))
-			self.continents = data
 
 	##
     # @brief extracts and assigns source location from infobox
@@ -159,17 +149,3 @@ class EntWaterCourse(EntCore):
 		if data:
 			data = fix_length(data)
 			self.length = data
-
-	##
-	# @brief Převádí světadíl, kterým vodní tok protéká, do jednotného formátu.
-	# @param continent - světadíl, kterým vodní tok protéká (str)
-	@staticmethod
-	def get_continent(continent):
-		continent = re.sub(r"\(.*?\)", "", continent)
-		continent = re.sub(r"\[.*?\]", "", continent)
-		continent = re.sub(r"<.*?>", "", continent)
-		continent = re.sub(r"{{.*?}}", "", continent)
-		continent = re.sub(r"\s+", " ", continent).strip()
-		continent = re.sub(r", ?", "|", continent).replace("/", "|")
-
-		return continent

@@ -463,9 +463,12 @@ class WikiExtract(object):
 		for _, value in identification:
 			count += value
 
-		if count:
+		if count > 0:
 			debug.log_message(f"id_stats,{identification[0][0]},{count};")
-		
+
+		# if count != 0:
+		# 	debug.log_identification(identification, title=title)			
+
 		entities = {
 			"person":       EntPerson,
 			"country":      EntCountry,
@@ -597,21 +600,15 @@ class WikiExtract(object):
 	def identify_entity(title, extracted, patterns):
 		counter = Counter({key: 0 for key in patterns.keys()})
 
-		log = []
-
-		log.append(f"identifying {title}")
-
 		# categories
 		for c in extracted["categories"]:
 			for entity in patterns.keys():
 				for p in patterns[entity]["categories"]:
 					if re.search(p, c, re.I):
-						log.append(f"matched category: {c}")
 						counter[entity] += 1 if counter[entity] >= 0 else 0
 				if "!categories" in patterns[entity]:
-					for p in patterns[entity]["!category"]:
+					for p in patterns[entity]["!categories"]:
 						if re.search(p, c, re.I):
-							log.append(f"matched excluded category: {c}")
 							if counter[entity] > 0:
 								counter[entity] *= -1
 							elif counter[entity] == 0:
@@ -622,12 +619,10 @@ class WikiExtract(object):
 		for entity in patterns.keys():
 			for p in patterns[entity]["names"]:
 				if re.search(p, extracted["name"], re.I):
-					log.append(f"matched name: {p} ({extracted['name']})")
 					counter[entity] += 1 if counter[entity] >= 0 else 0
 			if "!names" in patterns[entity]:
 				for p in patterns[entity]["!names"]:
 					if re.search(p, extracted["name"], re.I):
-						log.append(f"matched excluded name: {p} ({extracted['name']})")
 						if counter[entity] > 0:
 							counter[entity] *= -1
 						elif counter[entity] == 0:
@@ -638,12 +633,10 @@ class WikiExtract(object):
 		for entity in patterns.keys():
 			for p in patterns[entity]["titles"]:
 				if re.search(p, title, re.I):
-					log.append(f"matched title: {p} ({title})")
 					counter[entity] += 1 if counter[entity] >= 0 else 0
-			if "!titles" in patterns[entity]:
+			if "!titles" in patterns[entity]:				
 				for p in patterns[entity]["!titles"]:					
 					if re.search(p, title, re.I):
-						log.append(f"matched excluded title: {p} ({title})")
 						if counter[entity] > 0:
 							counter[entity] *= -1
 						elif counter[entity] == 0:
@@ -654,20 +647,15 @@ class WikiExtract(object):
 		for entity in patterns.keys():
 			for field in patterns[entity]["fields"]:
 				if field in extracted["data"]:
-					log.append(f"matched field: {field}")
 					counter[entity] += 1 if counter[entity] >= 0 else 0
 			if "!fields" in patterns[entity]:
 				for field in patterns[entity]["!fields"]:
 					if field in extracted["data"]:
-						log.append(f"matched excluded field: {field}")
 						if counter[entity] > 0:
 							counter[entity] *= -1
 						elif counter[entity] == 0:
 							counter[entity] -= 1
 						break
-
-		debug.log_message("\n".join(log), print_time=True)
-		debug.log_identification(counter.most_common())
 
 		return counter
 

@@ -38,12 +38,19 @@
 				"\\bbirths\\b",
 				"\\bdeaths\\b",
 				"\\b(wo)?men\\b",
-				"\\bcharacters\\b",
+				"fictional.*?characters",
+				"comics?.*?characters",
 				"living people",
 				"groups of"				
 			],
+			"!categories": [
+				"\\d+.*?television series"
+			],
 			"names": [
-				"person"
+				"person",
+				"comics character",
+				"character",
+				"soap character"
 			],
 			"!names": [
 				"television",
@@ -111,7 +118,9 @@
 			"names": [
 				"settlement"
 			],
-			"titles": [],
+			"titles": [
+				"county"
+			],
 			"fields": []
 		},
 		"watercourse": {
@@ -129,7 +138,6 @@
 			],
 			"fields": [
 				"source1_coordinates",
-				"length",
 				"basin_size",
 				"discharge1_avg",
 				"source1_location"

@@ -12,9 +12,8 @@
 # @date 15.07.2022
 
 import re
-
+from debugger import Debugger as debug
 from ent_core import EntCore
-
 from lang_modules.en.waterarea_utils import WaterareaUtils as EnUtils
 from lang_modules.cs.waterarea_utils import WaterareaUtils as CsUtils
 
@@ -38,7 +37,6 @@ class EntWaterArea(EntCore):
     # @param sentence - first sentence of the page <string>
 	def __init__(self, title, prefix, link, data, langmap, redirects, sentence, keywords):
 		super(EntWaterArea, self).__init__(title, prefix, link, data, langmap, redirects, sentence, keywords)
-
 		self.continents = ""
 		self.latitude = ""
 		self.longitude = ""
@@ -59,10 +57,8 @@ class EntWaterArea(EntCore):
 	##
     # @brief tries to assign entity information (calls the appropriate functions)
 	def assign_values(self, lang):
-		lang_utils = utils[lang]
 		self.latitude, self.longitude = self.core_utils.assign_coordinates(self)
 		self.area = self.assign_area()		
-		self.continents = lang_utils.assign_continents(self)
-
+		self.continents = self.core_utils.assign_continents(self)
 		self.extract_non_person_aliases()
 

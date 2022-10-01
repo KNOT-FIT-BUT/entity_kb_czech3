@@ -97,7 +97,7 @@ class EntGeo(EntCore):
 			self.population = self.assign_population()
 
 		if self.prefix in ("geo:island", "geo:relief", "geo:waterfall"):
-			self.assign_continent()
+			self.continent = self.core_utils.assign_continents(self)
 
 		self.extract_non_person_aliases()
 
@@ -133,27 +133,3 @@ class EntGeo(EntCore):
 		if data:
 			data = fix_height(data)
 			self.total_height = data
-
-	##
-	# @brief extracts continent form infobox
-	#
-	# NOT UNIFIED - en version is not currently extracting continents in watercourse entities
-	def assign_continent(self):
-		data = self.get_infobox_data(["světadíl"], return_first=True)
-		if data:
-			data = self.get_continent(self.core_utils.del_redundant_text(data))
-			self.continent = data
-
-	##
-	# Převádí světadíl, na kterém se geografická entita nachází, do jednotného formátu.
-	# continent - světadíl, na kterém se geografická entita nachází (str)
-	@staticmethod
-	def get_continent(continent):
-		continent = re.sub(r"\(.*?\)", "", continent)
-		continent = re.sub(r"\[.*?\]", "", continent)
-		continent = re.sub(r"<.*?>", "", continent)
-		continent = re.sub(r"{{.*?}}", "", continent)
-		continent = re.sub(r"\s+", " ", continent).strip()
-		continent = re.sub(r", ?", "|", continent).replace("/", "|")
-
-		return continent
