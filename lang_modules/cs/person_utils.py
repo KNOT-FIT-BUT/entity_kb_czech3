@@ -137,34 +137,7 @@ class PersonUtils:
 					death_place = cls.get_place(rexp.group(4))
 
 		return (birth_date, death_date, birth_place, death_place)
-
-	# TODO: infobox aliases
-	# if re.search(r"nezveřejněn|neznám", value, re.I):
-	# 	continue
-	# TODO: aliases
-	# look at assign_aliases
-	# TODO: aliases - extract_text
-	# # Female surname variants with or without suffix "-ová"
-	# if extracted["gender"] == "F":
-	# 	female_variant = (title[:-3] if title[-3:] == "ová" else (title + "ová"))
-	# 	# if redirects and female_variant in redirects:
-	# 	# 	# TODO: fix this
-	# 	# 	# self.aliases[female_variant][KEY_LANG] = (self.LANG_CZECH if self.title[-3:] == "ová" else LANG_UNKNOWN)
-	# 	# 	return extracted
-	#
-	# abbrs = "".join((
-	# 	r"(?<!\s(?:tzv|at[pd]|roz))",
-	# 	r"(?<!\s(?:apod|(?:ku|na|po)př|příp))",
-	# 	r"(?<!\s[amt]j)",
-	# 	r"(?<!\d)",
-	# ))
-	# match = re.search(
-	# 	r".*?'''.+?'''.*?\s(?:byl[aiy]?|je|jsou|(?:patř|působ)(?:í|il|ila|ily)|stal).*?"
-	# 	+ abbrs
-	# 	+ "\.(?![^[]*?\]\])",
-	# 	first_paragraph,
-	# )	
-
+	
 	##
 	# @brief Převádí místo narození/úmrtí osoby do jednotného formátu.
 	# @param place - místo narození/úmrtí osoby (str)

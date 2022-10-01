@@ -199,7 +199,6 @@ class CoreUtils:
 	# @brief extracts language specific aliases
 	# @param entity object with entity data
 	# @return array of tules with aliases ([(alias, language abbreviation), (...), ...])
-	# TODO: specific infobox aliases (countries)
 	def specific_aliases(entity):
 		# cs specific
 		aliases = []

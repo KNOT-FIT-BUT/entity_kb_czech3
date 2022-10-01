@@ -16,7 +16,7 @@
 # - art_forms
 # - urls
 #
-# person:group - same as person but the values are arrays separated by "|"
+# person:group - same as person but the values should be arrays separated by "|"
 #
 # @todo finish artist
 # @todo add group extraction
@@ -66,6 +66,9 @@ class EntPerson(EntCore):
 		
 		# artist
 		self.art_forms = ""
+		self.influencers = ""
+		self.influencees = ""
+		self.ulan_id = ""
 		self.urls = ""
 
 	##
@@ -81,6 +84,14 @@ class EntPerson(EntCore):
 			self.jobs,
 			self.nationality
 		]
+		if self.prefix == "person:artist":
+			data += [
+				self.art_forms,
+				self.influencers,
+				self.influencees,
+				self.ulan_id,
+				self.urls
+			]
 		return self.serialize("\t".join(data))
 	
 	##
@@ -102,7 +113,10 @@ class EntPerson(EntCore):
 			self.assign_art_forms()
 			self.assign_urls()
 
-		self.extract_aliases()
+		if self.prefix == "person:group":
+			self.extract_group_aliases()
+		else:
+			self.extract_aliases()
 
 	def extract_aliases(self):
 		sentence = self.first_sentence
@@ -152,10 +166,47 @@ class EntPerson(EntCore):
 		for match in matches:
 			alias = match
 			alias = re.sub(r"\(|\)|;", "", alias)
+			alias = re.sub(r"'{2,}", "", alias)
 			self.aliases[alias] = self.get_alias_properties(None, None)
 
-		sentence = re.sub(r"'{3}", "", sentence)
+		sentence = re.sub(r"'{3,}", "", sentence)
 		self.first_sentence = sentence
+
+	##
+	# @brief extracts group aliases
+	#
+	# NOT UNIFIED - cs version is not extracting group entities yet
+	def extract_group_aliases(self):
+		sentence = self.first_sentence
+		aliases = []
+
+		match = re.search(r"saints (\w+) and (\w+)", self.title)
+		if match:
+			aliases.append(f"Saint {match.group(1)}")
+			aliases.append(f"Saint {match.group(2)}")
+
+		# '''name''' '''name2''' -> '''name name2'''
+		sentence = re.sub(r"'{3}\s*'{3}", " ", sentence)
+		sentence = re.sub(r"\(('{3}.*?)'{3}\)\s*'{3}", r"\1 ", sentence)
+
+		match = re.findall(r"'{3}(.*?)'{3}", sentence)
+		for m in match:
+			m = re.sub(r"'{2,}", "", m)
+			if m.lower() != self.title.lower():
+				match = re.search(r"saints (\w+) and (\w+)", m, flags=re.I)
+				if match:
+					aliases.append(f"Saint {match.group(1)}")
+					aliases.append(f"Saint {match.group(2)}")
+					continue
+				m = m.split(",")
+				for value in m:
+					value = re.sub(r"^(and|&)", "", value).strip()
+					value = re.sub(r"\s+(and|&)\s+", "|", value).split("|")
+					value = [v.replace("\"", "") for v in value if not re.search(r"companions", v, flags=re.I)]
+					aliases += value
+		
+		for a in aliases:
+			self.aliases[a] = self.get_alias_properties(None, None)
 
 	##
 	# @brief extracts and assigns places from infobox, removes wikipedia formatting

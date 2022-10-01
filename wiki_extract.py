@@ -187,7 +187,7 @@ class WikiExtract(object):
 	def create_head_kb():
 		entities = [
 			"<person>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tGENDER\t{e}DATE OF BIRTH\tPLACE OF BIRTH\t{e}DATE OF DEATH\tPLACE OF DEATH\t{m}JOBS\t{m}NATIONALITY\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
-			"<person:artist>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tGENDER\t{e}DATE OF BIRTH\tPLACE OF BIRTH\t{e}DATE OF DEATH\tPLACE OF DEATH\t{m}JOBS\t{m}NATIONALITY\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
+			"<person:artist>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tGENDER\t{e}DATE OF BIRTH\tPLACE OF BIRTH\t{e}DATE OF DEATH\tPLACE OF DEATH\t{m}JOBS\t{m}NATIONALITY\t{m}ART_FORMS\t{m}INFLUENCERS\t{m}INFLUENCEES\tULAN_ID\t{m}OTHER_URLS\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
 			"<person:fictional>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tGENDER\t{e}DATE OF BIRTH\tPLACE OF BIRTH\t{e}DATE OF DEATH\tPLACE OF DEATH\t{m}JOBS\t{m}NATIONALITY\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
 			"<person:group>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tGENDER\t{e}DATE OF BIRTH\tPLACE OF BIRTH\t{e}DATE OF DEATH\tPLACE OF DEATH\t{m}JOBS\t{m}NATIONALITY\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
 			"<country>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tLATITUDE\tLONGITUDE\tAREA\tPOPULATION\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
@@ -466,9 +466,6 @@ class WikiExtract(object):
 		if count:
 			debug.log_message(f"id_stats,{identification[0][0]},{count};")
 		
-		if count == 1:
-			debug.log_message(f"{title} - {identification[0][0]}")
-
 		entities = {
 			"person":       EntPerson,
 			"country":      EntCountry,
@@ -480,7 +477,7 @@ class WikiExtract(object):
 			"event":        EntEvent
 		}
 
-		if count != 0:
+		if identification[0][1] > 0:
 			key = identification[0][0]
 			if key in entities:
 				entity = entities[key](title, key, self.get_link(title), extraction, langmap, redirects, sentence, keywords)
@@ -600,34 +597,77 @@ class WikiExtract(object):
 	def identify_entity(title, extracted, patterns):
 		counter = Counter({key: 0 for key in patterns.keys()})
 
+		log = []
+
+		log.append(f"identifying {title}")
+
 		# categories
 		for c in extracted["categories"]:
 			for entity in patterns.keys():
 				for p in patterns[entity]["categories"]:
 					if re.search(p, c, re.I):
-						# print("matched category")
-						counter[entity] += 1
+						log.append(f"matched category: {c}")
+						counter[entity] += 1 if counter[entity] >= 0 else 0
+				if "!categories" in patterns[entity]:
+					for p in patterns[entity]["!category"]:
+						if re.search(p, c, re.I):
+							log.append(f"matched excluded category: {c}")
+							if counter[entity] > 0:
+								counter[entity] *= -1
+							elif counter[entity] == 0:
+								counter[entity] -= 1
+							break
 
 		# infobox names
 		for entity in patterns.keys():
 			for p in patterns[entity]["names"]:
 				if re.search(p, extracted["name"], re.I):
-					# print("matched name")
-					counter[entity] += 1
+					log.append(f"matched name: {p} ({extracted['name']})")
+					counter[entity] += 1 if counter[entity] >= 0 else 0
+			if "!names" in patterns[entity]:
+				for p in patterns[entity]["!names"]:
+					if re.search(p, extracted["name"], re.I):
+						log.append(f"matched excluded name: {p} ({extracted['name']})")
+						if counter[entity] > 0:
+							counter[entity] *= -1
+						elif counter[entity] == 0:
+							counter[entity] -= 1
+						break
 
 		# titles
 		for entity in patterns.keys():
 			for p in patterns[entity]["titles"]:
 				if re.search(p, title, re.I):
-					# print("matched title")
-					counter[entity] += 1
+					log.append(f"matched title: {p} ({title})")
+					counter[entity] += 1 if counter[entity] >= 0 else 0
+			if "!titles" in patterns[entity]:
+				for p in patterns[entity]["!titles"]:					
+					if re.search(p, title, re.I):
+						log.append(f"matched excluded title: {p} ({title})")
+						if counter[entity] > 0:
+							counter[entity] *= -1
+						elif counter[entity] == 0:
+							counter[entity] -= 1
+						break
 
 		# infobox fields
 		for entity in patterns.keys():
 			for field in patterns[entity]["fields"]:
 				if field in extracted["data"]:
-					# print("matched field")
-					counter[entity] += 1
+					log.append(f"matched field: {field}")
+					counter[entity] += 1 if counter[entity] >= 0 else 0
+			if "!fields" in patterns[entity]:
+				for field in patterns[entity]["!fields"]:
+					if field in extracted["data"]:
+						log.append(f"matched excluded field: {field}")
+						if counter[entity] > 0:
+							counter[entity] *= -1
+						elif counter[entity] == 0:
+							counter[entity] -= 1
+						break
+
+		debug.log_message("\n".join(log), print_time=True)
+		debug.log_identification(counter.most_common())
 
 		return counter
 

@@ -17,6 +17,10 @@ class PersonUtils:
 	def assign_prefix(person):
 		if re.search(r".*\s(?:,|and|&)\s.*", person.title):
 			return "person:group"
+		if "groups of" in " ".join(person.categories).lower():
+			return "person:group"
+		if re.search(r"gang", person.title, re.I):
+			return "person:group"
 
 		# self.d.log_message(self.first_sentence)
 

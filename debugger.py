@@ -126,11 +126,14 @@ class Debugger:
 
 	##
 	# @brief logs identification of an entity (how much score each entity type got)
-	def log_identification(self, title, identification):
+	@classmethod
+	def log_identification(cls, identification, title=None):
 		# identification is a Counter
-		self.log_message(f"identification of {title}:")
+		if title:
+			cls.log_message(f"identification of {title}:")
 		for key, value in identification:
-			self.log_message(f"{key}: {value}")
+			if value != 0:
+				cls.log_message("{:<20}{:<15}".format(key, value))
 
 	##
 	# @brief fiters data sent to stderr (stderr is redirected to out/kb.out) and logs important data into a log file (log/kb.log) 

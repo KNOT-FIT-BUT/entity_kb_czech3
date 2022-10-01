@@ -35,16 +35,23 @@
 	"identification": {
 		"person": {
 			"categories": [
-				".*?\\bbirths?\\b.*?",
-				".*?\\bdeaths?\\b.*?",
-				".*?\\b(wo)?men\\b.*",
-				".*?\\bcharacters\\b.*?",
-				"living people"
+				"\\bbirths\\b",
+				"\\bdeaths\\b",
+				"\\b(wo)?men\\b",
+				"\\bcharacters\\b",
+				"living people",
+				"groups of"				
 			],
 			"names": [
 				"person"
 			],
-			"titles": [],
+			"!names": [
+				"television",
+				"film"
+			],
+			"titles": [
+				"gang"
+			],
 			"fields": [
 				"birth_date",
 				"death_date",
@@ -87,7 +94,13 @@
 			"categories": [
 				"(?:^|\\s)(?:organizations?|organized crime (?:gangs|groups)|compan(?:y|ies))(\\s|$)"
 			],
-			"names": [],
+			"names": [
+				"company"
+			],
+			"!names": [
+				"television",
+				"film"
+			],
 			"titles": [],
 			"fields": []
 		},
@@ -102,7 +115,9 @@
 			"fields": []
 		},
 		"watercourse": {
-			"categories": [],
+			"categories": [
+				"rivers of"
+			],
 			"names": [
 				"river"
 			],

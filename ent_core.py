@@ -33,7 +33,7 @@
 # @date 28.07.2022
 
 from abc import ABCMeta, abstractmethod
-import re
+import re, random
 from hashlib import md5, sha224
 import mwparserfromhell as parser
 
@@ -72,10 +72,13 @@ class EntCore(metaclass=ABCMeta):
 	# @param sentence - first sentence of the page <string>
 	@abstractmethod
 	def __init__(self, title, prefix, link, data, langmap, redirects, sentence, keywords):
-		EntCore.counter += 1
+		# old id generation:
+		# EntCore.counter += 1
+		# self.eid = sha224(str(EntCore.counter).encode("utf-8")).hexdigest()[:10]
 
 		# general information
-		self.eid = sha224(str(EntCore.counter).encode("utf-8")).hexdigest()[:10]
+
+		self.eid = sha224(str(random.randint(1, 1000000)).encode("utf-8")).hexdigest()[:10]
 		self.prefix = prefix
 		self.title = re.sub(r"\s+\(.+?\)\s*$", "", title)
 		self.aliases = DictOfUniqueDict()
@@ -116,7 +119,7 @@ class EntCore(metaclass=ABCMeta):
 			self.eid,
 			self.prefix,
 			self.title,
-			self.serialize_aliases() if self.prefix != "person:group" else "",
+			self.serialize_aliases(),
 			"|".join(self.redirects),
 			self.description,
 			self.original_title,
@@ -405,7 +408,9 @@ class EntCore(metaclass=ABCMeta):
 		keys = self.keywords["infobox_name"]
 		data = self.get_infobox_data(keys, False)
 		for d in data:
-			if self.prefix.startswith("person"):
+			if re.search(r"nezveřejněn|neznám|unknown", d, re.I):
+				continue
+			if self.prefix.startswith("person") and self.prefix != "person:group":
 				match = re.search(r"\((.*?)\)$", d)
 				if match:					
 					alias = re.sub(r"\(.*?\)", "", match.group(1)).strip()
@@ -450,6 +455,8 @@ class EntCore(metaclass=ABCMeta):
 		keys = self.keywords["infobox_names"]
 		data = self.get_infobox_data(keys, False)
 		for d in data:
+			if re.search(r"nezveřejněn|neznám|unknown", d, re.I):
+				continue
 			d = d.replace("\n", " ")
 			d = re.sub(r"\[\[.*?\|([^\|]*?)\]\]", r"\1", d)
 			d = re.sub(r"\[|\]", "", d)
@@ -512,6 +519,7 @@ class EntCore(metaclass=ABCMeta):
 
 			d = d.replace('"', "")
 			if d:
+				d = re.sub(r"\(.*?\)", "", d).strip()
 				self.aliases[d] = self.get_alias_properties(None, None)
 
 	##
