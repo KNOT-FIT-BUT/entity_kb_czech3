@@ -21,9 +21,6 @@
 #
 # person:group - same as person but the values should be arrays separated by "|"
 #
-# @todo finish artist
-# @todo add group extraction
-#
 # @author created by Jan Kapsa (xkapsa00)
 # @date 15.07.2022
 
