@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 ##
 # @file ent_geo.py
 # @brief contains EntGeo class - entity used for mountains, islands, waterfalls, peninsulas and continents

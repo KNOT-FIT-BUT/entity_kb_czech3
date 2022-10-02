@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 ##
 # @file ent_settlement.py
 # @brief contains EntSettlement class - entity used for settlements

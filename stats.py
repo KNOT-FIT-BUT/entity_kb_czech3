@@ -1,17 +1,23 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+##
+# @file stats.py
+# @brief script for generating statistics after extraction
+# @author created by Jan Kapsa (xkapsa00)
+# @date 02.10.2022
 
 import re
 from datetime import datetime, timedelta
 
+##
+# @brief generates statistics after extraction was run
 def gen_stats():
-
 	entities = {}
-
 	delta_sum = timedelta()
 	total_pages = 0
 	time_total = ""
-
 	identification = {}
-
 	# get entity information from head
 	with open("outputs/HEAD-KB", "r") as f:
 		lines = f.readlines()
@@ -31,7 +37,6 @@ def gen_stats():
 					if key == "wiki backlinks":
 						break
 					entities[entity][key] = [i, 0]
-
 	# get entity data from kb
 	with open("outputs/KBstatsMetrics.all", "r") as f:
 		lines = f.readlines()
@@ -45,7 +50,6 @@ def gen_stats():
 				data = split[entities[entity][key][0]]
 				if data != "":
 					entities[entity][key][1] += 1
-
 	# get stats from out file
 	with open("outputs/kb.out", "r") as f:
 		lines = f.readlines()
@@ -74,7 +78,6 @@ def gen_stats():
 					identification[key][3] = number
 			else:
 				continue
-
 	with open("outputs/stats.log", "w") as f:
 
 		# time and general stats
@@ -104,7 +107,7 @@ def gen_stats():
 
 		# identification
 		f.write("== identification ==\n")
-		f.write("- description\n")
+		f.write("- shows how much identification points each entity got during the identification\n")
 		f.write("\n")
 		f.write("{:<20}{:<15}{:<15}{:<15}\n".format("entity","avg","min","max"))
 		f.write("----------------------------------------------------------\n")
@@ -115,6 +118,8 @@ def gen_stats():
 
 		# emptiness
 		f.write("== entity emptiness ==\n")
+		f.write("- shows how much of invidual information was extracted during the extraction\n")
+		f.write("- (person: aliases 50% means 50% of person entities had aliases extracted)\n")
 		f.write("\n")
 		for key, item in entities.items():
 			if item["count"] != 0:
@@ -127,6 +132,9 @@ def gen_stats():
 					f.write("{:<20}{}%\n".format(k, round(i[1]/count*100,2)))
 				f.write("\n")
 
+##
+# @brief prints time in a readable format
+# source: https://gist.github.com/thatalextaylor/7408395
 def pretty_time_delta(seconds):
 	seconds = int(seconds)
 	days, seconds = divmod(seconds, 86400)

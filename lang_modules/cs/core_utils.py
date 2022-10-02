@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 ##
 # @file core_utils.py
 # @brief cs specific core utilities

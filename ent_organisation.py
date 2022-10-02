@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 ##
 # @file ent_organisation.py
 # @brief contains EntOrganisation class - entity used for organisations
@@ -110,5 +113,3 @@ class EntOrganisation(EntCore):
 		if data:
 			data = self.remove_templates(data)
 			self.type = data
-
-	

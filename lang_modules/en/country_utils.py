@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 ##
 # @file country_utils.py
 # @brief en specific country utilities
@@ -8,6 +11,8 @@ import re
 
 class CountryUtils:
 	
+	##
+	# @brief assigns prefix based on categories
 	@staticmethod
 	def assign_prefix(categories):
 		for category in categories:

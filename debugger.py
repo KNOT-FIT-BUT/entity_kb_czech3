@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 ##
 # @file debugger.py
 # @brief contains TUI and functions for debugging and logging
@@ -158,6 +161,7 @@ class Debugger:
 
 	##
 	# @brief TUI function, prints time delta in readable format
+	# source: https://gist.github.com/thatalextaylor/7408395
 	@staticmethod
 	def pretty_time_delta(seconds):
 		seconds = int(seconds)

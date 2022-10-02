@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 ##
 # @file person_utils.py
 # @brief en specific person utilities
@@ -67,6 +70,8 @@ class PersonUtils:
 		# debugger.log_message((birth_date, death_date))
 		return (birth_date, death_date)
 
+	##
+	# @brief tries to extract dates and places from the first sentence
 	def extract_dates_and_places(person):
 		birth_date = ""
 		death_date = ""

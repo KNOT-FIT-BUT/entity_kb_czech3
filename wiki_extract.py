@@ -27,7 +27,6 @@
 # @date 26.07.2022
 
 import os, re, argparse, time, json, sys
-
 from debugger import Debugger as debug
 import xml.etree.cElementTree as CElTree
 from datetime import datetime
@@ -35,7 +34,6 @@ from multiprocessing import Pool
 from itertools import repeat
 from collections import Counter
 import mwparserfromhell as parser
-
 from ent_person import EntPerson
 from ent_country import EntCountry
 from ent_settlement import EntSettlement
@@ -44,7 +42,6 @@ from ent_watercourse import EntWaterCourse
 from ent_geo import EntGeo
 from ent_organisation import EntOrganisation
 from ent_event import EntEvent
-
 from lang_modules.en.core_utils import CoreUtils as EnCoreUtils
 from lang_modules.cs.core_utils import CoreUtils as CsCoreUtils
 
@@ -327,6 +324,8 @@ class WikiExtract(object):
 		identification = d["identification"]		
 		return identification, keywords
 
+	##
+	# @brief generates default path to a file
 	@staticmethod
 	def get_path(fpath):
 		return os.path.join(os.path.dirname(sys.argv[0]), fpath)
@@ -555,7 +554,7 @@ class WikiExtract(object):
 			split = [s for s in section.strip().split("\n") if s != ""]
 			while len(split):
 				s = split.pop(0)
-				match = re.search(r"'''|The '''", s, flags=re.I)
+				match = re.search(r"^'''|The '''", s, flags=re.I)
 				if match:
 					s = s[match.span()[0]:]
 					s += f" {' '.join(split)}"
@@ -684,6 +683,9 @@ class WikiExtract(object):
 
 		return clean_content
 
+	##
+	# @brief removes some references in {{}} brackets
+	# @param content - page content
 	@staticmethod
 	def remove_ref_templates(content):
 		# TODO: maybe not a good idea to remove all of them?

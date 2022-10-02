@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 ##
 # @file core_utils.py
 # @brief en specific core utilities
@@ -171,12 +174,17 @@ class CoreUtils:
 		# debugger.log_message(f"Error: unidentified area")
 		return ""
 
+	##
+	# @brief tries to extract a coeficient while extracting numbers 
 	@staticmethod
 	def get_coef(value):
 		if re.search(r"billion", value, flags=re.I):
 			return 10e9
 		return 1
 
+	##
+	# @brief language specific alias extraction
+	# empty (not needed here but used in cs extraction)
 	def specific_aliases(entity):
 		return []
 

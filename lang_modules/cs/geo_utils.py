@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 ##
 # @file geo_utils.py
 # @brief cs specific geo utilities
@@ -7,6 +10,9 @@
 import re
 
 class GeoUtils:
+	
+	##
+	# @brief assigns prefix based on infobox names
 	@staticmethod
 	def assign_prefix(geo):
 		if (re.search(r"poloostrovy\s+(?:na|ve?)", "\n".join(geo.categories), re.I)

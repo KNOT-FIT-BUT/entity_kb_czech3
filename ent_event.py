@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 ##
 # @file ent_event.py
 # @brief contains EntEvent class - entity used for events

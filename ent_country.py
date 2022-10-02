@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 ##
 # @file ent_country.py
 # @brief contains EntCountry class - entity used for countries

@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 ##
 # @file ent_person.py
 # @brief contains EntPerson class - entity used for people, artists and groups
@@ -118,6 +121,8 @@ class EntPerson(EntCore):
 		else:
 			self.extract_aliases()
 
+	##
+	# @brief extracts person aliases (excluding group aliases)
 	def extract_aliases(self):
 		sentence = self.first_sentence
 		if not sentence:
@@ -353,6 +358,7 @@ class EntPerson(EntCore):
 			self.nationality = "|".join(nationalities)
 
 	##
+	# @brief extracts data from the first sentence
 	# TODO: extract gender from categories
 	def extract_text(self):
 		# dates and places
@@ -406,7 +412,7 @@ class EntPerson(EntCore):
 	# @brief extracts and assigns urls from the infobox
 	#
 	# NOT UNIFIED - cs version is not extracting artist entities yet
-	def assign_urls(self):	
+	def assign_urls(self):
 		urls = ""	
 		if "website" in self.infobox_data and self.infobox_data["website"] != "":
 			value = self.infobox_data["website"]

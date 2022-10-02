@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 ##
 # @file ent_waterarea.py
 # @brief contains EntWaterArea class - entity used for lakes, seas and oceans
@@ -14,12 +17,10 @@
 import re
 from debugger import Debugger as debug
 from ent_core import EntCore
-from lang_modules.en.waterarea_utils import WaterareaUtils as EnUtils
-from lang_modules.cs.waterarea_utils import WaterareaUtils as CsUtils
 
 utils = {
-	"en": EnUtils,
-	"cs": CsUtils
+	"en": None,
+	"cs": None
 }
 
 ##
@@ -61,4 +62,3 @@ class EntWaterArea(EntCore):
 		self.area = self.assign_area()		
 		self.continents = self.core_utils.assign_continents(self)
 		self.extract_non_person_aliases()
-

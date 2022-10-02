@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 ##
 # @file ent_watercourse.py
 # @brief contains EntWaterCourse class - entity used for rivers, creeks, streams, etc.

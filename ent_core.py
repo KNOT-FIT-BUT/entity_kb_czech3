@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 ##
 # @file ent_core.py
 # @brief contains EntCore entity - parent core enitity with useful functions
@@ -58,8 +61,9 @@ utils = {
 # 
 # contains the general information that is shared across all entities and some useful functions
 class EntCore(metaclass=ABCMeta):
-	# FIXME: this is a bad idea because of multiprocessing 
-	counter = 0
+	# old id generation:
+	# this is a bad idea because of multiprocessing 
+	# counter = 0
 
 	##
 	# @brief initializes the core entity
@@ -316,6 +320,8 @@ class EntCore(metaclass=ABCMeta):
 		for d in data:
 			image = d.replace("\n", "")
 			if not image.startswith("http"):
+				if re.search(r"\{\{(?:maplink|#property).*?\}\}", image, re.I):
+					continue
 				image = self.get_images(image)
 				self.images += image if not self.images else f"|{image}"
 
@@ -373,14 +379,14 @@ class EntCore(metaclass=ABCMeta):
 
 		# TODO: make this better -> e.g.: Boleslav Bárta - ... 90. let ...
 		keywords = self.keywords["sentence"]
-		pattern = r"('''.*?'''.*?(?: (?:" + f"{'|'.join(keywords)}" + r") ).*?(?<!\s[A-Z][a-z])(?<!\s[A-Z])\.)"
+		paragraph = re.sub(r"\[http.*?\s(.+?)\]", r"\1", paragraph)
+		pattern = r"('''.*?'''.*?(?: (?:" + f"{'|'.join(keywords)}" + r") ).*?(?<!\s[A-Z][a-z])(?<![\s\.\"][A-Z])\.)"
 		match = re.search(pattern, paragraph)
 		if match:
 			# removing templates
 			sentence = match.group(1)
 			sentence = re.sub(r"&nbsp;", " ", sentence)
 			sentence = re.sub(r"\[\[(?:file|soubor|image):.*?\]\]", "", sentence, flags=re.I)
-			sentence = re.sub(r"\[http.*?\s(.+?)\]", r"\1", sentence)
 			sentence = re.sub(r"\[\[([^\|]*?)\]\]", r"\1", sentence)
 			sentence = re.sub(r"\[\[.*?\|([^\|]*?)\]\]", r"\1", sentence)
 			sentence = re.sub(r"\[|\]", "", sentence)
@@ -391,7 +397,6 @@ class EntCore(metaclass=ABCMeta):
 			sentence = re.sub(r"\([\s,;]+", "(", sentence)
 			sentence = re.sub(r"[\s,;]+\)", ")", sentence)
 			sentence = re.sub(r"[ \t]{2,}", " ", sentence)
-			# debug.log_message(sentence)
 			self.first_sentence = sentence
 
 	##
