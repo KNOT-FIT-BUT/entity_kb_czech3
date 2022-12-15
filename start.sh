@@ -45,7 +45,7 @@ usage()
     echo -e "  --log        log to start.sh.stdout, start.sh.stderr and start.sh.stdmix"
 #    echo ""
 #    echo -e "MULTIPLE DUMP PATHS CUSTOMIZATION:"
-#    echo -e "  -g <path>    set a path of wikipedia ǵeo tags dump file input"
+#    echo -e "  -g <path>    set a path of wikipedia geo tags dump file input"
 #    echo -e "  -p <path>    set a path of wikipedia pages dump file input"
 #    echo -e "  -r <path>    set a path of wikipedia redirects dump file input"
     echo ""
@@ -173,6 +173,13 @@ EXTRACTION_ARGS+=(${MULTIPROC_PARAMS})
 CMD="python3 wiki_cs_extract.py --lang ${LANG} --dump ${DUMP_VERSION} --indir \"${DUMP_PATH}\" ${EXTRACTION_ARGS[@]} 2>entities_processing.log"
 echo "RUNNING COMMAND: ${CMD}"
 eval $CMD
+
+F_KB_INCONSISTENCES=kb_inconsistences.tsv
+echo -e "ENTITY NAME\tTYPE\tCOLUMN\tOLD VALUE\tNEW VALUE\tCAME FROM" > "${F_KB_INCONSISTENCES}"
+cat entities_processing.log | grep "\[INCONSISTENCE CHECK\]" | grep "Error:" | sed -E "s/^.*for\s+\"([^\"]+)\".*type\s+\"([^\"]+)\".*item\s+\"([^\"]+)\".*old=\"([^\"]+)\".*new=\"([^\"]+)\"(\s+\(new\s+value\s+came\s+from\s+([^\)]+)\))?.*$/\1\t\2\t\3\t\4\t\5\t\7/g" >> "${F_KB_INCONSISTENCES}"
+echo >> "${F_KB_INCONSISTENCES}"
+# [INCONSISTENCE CHECK] Warning: New value="{new}" maybe should be in KB for item "{column}" of "{self.original_title}" (of type "{self.prefix}")? Old value="{old}" remains in KB.{origin}
+cat entities_processing.log | grep "\[INCONSISTENCE CHECK\]" | grep "Warning:" | sed -E "s/^.*New\s+value=\"([^\"]+)\".*item\s+\"([^\"]+)\"\s+of\s+\"([^\"]+)\".*type\s+\"([^\"]+)\".*Old\s+value=\"([^\"]+)\".*in\s+KB.(\s+\(new\s+value\s+came\s+from\s+([^\)]+)\))?.*$/\3\t\4\t\2\t\5\t\1\t\7/g" >> "${F_KB_INCONSISTENCES}"
 
 # Add metrics to newly created KB
 if $LOG

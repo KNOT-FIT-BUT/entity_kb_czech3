@@ -17,6 +17,7 @@ import sys
 from ent_core import EntCore
 from libs.natToKB import *
 from libs.UniqueDict import KEY_LANG, LANG_UNKNOWN
+from typing import Optional, Tuple
 
 
 class EntPerson(EntCore):
@@ -239,21 +240,26 @@ class EntPerson(EntCore):
                 # else Kateřina Řecká a Dánská" is regular person
 
         # pohlaví
-        if not self.gender:
-            if re.search(r"\[\[\s*Kategorie:\s*Muži(?:\|[^]]*)?\]\]", content, re.I):
-                self.gender = "M"
-            elif re.search(r"\[\[\s*Kategorie:\s*Ženy(?:\|[^]]*)?\]\]", content, re.I):
-                self.gender = "F"
-            else:
-                infobox_gender = re.search(
-                    r"\|\s*pohlaví\s*=\s*([^\s]+)", content, re.I
-                )
-                if infobox_gender and infobox_gender.group(1):
-                    infobox_gender = infobox_gender.group(1).lower()
-                    if infobox_gender == "muž":
-                        self.gender = "M"
-                    elif infobox_gender == "žena":
-                        self.gender = "F"
+        gender = ""
+        if re.search(r"\[\[\s*Kategorie:\s*Muži(?:\|[^]]*)?\]\]", content, re.I):
+            gender = "M"
+        elif re.search(r"\[\[\s*Kategorie:\s*Ženy(?:\|[^]]*)?\]\]", content, re.I):
+            gender = "F"
+        self._save_gender(gender=gender)
+
+        gender = ""
+        infobox_gender = re.search(
+            r"\|\s*pohlaví\s*=\s*([^\s]+)", content, re.I
+        )
+        if infobox_gender and infobox_gender.group(1):
+            infobox_gender = infobox_gender.group(1).lower()
+
+            if infobox_gender == "muž":
+                gender = "M"
+            elif infobox_gender == "žena":
+                gender = "F"
+
+            self._save_gender(gender=gender)
 
         # Female surname variants with or without suffix "-ová"
         if self.gender == "F":
@@ -321,14 +327,14 @@ class EntPerson(EntCore):
         # Place of birth
         rexp = re.search(r"místo[\s_]narození\s+=(?!=)\s*(.*)", ln, re.I)
         if rexp and rexp.group(1):
-            self.get_place(rexp.group(1), True)
+            self._convert_and_save_place(place=rexp.group(1), is_birth=True)
             if is_infobox_block:
                 return
 
         # Place of death
         rexp = re.search(r"místo[\s_]úmrtí\s+=(?!=)\s*(.*)", ln, re.I)
         if rexp and rexp.group(1):
-            self.get_place(rexp.group(1), False)
+            self._convert_and_save_place(place=rexp.group(1), is_birth=False)
             if is_infobox_block:
                 return
 
@@ -472,10 +478,11 @@ class EntPerson(EntCore):
         Parametry:
         date - datum narození osoby (str)
         """
-        if self.birth_date:
-            return
-
         modif_date = self._convert_date(date, True)
+
+        if self.birth_date:
+            self._check_inconsistence(column="BIRTH DATE", old=self.birth_date, new=modif_date)
+            return
 
         self.birth_date = modif_date
 
@@ -610,10 +617,12 @@ class EntPerson(EntCore):
         Parametry:
         date - datum úmrtí osoby (str)
         """
-        if self.death_date:
-            return
 
         modif_date = self._convert_date(date, False)
+
+        if self.death_date:
+            self._check_inconsistence(column="DEATH DATE", old=self.death_date, new=modif_date)
+            return
 
         self.death_date = modif_date
 
@@ -662,72 +671,50 @@ class EntPerson(EntCore):
 
         self.description = fs
 
-        # získání data/místa narození/úmrtí z první věty - začátek
-        # (* 2000)
-        if not self.birth_date:
-            rexp = re.search(r"\(\s*\*\s*(\d+)\s*\)", fs)
+        date_candidates = re.findall(r"\([^\)]*\d+[^\)]*\)", fs)
+        for possible_date in date_candidates:
+            # získání data/místa narození/úmrtí z první věty - začátek
+            # (* 2000)
+            rexp = re.search(r"\(\s*\*\s*(\d+)\s*\)", possible_date)
             if rexp and rexp.group(1):
                 self.get_birth_date(rexp.group(1))
+                return
 
-        # (* 1. ledna 2000)
-        if not self.birth_date:
-            rexp = re.search(r"\(\s*\*\s*(\d+\.\s*\w+\.?\s+\d{1,4})\s*\)", fs)
+            # (* 1. ledna 2000)
+            rexp = re.search(r"\(\s*\*\s*(\d+\.\s*\w+\.?\s+\d{1,4})\s*\)", possible_date)
             if rexp and rexp.group(1):
                 self.get_birth_date(rexp.group(1))
+                return
 
-        # (* 1. ledna 2000, Brno), (* 1. ledna 200 Brno, Česká republika)
-        if not self.birth_date or not self.birth_place:
+            # (* 1. ledna 2000, Brno), (* 1. ledna 200 Brno, Česká republika)
             rexp = re.search(
                 r"\(\s*\*\s*(\d+\.\s*\w+\.?\s+\d{1,4})\s*(?:,\s*)?([^\W\d_][\w\s\-–—−,]+[^\W\d_])\s*(?![\-–—−])\)",
-                fs,
+                possible_date,
             )
             if rexp:
-                if rexp.group(1) and not self.birth_date:
+                if rexp.group(1):
                     self.get_birth_date(rexp.group(1))
-                if rexp.group(2) and not self.birth_place:
-                    self.get_place(rexp.group(2), True)
+                if rexp.group(2):
+                    self._convert_and_save_place(place=rexp.group(2), is_birth=True, do_sentence_conversions=True)
+                return
 
-        # (* 2000 – † 2018), (* 2000, Brno - † 2018 Brno, Česká republika)
-        if (
-            not self.birth_date
-            or not self.death_date
-            or not self.birth_place
-            or not self.death_place
-        ):
+            # (* 2000 – † 2018), (* 2000, Brno - † 2018 Brno, Česká republika)
             rexp = re.search(
                 r"\(\s*(?:\*\s*)?(\d{1,4})\s*(?:,\s*)?([^\W\d_][\w\s\-–—−,]+[^\W\d_])?\s*[\-–—−]\s*(?:†\s*)?(\d{1,4})\s*(?:,\s*)?([^\W\d_][\w\s\-–—−,]+[^\W\d_])?\s*\)",
-                fs,
+                possible_date,
             )
             if rexp:
-                if rexp.group(1) and not self.birth_date:
-                    self.get_birth_date(rexp.group(1))
-                if rexp.group(2) and not self.birth_place:
-                    self.get_place(rexp.group(2), True)
-                if rexp.group(3) and not self.death_date:
-                    self.get_death_date(rexp.group(3))
-                if rexp.group(4) and not self.death_place:
-                    self.get_place(rexp.group(4), False)
+                self._save_date_and_places_of_birth_and_death(data=rexp.groups(), do_sentence_conversions=True)
+                return
 
-        # (* 1. ledna 2000 – † 1. ledna 2018), (* 1. ledna 2000, Brno - † 1. ledna 2018 Brno, Česká republika)
-        if (
-            not self.birth_date
-            or not self.death_date
-            or not self.birth_place
-            or not self.death_place
-        ):
+            # (* 2000 – † 1. ledna 2018), (* 1. ledna 2000 – † 1. ledna 2018), (* 2000, Brno - † 1. ledna 2018 Brno, Česká republika), (* 1. ledna 2000, Brno - † 1. ledna 2018 Brno, Česká republika)
             rexp = re.search(
-                r"\(\s*(?:\*\s*)?(\d+\.\s*\w+\.?\s+\d{1,4})\s*(?:,\s*)?([^\W\d_][\w\s\-–—−,]+[^\W\d_])?\s*[\-–—−]\s*(?:†\s*)?(\d+\.\s*\w+\.?\s+\d{1,4})\s*(?:,\s*)?([^\W\d_][\w\s\-–—−,]+[^\W\d_])?\s*\)",
-                fs,
+                r"\(\s*(?:\*\s*)?((?:\d+\.\s*\w+\.?\s+)?\d{1,4})\s*(?:,\s*)?([^\W\d_][\w\s\-–—−,]+[^\W\d_])?\s*[\-–—−]\s*(?:†\s*)?(\d+\.\s*\w+\.?\s+\d{1,4})\s*(?:,\s*)?([^\W\d_][\w\s\-–—−,]+[^\W\d_])?\s*\)",
+                possible_date,
             )
             if rexp:
-                if rexp.group(1) and not self.birth_date:
-                    self.get_birth_date(rexp.group(1))
-                if rexp.group(2) and not self.birth_place:
-                    self.get_place(rexp.group(2), True)
-                if rexp.group(3) and not self.death_date:
-                    self.get_death_date(rexp.group(3))
-                if rexp.group(4) and not self.death_place:
-                    self.get_place(rexp.group(4), False)
+                self._save_date_and_places_of_birth_and_death(data=(rexp.groups()), do_sentence_conversions=True)
+                return
         # získání data/místa narození/úmrtí z první věty - konec
 
     def get_jobs(self, job):
@@ -779,47 +766,6 @@ class EntPerson(EntCore):
 
         self.nationality = nationality
 
-    def get_place(self, place, is_birth):
-        """
-        Převádí místo narození/úmrtí osoby do jednotného formátu.
-
-        Parametry:
-        place - místo narození/úmrtí osoby (str)
-        is_birth - určuje, zda se jedná o místo narození, či úmrtí (bool)
-        """
-        place = re.sub(r"{{Vlajka a název\|(.*?)(?:\|.*?)?}}", r"\1", place, flags=re.I)
-        place = re.sub(
-            r"{{(?:vjazyce2|cizojazyčně|audio|cj)\|.*?\|(.+?)}}",
-            r"\1",
-            place,
-            flags=re.I,
-        )
-        place = re.sub(r"{{malé\|(.*?)}}", r"\1", place, flags=re.I)
-        place = re.sub(r"{{.*?}}", "", place)
-        place = re.sub(r"<br(?: /)?>", " ", place)
-        place = re.sub(r"<.*?>", "", place)
-        place = re.sub(
-            r"\[\[(?:Soubor|File):.*?\.(?:jpe?g|png|gif|bmp|ico|tif|tga|svg)[^\]]*\]\]",
-            "",
-            place,
-            flags=re.I,
-        )
-        place = re.sub(r"\d+\s*px", "", place, flags=re.I)
-        place = re.sub(
-            r"(?:(?:,\s*)?\(.*?věk.*?\)$|\(.*?věk.*?\)(?:,\s*)?)", "", place, flags=re.I
-        )
-        place = re.sub(r"\(.*?let.*?\)", "", place, flags=re.I)
-        place = re.sub(r",{2,}", ",", place)
-        place = re.sub(r"(\]\])[^,]", r"\1, ", place)
-        place = self.del_redundant_text(place)
-        place = re.sub(r"[{}<>\[\]]", "", place)
-        place = re.sub(r"\s+", " ", place).strip().strip(",")
-
-        if is_birth:
-            self.birth_place = place
-        else:
-            self.death_place = place
-
     def serialize(self):
         """
         Serializuje údaje o osobě.
@@ -844,6 +790,10 @@ class EntPerson(EntCore):
                 self.nationality,
             ]
         )
+
+    def _convert_and_save_place(self, place: str, is_birth: bool, do_sentence_conversions: Optional[bool] = False) -> None:
+        converted_place = self._convert_place(place=place, do_sentence_conversions=do_sentence_conversions)
+        self._save_place(converted_place=converted_place, is_birth=is_birth)
 
     def _convert_date(self, date, is_birth):
         """
@@ -1106,6 +1056,94 @@ class EntPerson(EntCore):
             return f.format(
                 match_obj.group(2).zfill(4), self._get_cal_month(match_obj.group(1))
             )
+
+    def _convert_place(self, place: str, do_sentence_conversions: Optional[bool] = False) -> str:
+        """
+        Převádí místo narození/úmrtí osoby do jednotného formátu.
+
+        Parametry:
+        place - místo narození/úmrtí osoby (str)
+        """
+        place = re.sub(r"{{Vlajka a název\|(.*?)(?:\|.*?)?}}", r"\1", place, flags=re.I)
+        place = re.sub(
+            r"{{(?:vjazyce2|cizojazyčně|audio|cj)\|.*?\|(.+?)}}",
+            r"\1",
+            place,
+            flags=re.I,
+        )
+        place = re.sub(r"{{malé\|(.*?)}}", r"\1", place, flags=re.I)
+        place = re.sub(r"{{.*?}}", "", place)
+        place = re.sub(r"<br(?: /)?>", ", ", place)
+        place = re.sub(r"<.*?>", "", place)
+        place = re.sub(
+            r"\[\[(?:Soubor|File):.*?\.(?:jpe?g|png|gif|bmp|ico|tif|tga|svg)[^\]]*\]\]",
+            "",
+            place,
+            flags=re.I,
+        )
+        place = re.sub(r"\d+\s*px", "", place, flags=re.I)
+        place = re.sub(
+            r"(?:(?:,\s*)?\(.*?věk.*?\)$|\(.*?věk.*?\)(?:,\s*)?)", "", place, flags=re.I
+        )
+        place = re.sub(r"\(.*?let.*?\)", "", place, flags=re.I)
+        place = re.sub(r",{2,}", ",", place)
+        place = re.sub(r"(\]\])[^\),a-z]", r"\1, ", place)  # Žebětín (dnes [[Brno]]), CZ -> Žebětín (dnes Brno), CZ [previously bugged: Žebětín (dnes Brno, CZ ]
+        if do_sentence_conversions:
+            place = re.sub(r", [^,]*'{2,}.+'{2,}", "", place)   # (*2001, Praha, CZ, rodným jménem '''Jan Novák'''), (*2001, Praha, CZ, plné rodné jméno ''Jan Jakub Novák'')
+        place = self.del_redundant_text(place)
+        place = re.sub(r"[{}<>\[\]]", "", place)
+        place = re.sub(r"\s*,([^\s])", r", \1", place)   # Brno,CZ | Brno ,CZ -> Brno, CZ
+        place = re.sub(r"\s+,\s+", ", ", place)  # Brno , CZ -> Brno, CZ
+        place = re.sub(r"(:?,\s*){2,}", ", ", place)       # Brno CZ,, CZ | Brno, , CZ -> Brno, CZ
+        place = re.sub(r"\s+", " ", place).strip().strip(",")
+
+        return place
+
+    def _save_date_and_places_of_birth_and_death(self, data: Tuple, do_sentence_conversions: Optional[bool] = False) -> None:
+        if len(data) !=4:
+            raise ValueError("Argument with data does not contain 4 items of birth date, birth place, death date and death place")
+
+        birth_place = None
+        if data[0]:
+            self.get_birth_date(data[0])
+        if data[1]:
+            birth_place = self._convert_place(place=data[1], do_sentence_conversions=do_sentence_conversions)
+            self._save_place(converted_place=birth_place, is_birth=True)
+        if data[2]:
+            self.get_death_date(data[2])
+        if data[3]:
+            death_place = self._convert_place(place=data[3], do_sentence_conversions=do_sentence_conversions)
+            if birth_place and death_place=="tamtéž":
+                death_place = birth_place
+                self._save_place(converted_place=death_place, is_birth=False)
+
+
+    def _save_gender(self, gender: str = "") -> None:
+        if gender:
+            if self.gender:
+                self._check_inconsistence(column="GENDER", old=self.gender, new=gender)
+            else:
+                self.gender = gender
+
+    def _save_place(self, converted_place: str, is_birth: bool) -> None:
+        """
+        Ukládá místo narození/úmrtí osoby.
+
+        Parametry:
+        place - místo narození/úmrtí osoby (str)
+        is_birth - určuje, zda se jedná o místo narození, či úmrtí (bool)
+        """
+
+        if is_birth:
+            if self.birth_place:
+                self._check_inconsistence(column="BIRTH PLACE", old=self.birth_place, new=converted_place, except_contain=True)
+            else:
+                self.birth_place = converted_place
+        else:
+            if self.death_place:
+                self._check_inconsistence(column="DEATH PLACE", old=self.death_place, new=converted_place, except_contain=True)
+            else:
+                self.death_place = converted_place
 
     @staticmethod
     def _subx(pattern, repl, string, count=0, flags=0):

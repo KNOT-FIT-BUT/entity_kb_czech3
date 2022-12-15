@@ -16,9 +16,12 @@ import regex
 import requests
 import sys
 from abc import ABCMeta, abstractmethod
+from datetime import datetime
+from decimal import Decimal
 from hashlib import md5, sha224
 from libs.DictOfUniqueDict import *
 from libs.UniqueDict import KEY_LANG, LANG_ORIG, LANG_UNKNOWN
+from typing import Optional
 
 
 TAG_BRACES_OPENING = "{{"
@@ -98,17 +101,30 @@ class EntCore(metaclass=ABCMeta):
         self.longitude = ""
 
     def get_wiki_api_location(self, title):
+        resp = None
         wiki_api_params = WIKI_API_PARAMS_BASE.copy()
         wiki_api_params["prop"] = "coordinates"
         wiki_api_params["titles"] = title
         try:
-            r = requests.get(WIKI_API_URL, params=wiki_api_params)
-            pages = r.json()["query"]["pages"]
+            while True:
+                try:
+                    resp = requests.get(WIKI_API_URL, params=wiki_api_params)
+                except requests.exceptions.ConnectionError:
+                    ...
+                if resp and resp.status_code == 200:
+                    break
+            print(f"API logging {datetime.now()}: {resp.status_code} - {resp.text}", file=sys.stderr, flush=True)
+            print(f"API logging JSON: {resp.json}", file=sys.stderr, flush=True)
+            pages = resp.json()["query"]["pages"]
             first_page = next(iter(pages))
-            if first_page != "-1":
-                self.latitude = pages[first_page]["coordinates"][0]["lat"]
-                self.longitude = pages[first_page]["coordinates"][0]["lon"]
+            if first_page != "-1" and "coordinates" in pages[first_page]:
+                self.latitude = self._unify_lat_long(latlong=pages[first_page]["coordinates"][0]["lat"])
+                self.longitude = self._unify_lat_long(latlong=pages[first_page]["coordinates"][0]["lon"])
         except Exception as e:
+            resp_detail = ""
+            if resp:
+                resp_detail = f"([{resp.status_code}]: {resp.json()})"
+            print(f"API Error: Coordinates for \"{title}\" could not be found due to error: {e}. {resp_detail}", file=sys.stderr, flush=True)
             self.latitude = ""
             self.longitude = ""
 
@@ -119,17 +135,18 @@ class EntCore(metaclass=ABCMeta):
         Parametry:
         latitude - zeměpisná šířka geografické entity (str)
         """
-        latitude = re.sub(r"\(.*?\)", "", latitude)
-        latitude = re.sub(r"\[.*?\]", "", latitude)
-        latitude = re.sub(r"<.*?>", "", latitude)
-        latitude = re.sub(r"{{.*?}}", "", latitude).replace("{", "").replace("}", "")
-        latitude = re.sub(r"(?<=\d)\s(?=\d)", "", latitude).strip()
-        latitude = re.sub(r"(?<=\d)\.(?=\d)", ",", latitude)
-        latitude = re.sub(r"^[^\d-]*(?=\d)", "", latitude)
-        latitude = re.sub(r"^(\d+(?:,\d+)?)[^\d,]+.*$", r"\1", latitude)
-        latitude = "" if not re.search(r"\d", latitude) else latitude
+        if not latitude:
+            return
+        elif not re.match(r"-?[0-9\.,]", latitude):
+            print(f"INVALID value=\"{latitude}\" for LATITUDE in \"{self.title}\" entity.", file=sys.stderr, flush=True)
+            return
 
-        self.latitude = latitude
+        latitude = self._extract_lat_long_value(latlong=latitude)
+
+        if self.latitude:
+            self._check_inconsistence(column="LATITUDE", old=self.latitude, new=latitude)
+        else:
+            self.latitude = latitude
 
     def get_longitude(self, longitude):
         """
@@ -138,17 +155,18 @@ class EntCore(metaclass=ABCMeta):
         Parametry:
         longitude - zeměpisná délka geografické entity (str)
         """
-        longitude = re.sub(r"\(.*?\)", "", longitude)
-        longitude = re.sub(r"\[.*?\]", "", longitude)
-        longitude = re.sub(r"<.*?>", "", longitude)
-        longitude = re.sub(r"{{.*?}}", "", longitude).replace("{", "").replace("}", "")
-        longitude = re.sub(r"(?<=\d)\s(?=\d)", "", longitude).strip()
-        longitude = re.sub(r"(?<=\d)\.(?=\d)", ",", longitude)
-        longitude = re.sub(r"^[^\d-]*(?=\d)", "", longitude)
-        longitude = re.sub(r"^(\d+(?:,\d+)?)[^\d,]+.*$", r"\1", longitude)
-        longitude = "" if not re.search(r"\d", longitude) else longitude
+        if not longitude:
+            return
+        elif not re.match(r"-?[0-9\.,]", longitude):
+            print(f"INVALID value=\"{longitude}\" for LONGITUDE in \"{self.title}\" entity.", file=sys.stderr, flush=True)
+            return
 
-        self.longitude = longitude
+        longitude = self._extract_lat_long_value(latlong=longitude)
+
+        if self.longitude:
+            self._check_inconsistence(column="LONGITUDE", old=self.longitude, new=longitude)
+        else:
+            self.longitude = longitude
 
     @staticmethod
     def del_redundant_text(text, multiple_separator="|", langmap=dict()):
@@ -669,3 +687,93 @@ class EntCore(metaclass=ABCMeta):
         #     if path_re:
         #         full_path = path_re.group(0).replace("wikipedia", "wikimedia") + image
         #         self.images += full_path if not self.images else "|" + full_path
+
+    def _extract_lat_long_value(self, latlong: str) -> str:
+        original = latlong
+        latlong = re.sub(r"\(.*?\)", "", latlong)
+        latlong = re.sub(r"\[.*?\]", "", latlong)
+        latlong = re.sub(r"<.*?>", "", latlong)
+        latlong = re.sub(r"{{.*?}}", "", latlong).replace("{", "").replace("}", "")
+        latlong = re.sub(r"(?<=\d)\s(?=\d)", "", latlong).strip()
+        latlong = re.sub(r"(?<=\d),(?=\d)", ".", latlong)
+        latlong = re.sub(r"^[^\d-]*(?=\d)", "", latlong)
+        latlong = re.sub(r"^(\d+(?:\.\d+)?)[^\d\.]+.*$", r"\1", latlong)
+        tmp=latlong
+        latlong = self._unify_lat_long(latlong=latlong)
+        print(f"LATLONG: orig=\"{original}\" -> extracted=\"{tmp}\" -> unified=\"{latlong}\"", file=sys.stderr, flush=True)
+        return "" if not re.search(r"\d", latlong) else latlong
+
+    @staticmethod
+    def _are_equal_in_same_decimals(less_decimals: str, more_decimals: str) -> bool:
+        return round(float(more_decimals), Decimal(less_decimals).as_tuple().exponent * -1) == float(less_decimals)
+
+    @staticmethod
+    def _unify_lat_long(latlong) -> str:
+        latlong = str(latlong)
+        latlong = re.sub(r"(\.(?:[0-9]*[1-9])?)0+$", r"\1", latlong)
+        latlong = latlong.rstrip(".")
+        latlong = re.sub(r"^0+(?!=(?:\.|$))", "", latlong)
+        return latlong
+
+    def _check_inconsistence(self, column: str, old: str, new: str, except_contain: bool = False) -> None:
+        from inspect import stack
+        from re import match
+        from sys import stderr
+
+        if old == new:
+            return
+
+        origin = ""
+
+        try:
+            caller = stack()[2][3]
+            matches = match(r"(?:get_first|line_process)_(.*)", caller)
+            if matches:
+                origin = f" (new value came from {matches.group(1)})"
+        except IndexError:
+            ...
+
+        if column in {"LATITUDE", "LONGITUDE"}:
+            if len(new) < len(old) and self._are_equal_in_same_decimals(less_decimals=new, more_decimals=old):
+                print(f'[INCONSISTENCE CHECK] Info: New value="{new}" is rounded value of old value="{old}" for item "{column}" of "{self.original_title}" (of type "{self.prefix}") {origin}', file=sys.stderr, flush=True)
+                return
+            elif len(old) < len(new) and self._are_equal_in_same_decimals(less_decimals=old, more_decimals=new):
+                print(f'[INCONSISTENCE CHECK] Warning: New value="{new}" (more accurate) maybe should be in KB for item "{column}" of "{self.original_title}" (of type "{self.prefix}")? Old value="{old}" (which is less accure) remains in KB.{origin}', file=sys.stderr, flush=True)
+                return
+
+        if except_contain:
+            re_contain_before = r""
+            re_conain_after = r""
+            if column in {"BIRTH PLACE", "DEATH PLACE"}:
+                re_contain_before = r"([,-]\s*)?"
+                re_contain_after = r"(\s*[,-])?"
+            if len(new) < len(old):
+                if self._is_contained(
+                    pattern=new,
+                    text=old,
+                    re_contain_before=re_contain_before,
+                    re_contain_after=re_contain_after,
+                ):
+                    print(f'[INCONSISTENCE CHECK] Info: New value="{new}" is contained in old value="{old}" for item "{column}" of "{self.original_title}" (of type "{self.prefix}") {origin}', file=stderr, flush=True)
+                    return
+            else:
+                if self._is_contained(
+                    pattern=old,
+                    text=new,
+                    re_contain_before=re_contain_before,
+                    re_contain_after=re_contain_after,
+                ):
+                    print(f'[INCONSISTENCE CHECK] Warning: New value="{new}" maybe should be in KB for item "{column}" of "{self.original_title}" (of type "{self.prefix}")? Old value="{old}" remains in KB.{origin}', file=stderr, flush=True)
+                    return
+
+        print(f'[INCONSISTENCE CHECK] Error: Inconsistence found for "{self.original_title}" (of type "{self.prefix}") in item "{column}": old="{old}" vs. new="{new}"{origin}', file=stderr, flush=True)
+
+    @staticmethod
+    def _is_contained(
+        pattern: str,
+        text: str,
+        re_contain_before: Optional[str] = "",
+        re_contain_after: Optional[str] = "",
+    ) -> bool:
+        m = re.search(re_contain_before + re.escape(pattern) + re_contain_after, text)
+        return m and (not len(m.groups()) or any(m.groups()))
