@@ -69,6 +69,8 @@ class WikiExtract(object):
         Inicializuje třídu 'WikiExtract'.
         """
         self.console_args = None
+        self.langmap = dict()
+        self.redirects = dict()
         # self.entities = dict()
 
     @staticmethod
@@ -300,22 +302,20 @@ class WikiExtract(object):
         # # načtení entit
         # self._load_entities()
 
-        redirects = dict()
         try:
             with open(self.redirects_dump_fpath, "r") as f:
                 for line in f:
                     redirect_from, redirect_to = line.strip().split("\t")
-                    if not redirect_to in redirects:
-                        redirects[redirect_to] = set()
-                    redirects[redirect_to].add(redirect_from)
+                    if not redirect_to in self.redirects:
+                        self.redirects[redirect_to] = set()
+                    self.redirects[redirect_to].add(redirect_from)
         except OSError:
             print(f'File "{self.redirects_dump_fpath}" was not found - skipping...')
 
-        langmap = dict()
         try:
             with open(WIKI_LANG_FILE, "r", encoding="utf8") as f:
                 try:
-                    langmap = json.load(f)
+                    self.langmap = json.load(f)
                 except (ValueError, UnicodeDecodeError):
                     pass  # File is not valid -> we generate new one
         except OSError:
@@ -327,7 +327,7 @@ class WikiExtract(object):
         it_context_langmap, it_context_pages = tee(context)
         event, root = next(it_context_langmap)
 
-        if len(langmap) == 0:
+        if len(self.langmap) == 0:
             pg_languages = None
             found_639_2 = False
             for event, elem in it_context_langmap:
@@ -398,77 +398,77 @@ class WikiExtract(object):
                                         lang_abbr = re.sub(
                                             r"{{.*?}}", "", lang_cols[i_lang_col]
                                         ).strip()
-                                        langmap[langname] = lang_abbr
+                                        self.langmap[langname] = lang_abbr
                                         if langname_normalized:
-                                            langmap[langname_normalized] = lang_abbr
+                                            self.langmap[langname_normalized] = lang_abbr
 
-                        if len(langmap):
-                            langmap["krymskotatarština"] = "crh"
+                        if len(self.langmap):
+                            self.langmap["krymskotatarština"] = "crh"
                             with open(WIKI_LANG_FILE, "w", encoding="utf8") as f:
-                                json.dump(langmap, f, ensure_ascii=False)
+                                json.dump(self.langmap, f, ensure_ascii=False)
 
         ent_titles = []
         ent_pages = []
         # context = CElTree.iterparse(self.pages_dump_fpath, events=("start", "end"))
         event, root = next(it_context_pages)
-        with open("kb_cs", "a", encoding="utf-8") as fl:
-            for event, elem in it_context_pages:
-                if event == "end" and "page" in elem.tag:
-                    is_entity = True
-                    et_full_title = ""
+        for event, elem in it_context_pages:
+            if event == "end" and "page" in elem.tag:
+                is_entity = True
+                et_full_title = ""
 
-                    for child in elem:
-                        # na základě názvu stránky rozhodne, zda se jedná o entitu, či nikoliv
-                        if "title" in child.tag:
-                            is_entity = self._is_entity(child.text)
-                            et_full_title = child.text
+                for child in elem:
+                    # na základě názvu stránky rozhodne, zda se jedná o entitu, či nikoliv
+                    if "title" in child.tag:
+                        is_entity = self._is_entity(child.text)
+                        et_full_title = child.text
 
-                        # získá obsah stránky
-                        elif "revision" in child.tag:
-                            for grandchild in child:
-                                if "text" in grandchild.tag:
-                                    if is_entity and grandchild.text:
-                                        # přeskakuje stránky s přesměrováním a rozcestníkové stránky
-                                        if re.search(
-                                            r"#(?:redirect|přesměruj)|{{\s*Rozcestník",
-                                            grandchild.text,
-                                            flags=re.I,
-                                        ):
-                                            print(
-                                                "[{}] skipping {}".format(
-                                                    str(datetime.datetime.now().time()),
-                                                    et_full_title,
-                                                ),
-                                                file=sys.stderr,
-                                                flush=True,
-                                            )
-                                            continue
+                    # získá obsah stránky
+                    elif "revision" in child.tag:
+                        for grandchild in child:
+                            if "text" in grandchild.tag:
+                                if is_entity and grandchild.text:
+                                    # přeskakuje stránky s přesměrováním a rozcestníkové stránky
+                                    if re.search(
+                                        r"#(?:redirect|přesměruj)|{{\s*Rozcestník",
+                                        grandchild.text,
+                                        flags=re.I,
+                                    ):
+                                        print(
+                                            "[{}] skipping {}".format(
+                                                str(datetime.datetime.now().time()),
+                                                et_full_title,
+                                            ),
+                                            file=sys.stderr,
+                                            flush=True,
+                                        )
+                                        continue
 
-                                        ent_titles.append(et_full_title)
-                                        ent_pages.append(grandchild.text)
-                                        """
-                                        pools[cur_pool] = pool.apply_async(self.process_entity, (et_full_title, grandchild.text, redirects, langmap))
-                                        cur_pool = (cur_pool + 1) % max_pool
-                                        if pools[cur_pool] == None:
-                                            continue
+                                    ent_titles.append(et_full_title)
+                                    ent_pages.append(grandchild.text)
+                                    """
+                                    pools[cur_pool] = pool.apply_async(self.process_entity, (et_full_title, grandchild.text))
+                                    cur_pool = (cur_pool + 1) % max_pool
+                                    if pools[cur_pool] == None:
+                                        continue
 
-                                        serialized_entity = pools[cur_pool].get()
-                                        if serialized_entity:
-                                            fl.write(serialized_entity + "\n")
-                                        """
-                    root.clear()
+                                    serialized_entity = pools[cur_pool].get()
+                                    if serialized_entity:
+                                        fl.write(serialized_entity + "\n")
+                                    """
+                root.clear()
 
-            if len(ent_titles) > 0:
-                pool = Pool(processes=self.console_args.m)
-                serialized_entities = pool.starmap(
-                    self.process_entity,
-                    zip(ent_titles, ent_pages, repeat(redirects), repeat(langmap)),
-                )
+        if len(ent_titles) > 0:
+            pool = Pool(processes=self.console_args.m)
+            serialized_entities = pool.starmap(
+                self.process_entity,
+                zip(ent_titles, ent_pages),
+            )
+            pool.close()
+            pool.join()
+            with open("kb_cs", "a", encoding="utf-8") as fl:
                 fl.write("\n".join(filter(None, serialized_entities)))
-                pool.close()
-                pool.join()
 
-    def process_entity(self, et_full_title, page_content, redirects, langmap):
+    def process_entity(self, et_full_title, page_content):
         # odstraňuje citace, reference a HTML poznámky
         print(
             "[{}] processing {}".format(
@@ -530,13 +530,13 @@ class WikiExtract(object):
         et_cont = re.sub(
             r"{\|(?!\s+class=(?:\"|')infobox(?:\"|')).*?\|}", "", et_cont, flags=re.S
         )
-        ent_redirects = redirects[et_full_title] if et_full_title in redirects else []
+        ent_redirects = self.redirects[et_full_title] if et_full_title in self.redirects else []
 
         # stránka pojednává o osobě
         if EntPerson.is_person(et_cont) >= 2:
             et_url = self._get_url(et_full_title)
             et_person = EntPerson(
-                et_full_title, "person", et_url, ent_redirects, langmap
+                et_full_title, "person", et_url, ent_redirects, self.langmap
             )
             return et_person.get_data(et_cont)
 
@@ -544,7 +544,7 @@ class WikiExtract(object):
         if EntCountry.is_country(et_cont):
             et_url = self._get_url(et_full_title)
             et_country = EntCountry(
-                et_full_title, "country", et_url, ent_redirects, langmap
+                et_full_title, "country", et_url, ent_redirects, self.langmap
             )
             return et_country.get_data(et_cont)
 
@@ -582,7 +582,7 @@ class WikiExtract(object):
         if ent_type == "settlement":
             et_url = self._get_url(et_full_title)
             et_settlement = EntSettlement(
-                et_full_title, ent_type, et_url, ent_redirects, langmap
+                et_full_title, ent_type, et_url, ent_redirects, self.langmap
             )
             return et_settlement.get_data(et_cont)
 
@@ -590,7 +590,7 @@ class WikiExtract(object):
         if ent_type == "watercourse":
             et_url = self._get_url(et_full_title)
             et_watercourse = EntWatercourse(
-                et_full_title, ent_type, et_url, ent_redirects, langmap
+                et_full_title, ent_type, et_url, ent_redirects, self.langmap
             )
             return et_watercourse.get_data(et_cont)
 
@@ -598,14 +598,14 @@ class WikiExtract(object):
         if ent_type == "waterarea":
             et_url = self._get_url(et_full_title)
             et_water_area = EntWaterArea(
-                et_full_title, ent_type, et_url, ent_redirects, langmap
+                et_full_title, ent_type, et_url, ent_redirects, self.langmap
             )
             return et_water_area.get_data(et_cont)
 
         # stránka pojednává o geografické entitě
         if ent_type == "geo":
             et_url = self._get_url(et_full_title)
-            et_geo = EntGeo(et_full_title, ent_type, et_url, ent_redirects, langmap)
+            et_geo = EntGeo(et_full_title, ent_type, et_url, ent_redirects, self.langmap)
             et_geo.set_entity_subtype(id_subtype)
             return et_geo.get_data(et_cont)
 

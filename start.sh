@@ -16,6 +16,9 @@ DUMP_VERSION=latest
 LAUNCHED=$0
 
 NPROC=`nproc`
+GB_THRESHOLD=10
+FREE_MEMORY=$((`awk '/MemAvailable/ { printf "%.0f \n", $2/1024/1024 }' /proc/meminfo`))
+NPROC=$((FREE_MEMORY / NPROC >= GB_THRESHOLD ? NPROC : FREE_MEMORY / GB_THRESHOLD))
 
 #=====================================================================
 # nastavovani parametru prikazove radky
