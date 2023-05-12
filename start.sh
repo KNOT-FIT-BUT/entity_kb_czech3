@@ -12,6 +12,7 @@ LOG=false
 LANG=en
 DUMP_PATH=/mnt/minerva1/nlp/corpora/monolingual/english/wikipedia/
 DUMP_VERSION=latest
+DEBUG_LIMIT=10000
 
 # saved values
 LAUNCHED=$0
@@ -39,6 +40,7 @@ usage()
     then
         echo -e "               ${DUMP_PATH:${cut_DUMP_PATH}}"
     fi
+    echo -e "  --debug [<int>]  Number of pages to process in debug mode (default: 10.000)"
     echo -e "  -u [<login>] upload (deploy) KB to webstorage via given login"
     echo -e "               (default current user)"
     echo -e "  --dev        Development mode (upload to separate space to prevent forming a new production/stable version of KB)"
@@ -54,6 +56,7 @@ usage()
 
 CUSTOM_DUMP_PATH=false
 CUSTOM_REDIR_PATH=false
+DEBUG_LIMIT_USED=false
 REDIR_PATH=
 SENTENCE_PATH=
 DEPLOY=false
@@ -100,6 +103,15 @@ while [ "$1" != "" ]; do
             else
                 DEPLOY_USER=$2
                 shift
+            fi
+            ;;
+        --debug)
+            DEBUG_LIMIT_USED=true
+            VALUE=$2
+            if test "${VALUE:0:1}" != "-"
+            then
+               DEBUG_LIMIT=$VALUE
+               shift
             fi
             ;;
         --dev)
@@ -243,6 +255,12 @@ EXTRACTION_ARGS+=(${MULTIPROC_PARAMS})
 if [ -n "$SENTENCE_PATH" ]; then
     EXTRACTION_ARGS+=("-s ${SENTENCE_PATH}")
 fi
+
+if test "${DEBUG_LIMIT_USED}" = true
+then
+    EXTRACTION_ARGS+=("--debug ${DEBUG_LIMIT}")
+fi
+
 # Run CS Wikipedia extractor to create new KB
 # old code:
 # CMD="python3 wiki_cs_extract.py --lang ${LANG} --dump ${DUMP_VERSION} --indir \"${DUMP_PATH}\" ${EXTRACTION_ARGS[@]} 2>entities_processing.log"
@@ -253,6 +271,7 @@ fi
 #     eval $CMD
 # fi
 
+mkdir -p outputs
 CMD="python3 wiki_extract.py --lang ${LANG} --dump ${DUMP_VERSION} --indir \"${DUMP_PATH}\" ${EXTRACTION_ARGS[@]} 2>outputs/kb.out"
 echo "RUNNING COMMAND: ${CMD}"
 eval $CMD

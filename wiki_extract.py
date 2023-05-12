@@ -131,7 +131,15 @@ class WikiExtract(object):
 			action="store_true",
 			help="Test version of KB",
 		)
-		
+		parser.add_argument(
+			"--debug",
+			action="store",
+			nargs="?",
+			type=int,
+			const=self.tracker.debug_limit,
+			default=None,
+			help="Number of pages to process in debug mode (default %(const)s).",
+		)
 		self.console_args = parser.parse_args()
 
 		if self.console_args.m < 1:
@@ -140,6 +148,8 @@ class WikiExtract(object):
 		self.console_args.lang = self.console_args.lang.lower()
 		if self.console_args.lang in LANG_MAP:
 			self.console_args.lang = LANG_MAP[self.console_args.lang]
+
+		self.tracker.debug_limit = self.console_args.debug
 
 		self.pages_dump_fpath = self.get_dump_fpath(self.console_args.pages, "{}wiki-{}-pages-articles.xml")
 		self.geotags_dump_fpath = self.get_dump_fpath(self.console_args.geotags, "{}wiki-{}-geo_tags.sql")
@@ -453,7 +463,7 @@ class WikiExtract(object):
 	def process_entity(self, ent_data, langmap, patterns, keywords):
 		title, content, redirects, sentence = ent_data
 
-		debug.update(f"processing {title}")
+		debug.update(f"INFO: processing {title}")
 
 		extraction = self.extract_entity_data(content, keywords)
 		identification = self.identify_entity(title, extraction, patterns).most_common()
