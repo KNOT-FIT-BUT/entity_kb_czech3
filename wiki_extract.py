@@ -8,7 +8,7 @@
 ##
 # @file wiki_extract.py
 # @brief main script that contains WikiExtract class that extracts and identifies entities
-# 
+#
 # @section how_it_works how it works
 # - parses arguments
 # - creates head and version
@@ -22,7 +22,7 @@
 #   - identifies the entity
 #   - assigns a class to the entity
 # - outputs extracted entities into a file
-# 
+#
 # @author created by Jan Kapsa (xkapsa00)
 # @date 26.07.2022
 
@@ -209,8 +209,8 @@ class WikiExtract(object):
 			"<geo:continent>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tLATITUDE\tLONGITUDE\tAREA\tPOPULATION\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
 			"<organisation>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tFOUNDED\tCANCELLED\tORGANISATION_TYPE\tLOCATION\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n",
 			"<event>ID\tTYPE\tNAME\t{m}ALIASES\t{m}REDIRECTS\tDESCRIPTION\tORIGINAL_WIKINAME\t{gm[http://athena3.fit.vutbr.cz/kb/images/]}IMAGE\t{ui}WIKIPEDIA LINK\tSTART\tEND\tLOCATION\tEVENT_TYPE\tWIKI BACKLINKS\tWIKI HITS\tWIKI PRIMARY SENSE\tSCORE WIKI\tSCORE METRICS\tCONFIDENCE\n"
-		]		
-		
+		]
+
 		with open("HEAD-KB", "w", encoding="utf-8") as file:
 			for entity in entities:
 				file.write(entity)
@@ -219,7 +219,7 @@ class WikiExtract(object):
 	# @brief creates the VERSION file
 	def assign_version(self):
 		str_kb_stability = f"-{self.console_args._kb_stability}" if self.console_args._kb_stability else ""
-		
+
 		try:
 			target = os.readlink(self.pages_dump_fpath)
 			matches = re.search(self.console_args.lang + r"wiki-([0-9]{8})-", target)
@@ -233,7 +233,7 @@ class WikiExtract(object):
 					dump_version = matches[1]
 			except OSError:
 				dump_version = self.console_args.dump
-		
+
 		with open("VERSION", "w") as f:
 			f.write("{}_{}-{}{}".format(
 				self.console_args.lang,
@@ -264,10 +264,10 @@ class WikiExtract(object):
 				end_time = datetime.now()
 				tdelta = end_time - start_time
 				debug.print(f"loaded aliases ({i} in {debug.pretty_time_delta(tdelta.total_seconds())})")
-		except OSError:            
+		except OSError:
 			debug.print("redirect file was not found - skipping...")
-		
-		return redirects	
+
+		return redirects
 
 	##
 	# @brief loads langmap
@@ -275,7 +275,7 @@ class WikiExtract(object):
 	# @return dictionary with langmap
 	def load_langmap(self, langmap_fpath):
 		langmap = dict()
-		
+
 		try:
 			with open(langmap_fpath, "r") as file:
 				debug.update("loading langmap")
@@ -310,9 +310,9 @@ class WikiExtract(object):
 				end_time = datetime.now()
 				tdelta = end_time - start_time
 				debug.print(f"loaded first sentences ({i} in {debug.pretty_time_delta(tdelta.total_seconds())})")
-		except OSError:            
+		except OSError:
 			debug.print("first sentence file was not found - skipping...")
-		
+
 		return first_sentences
 
 	##
@@ -331,7 +331,7 @@ class WikiExtract(object):
 			exit(1)
 
 		keywords = d["keywords"]
-		identification = d["identification"]		
+		identification = d["identification"]
 		return identification, keywords
 
 	##
@@ -340,7 +340,7 @@ class WikiExtract(object):
 	def get_path(fpath):
 		return os.path.join(os.path.dirname(sys.argv[0]), fpath)
 
-	## 
+	##
 	# @brief loads redirects, first sentences, langmap and patterns, then parses xml dump
 	def parse_xml_dump(self):
 		redirects =self.load_redirects(self.redirects_dump_fpath)
@@ -388,14 +388,14 @@ class WikiExtract(object):
 								if "text" in grandchild.tag and is_entity and grandchild.text:
 									if re.search(keywords["disambig_pattern"], grandchild.text, re.I):
 										debug.update("found disambiguation")
-										break                    
+										break
 
 									# nalezení nové entity
 									link = self.get_link(title)
 									ent_data.append((
-										title, 
-										grandchild.text, 
-										redirects[link] if link in redirects else [], 
+										title,
+										grandchild.text,
+										redirects[link] if link in redirects else [],
 										first_sentences[link] if link in first_sentences else ""
 									))
 
@@ -412,7 +412,7 @@ class WikiExtract(object):
 									if curr_page_cnt == LOOP_CYCLE:
 										ent_count += self.output(file, ent_data, langmap, patterns, keywords)
 										ent_data.clear()
-										curr_page_cnt = 0    
+										curr_page_cnt = 0
 						elif "redirect" in child.tag:
 							debug.update(f"found redirect ({all_page_cnt})")
 							break
@@ -440,7 +440,7 @@ class WikiExtract(object):
 			pool = Pool(processes=self.console_args.m)
 			serialized_entities = pool.starmap(
 				self.process_entity,
-				zip(ent_data, repeat(langmap), repeat(patterns), repeat(keywords))                    
+				zip(ent_data, repeat(langmap), repeat(patterns), repeat(keywords))
 			)
 			l = list(filter(None, serialized_entities))
 			file.write("\n".join(l) + "\n")
@@ -476,7 +476,7 @@ class WikiExtract(object):
 			debug.log_message(f"id_stats,{identification[0][0]},{count};")
 
 		# if count != 0:
-		# 	debug.log_identification(identification, title=title)			
+		# 	debug.log_identification(identification, title=title)
 
 		entities = {
 			"person":       EntPerson,
@@ -495,13 +495,13 @@ class WikiExtract(object):
 				entity = entities[key](title, key, self.get_link(title), extraction, langmap, redirects, sentence, keywords)
 				entity.assign_values(self.console_args.lang)
 				return repr(entity)
-		
+
 		# debug.log_message(f"Error: unidentified page: {title}")
 		return None
 
 	##
 	# @brief tries to extract infobox, first paragraph, categories and coordinates
-	# @param content - string containing page content 
+	# @param content - string containing page content
 	# @return dictionary of extracted entity data
 	#
 	# uses the mwparserfromhell library
@@ -536,7 +536,7 @@ class WikiExtract(object):
 				# fix names e.g.: "- spisovatel"
 				name = name.strip()
 				if name and name[0] == '-':
-					name = name[1:].strip()								
+					name = name[1:].strip()
 				result["name"] = name
 			elif "coord" in name or "coords" in name:
 				result["coords"] = str(t)
@@ -555,12 +555,12 @@ class WikiExtract(object):
 		if len(sections):
 			section = sections[0]
 			templates = section.filter_templates()
-			
+
 			for t in templates:
 				if t.name.lower().startswith("infobox"):
 					section.remove(t)
 					break
-			
+
 			split = [s for s in section.strip().split("\n") if s != ""]
 			while len(split):
 				s = split.pop(0)
@@ -589,12 +589,12 @@ class WikiExtract(object):
 				value = match.group(1).strip()
 				if re.search(r"\.(?:jpe?g|png|gif|bmp|ico|tif|tga|svg)$", value, re.I):
 					result["images"].append(value)
-		
+
 		return result
 
 	##
 	# @brief uses patterns to score the entity, prefix with the highest score is later chosen as the entity identification
-	# @param title - string containing page title 
+	# @param title - string containing page title
 	# @param extracted - dictionary with extracted entity data (infobox, categories, ...)
 	# @param patterns - dictionary containing identification patterns
 	# @return Counter instance with identification scores
@@ -643,8 +643,8 @@ class WikiExtract(object):
 			for p in patterns[entity]["titles"]:
 				if re.search(p, title, re.I):
 					counter[entity] += 1 if counter[entity] >= 0 else 0
-			if "!titles" in patterns[entity]:				
-				for p in patterns[entity]["!titles"]:					
+			if "!titles" in patterns[entity]:
+				for p in patterns[entity]["!titles"]:
 					if re.search(p, title, re.I):
 						if counter[entity] > 0:
 							counter[entity] *= -1
@@ -684,7 +684,7 @@ class WikiExtract(object):
 
 		# remove {{efn ... }}, {{refn ...}}, ...
 		clean_content = self.remove_ref_templates(clean_content)
-		
+
 		# remove break lines
 		clean_content = re.sub(r"<br\s*?/>", "  ", clean_content, flags=re.DOTALL)
 		clean_content = re.sub(r"<br>", "  ", clean_content, flags=re.DOTALL)
@@ -710,12 +710,12 @@ class WikiExtract(object):
 			r"\{\{#tag:ref",
 			r"\{\{ref label"
 		]
-		
+
 		spans = []
 
 		for p in patterns:
 			match = re.finditer(p, content, flags=re.I)
-			for m in match:				
+			for m in match:
 				start = m.span()[0]
 				end = start
 				indent = 0
@@ -728,21 +728,21 @@ class WikiExtract(object):
 					if indent == 0:
 						break
 				spans.append((start, end))
-		
+
 		for span in sorted(spans, reverse=True):
 			start, end = span
 			# debug.log_message(f"removed: {content[start:end]}")
 			content = content[:start] + content[end:]
-		
+
 		content = re.sub(r"[ \t]+", " ", content)
-				
+
 		return content
 
 if __name__ == "__main__":
 	wiki_extract = WikiExtract()
-	
+
 	wiki_extract.parse_args()
 	wiki_extract.create_head_kb()
-	wiki_extract.assign_version()    
+	wiki_extract.assign_version()
 	wiki_extract.parse_xml_dump()
 	wiki_extract.tracker.log()

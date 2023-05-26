@@ -18,6 +18,9 @@ DEBUG_LIMIT=10000
 LAUNCHED=$0
 
 NPROC=`nproc`
+GB_THRESHOLD=10
+FREE_MEMORY=$((`awk '/MemAvailable/ { printf "%.0f \n", $2/1024/1024 }' /proc/meminfo`))
+NPROC=$((FREE_MEMORY / NPROC >= GB_THRESHOLD ? NPROC : FREE_MEMORY / GB_THRESHOLD))
 
 #=====================================================================
 # nastavovani parametru prikazove radky
@@ -212,8 +215,8 @@ while read -r line; do
                     echo "Invalid config argument"
                     ;;
                 esac
-            done  
-        fi        
+            done
+        fi
     fi
 done < kb.config
 
@@ -293,7 +296,7 @@ fi
 retVal=$?
 if [ $retVal -ne 0 ]; then
     echo ""
-    echo "Error while running metrics script"
+    echo "Error while running metrics script (error code: ${retVal})."
     exit $retVal
 fi
 
@@ -302,7 +305,7 @@ python3 kbwiki2gkb.py --indir outputs --outdir outputs
 retVal=$?
 if [ $retVal -ne 0 ]; then
     echo ""
-    echo "Error while running kbwiki2gkb script"
+    echo "Error while running kbwiki2gkb script (error code: $retVal)."
     exit $retVal
 fi
 

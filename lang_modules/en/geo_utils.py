@@ -18,7 +18,7 @@ class GeoUtils:
 	def assign_prefix(geo):
 		prefix = "geo:"
 		name = ""
-		
+
 		pattern = r"(waterfall|islands?|mountain|peninsulas?|continent)"
 		match = re.search(pattern, geo.infobox_name, re.I)
 		if match:
@@ -43,5 +43,7 @@ class GeoUtils:
 				prefix += "island"
 			elif "peninsulas" in categories:
 				prefix += "peninsula"
+			else:
+				prefix += "unknown"
 
 		return prefix
