@@ -11,6 +11,7 @@ LOG=false
 LANG=cs
 DUMP_PATH=/mnt/minerva1/nlp/corpora/monolingual/czech/wikipedia/
 DUMP_VERSION=latest
+STATS_PATS=/mnt/minerva1/nlp/projects/wikipedia_stats2/stats/cs_wiki.tsv
 
 # saved values
 LAUNCHED=$0
@@ -195,6 +196,9 @@ fi
 # Convert Wikipedia KB format to Generic KB format
 python3 kbwiki2gkb.py --indir outputs --outdir outputs
 
+# Add stats to KB and compute metrics
+mkdir -p outputs
+python3 wikipedia_stats/stats_to_kb.py --input "KB.tsv" --output "outputs/KB+stats.tsv" --stats "stats.tsv"
 
 if $DEPLOY
 then
