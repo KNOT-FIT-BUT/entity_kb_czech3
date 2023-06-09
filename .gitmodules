@@ -1,0 +1,3 @@
+[submodule "wikipedia_stats2"]
+	path = wikipedia_stats
+	url = git@github.com:KNOT-FIT-BUT/wikipedia_stats2.git
