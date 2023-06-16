@@ -17,7 +17,7 @@ import requests
 import sys
 from abc import ABCMeta, abstractmethod
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from hashlib import md5, sha224
 from libs.DictOfUniqueDict import *
 from libs.UniqueDict import KEY_LANG, LANG_ORIG, LANG_UNKNOWN
@@ -712,7 +712,7 @@ class EntCore(metaclass=ABCMeta):
         latlong = str(latlong)
         latlong = re.sub(r"(\.(?:[0-9]*[1-9])?)0+$", r"\1", latlong)
         latlong = latlong.rstrip(".")
-        latlong = re.sub(r"^0+(?!=(?:\.|$))", "", latlong)
+        latlong = re.sub(r"^0+(?!(?:\.|$))", "", latlong)
         return latlong
 
     def _check_inconsistence(self, column: str, old: str, new: str, except_contain: bool = False) -> None:
@@ -734,12 +734,15 @@ class EntCore(metaclass=ABCMeta):
             ...
 
         if column in {"LATITUDE", "LONGITUDE"}:
-            if len(new) < len(old) and self._are_equal_in_same_decimals(less_decimals=new, more_decimals=old):
-                print(f'[INCONSISTENCE CHECK] Info: New value="{new}" is rounded value of old value="{old}" for item "{column}" of "{self.original_title}" (of type "{self.prefix}") {origin}', file=sys.stderr, flush=True)
-                return
-            elif len(old) < len(new) and self._are_equal_in_same_decimals(less_decimals=old, more_decimals=new):
-                print(f'[INCONSISTENCE CHECK] Warning: New value="{new}" (more accurate) maybe should be in KB for item "{column}" of "{self.original_title}" (of type "{self.prefix}")? Old value="{old}" (which is less accure) remains in KB.{origin}', file=sys.stderr, flush=True)
-                return
+            try:
+                if len(new) < len(old) and self._are_equal_in_same_decimals(less_decimals=new, more_decimals=old):
+                    print(f'[INCONSISTENCE CHECK] Info: New value="{new}" is rounded value of old value="{old}" for item "{column}" of "{self.original_title}" (of type "{self.prefix}") {origin}', file=sys.stderr, flush=True)
+                    return
+                elif len(old) < len(new) and self._are_equal_in_same_decimals(less_decimals=old, more_decimals=new):
+                    print(f'[INCONSISTENCE CHECK] Warning: New value="{new}" (more accurate) maybe should be in KB for item "{column}" of "{self.original_title}" (of type "{self.prefix}")? Old value="{old}" (which is less accure) remains in KB.{origin}', file=sys.stderr, flush=True)
+                    return
+            except InvalidOperation as e:
+                print(f'Some problems with Decimals in entity "{self.original_title}" (new={new}; old={old}): {str(e)}', file=sys.stderr, flush=True)
 
         if except_contain:
             re_contain_before = r""

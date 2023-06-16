@@ -198,7 +198,7 @@ python3 kbwiki2gkb.py --indir outputs --outdir outputs
 
 # Add stats to KB and compute metrics
 mkdir -p outputs
-python3 wikipedia_stats/stats_to_kb.py --input "KB.tsv" --output "outputs/KB+stats.tsv" --stats "$STATS_PATH"
+python3 wikipedia_stats/stats_to_kb.py --input "outputs/KB.tsv" --output "outputs/KB+stats.tsv" --stats "$STATS_PATH"
 
 if $DEPLOY
 then
