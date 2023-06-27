@@ -267,8 +267,10 @@ MAP_COLROLE_OLDCOL = {COLTYPE_PERSON: "JOBS"}
 
 
 # Transform KB HEAD in WikipediaKB format to GenericKB format
-def transform_head(fout_head):
+def transform_head(fout_head, with_stats: bool = False):
     for ent_type, ent_columns in MAP_TYPES_COLUMNS.items():
+        if ent_type == COLTYPE_STATS and not with_stats:
+            continue
         out_columns = []
         for ent_column in ent_columns.values():
             out_columns.append(ent_column)
@@ -278,7 +280,7 @@ def transform_head(fout_head):
 
 
 # Transform KB data in WikipediaKB format to GenericKB format
-def transform_data(in_head, in_kb, fout_kb):
+def transform_data(in_head, in_kb, fout_kb, with_stats: bool = False):
     in_columns = dict()
     col_type = None
     # list of columns with their positional index for each entity type of WikipediaKB format
@@ -306,7 +308,9 @@ def transform_data(in_head, in_kb, fout_kb):
             in_type = in_data[col_type].lower()
             out_basetype = MAP_ENTITIES_BASETYPES[in_type]
             out_types = MAP_BASETYPES_COMPOSITE_TYPES[out_basetype]
-            out_alltypes = [COLTYPE_GENERIC] + out_types + [COLTYPE_STATS]
+            out_alltypes = [COLTYPE_GENERIC] + out_types
+            if with_stats:
+                out_alltypes += [COLTYPE_STATS]
             out_data = []
             for out_type in out_alltypes:
                 for out_column, trash in MAP_TYPES_COLUMNS[out_type].items():
@@ -384,6 +388,11 @@ parser.add_argument(
     default=OUTFILE_KB_DATA,
     help="Output KB (generic format) file name\n(default: %(default)s).",
 )
+parser.add_argument(
+    "--stats",
+    action="store_true",
+    help="Output KB with stats columns (default: without stats columns).",
+)
 args = parser.parse_args()
 
 outkb = os.path.join(args.outdir, args.outkb)
@@ -391,10 +400,11 @@ with open(outkb, "w") as fout_kb:
     with open(os.path.join(args.indir, "VERSION"), "r") as fin_version:
         fout_kb.write("VERSION=" + fin_version.read())
     fout_kb.write("\n")
-    transform_head(fout_kb)
+    transform_head(fout_kb, args.stats)
     fout_kb.write("\n")
     transform_data(
         os.path.join(args.indir, args.inhead),
         os.path.join(args.indir, args.inkb),
         fout_kb,
+        args.stats,
     )

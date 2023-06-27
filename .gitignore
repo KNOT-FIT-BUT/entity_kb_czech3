@@ -1,5 +1,6 @@
 # inputs
 wiki_stats
+**/*.xml
 
 # generated python files
 **/__pycache__
@@ -18,4 +19,6 @@ outputs
 **/VERSION
 **/KBstatsMetrics.all
 **/kb_cs
+**/*.log
 
+**/*.tsv

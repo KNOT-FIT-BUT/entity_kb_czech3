@@ -11,7 +11,7 @@ LOG=false
 LANG=cs
 DUMP_PATH=/mnt/minerva1/nlp/corpora/monolingual/czech/wikipedia/
 DUMP_VERSION=latest
-STATS_PATH=/mnt/minerva1/nlp/projects/wikipedia_stats2/stats/cs_wiki.tsv
+STATS_PATH=/mnt/minerva1/nlp-in/wikipedia-statistics/stats/cs_wiki.tsv
 
 # saved values
 LAUNCHED=$0
@@ -185,16 +185,11 @@ echo >> "${F_KB_INCONSISTENCES}"
 # [INCONSISTENCE CHECK] Warning: New value="{new}" maybe should be in KB for item "{column}" of "{self.original_title}" (of type "{self.prefix}")? Old value="{old}" remains in KB.{origin}
 cat entities_processing.log | grep "\[INCONSISTENCE CHECK\]" | grep "Warning:" | sed -E "s/^.*New\s+value=\"([^\"]+)\".*item\s+\"([^\"]+)\"\s+of\s+\"([^\"]+)\".*type\s+\"([^\"]+)\".*Old\s+value=\"([^\"]+)\".*in\s+KB.(\s+\(new\s+value\s+came\s+from\s+([^\)]+)\))?.*$/\3\t\4\t\2\t\5\t\1\t\7/g" >> "${F_KB_INCONSISTENCES}"
 
-# Add metrics to newly created KB
-if $LOG
-then
-    metrics_params="--log"
-fi
-./metrics/start.sh ${metrics_params}
-
+OUTDIR="outputs"
+mkdir -p "${OUTDIR}"
 
 # Convert Wikipedia KB format to Generic KB format
-python3 kbwiki2gkb.py --indir outputs --outdir outputs
+python3 kbwiki2gkb.py --inkb "kb_cs" --outdir "${OUTDIR}"
 
 # Add stats to KB and compute metrics
 mkdir -p outputs
