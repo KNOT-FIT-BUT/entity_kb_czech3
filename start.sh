@@ -11,7 +11,7 @@ LOG=false
 LANG=cs
 DUMP_PATH=/mnt/minerva1/nlp/corpora/monolingual/czech/wikipedia/
 DUMP_VERSION=latest
-STATS_PATH=/mnt/minerva1/nlp-in/wikipedia-statistics/stats/cs_wiki.tsv
+STATS_PATH=/mnt/minerva1/nlp-in/wikipedia-statistics/stats
 
 # saved values
 LAUNCHED=$0
@@ -193,7 +193,7 @@ python3 kbwiki2gkb.py --inkb "kb_cs" --outdir "${OUTDIR}"
 
 # Add stats to KB and compute metrics
 mkdir -p outputs
-python3 wikipedia_stats/stats_to_kb.py --input "outputs/KB.tsv" --output "outputs/KB+stats.tsv" --stats "$STATS_PATH"
+python3 wikipedia_stats/stats_to_kb.py --input "outputs/KB.tsv" --output "outputs/KB+stats.tsv" -pw "$STATS_PATH/pageviews/cs_pageviews.tsv" -bps "$STATS_PATH/bps/cs_bps.tsv"
 
 if $DEPLOY
 then
