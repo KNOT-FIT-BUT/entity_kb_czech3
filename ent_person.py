@@ -378,6 +378,7 @@ class EntPerson(EntCore):
                 self.get_first_sentence(self.del_redundant_text(rexp.group(0), ", "))
 
                 tmp_first_sentence = rexp.group(0)
+                tmp_first_sentence = regex.sub(r"('{3}\p{L}\.)'{3}(?:\s|&amp;nbsp;|&nbsp;)+'{3}", r"\1 ", tmp_first_sentence)
                 fs_first_aliases = []
                 # extrakce alternativních pojmenování z první věty
                 #  '''Jiří''' (též '''Jura''') '''Mandel''' -> vygenerovat "Jiří Mandel" a "Jura Mandel" (negenerovat "Jiří", "Jura", "Mandel")
