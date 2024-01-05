@@ -29,6 +29,10 @@ TAG_BRACES_CLOSING = "}}"
 
 ALIASES_SEPARATOR = re.escape(", ")
 
+# dashes variants: 0x2D (0045), 0x96 (0150), 0x97 (0151), 0xAD (0173)
+DASHES = "-–—­"
+RE_DASHES_VARIANTS = r"[%s]" % regex.escape(DASHES)
+
 WIKI_API_URL = "https://cs.wikipedia.org/w/api.php"
 WIKI_API_PARAMS_BASE = {
     "action": "query",
@@ -503,7 +507,7 @@ class EntCore(metaclass=ABCMeta):
         alias = re.sub(r",(?!\s)", ALIASES_SEPARATOR, alias)
         alias = alias.replace(",|", "|")
         alias = re.sub(r"[\w\s\-–—−,.()]+:\s*\|?", "", alias)
-        alias = re.sub(r"\s*\([^)]+\)\s*", " ", alias)
+        alias = re.sub(r"\([^)]+\)", "", alias)
         alias = alias.strip(",")
         alias = re.sub(r"\|{2,}", "|", alias)
         alias = re.sub(r"^(\s*\|\s*)+$", "", alias)
@@ -517,6 +521,8 @@ class EntCore(metaclass=ABCMeta):
         alias = re.sub(r"[()\[\]{}]", "", alias)
         alias = re.sub(r"<.*?>", "", alias)
         alias = re.sub(r"[„“”]", '"', alias)  # quotation unification
+        alias = re.sub(r"(%s)%s+" % (RE_DASHES_VARIANTS, RE_DASHES_VARIANTS), r"\1", alias)
+        alias = re.sub(r"\s+", " ", alias)
 
         result = DictOfUniqueDict()
 
