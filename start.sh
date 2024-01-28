@@ -193,7 +193,7 @@ python3 kbwiki2gkb.py --inkb "kb_cs" --outdir "${OUTDIR}"
 
 # Add stats to KB and compute metrics
 mkdir -p outputs
-python3 wikipedia_stats/stats_to_kb.py --input "outputs/KB.tsv" --output "outputs/KB+stats.tsv" -pw "$STATS_PATH/pageviews/cs_pageviews.tsv" -bps "$STATS_PATH/bps/cs_bps.tsv"
+python3 wikipedia_stats/stats_to_kb.py --input "outputs/KB.tsv" --output "outputs/KB+stats.tsv" -pw "$STATS_PATH/pageviews/latest_cs_pageviews.tsv" -bps "$STATS_PATH/bps/latest_cs_bps.tsv"
 
 if $DEPLOY
 then
