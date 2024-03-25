@@ -465,7 +465,9 @@ class EntCore(metaclass=ABCMeta):
 			d = d.replace("\n", " ")
 			d = re.sub(r"\[\[.*?\|([^\|]*?)\]\]", r"\1", d)
 			d = re.sub(r"\[|\]", "", d)
+			d = re.sub(r"\{\{small\|([^\}]*?\{\{.*?\}\}.*?)\}\}", r"\1", d)
 			d = re.sub(r"\{\{small\|(.*?)\}\}", r"\1", d)
+			d = re.sub(r"<br ?/?>", ", ", d)
 			d = d.strip(".")
 
 			d, array = self.remove_list_templates(d)
@@ -476,8 +478,9 @@ class EntCore(metaclass=ABCMeta):
 					if re.search(r":$", a):
 						continue
 					self.aliases[a] = self.get_alias_properties(None, None)
-		
+
 			d = re.sub(r"[ \t]{2,}", "*", d)
+
 			# names separeted by a character
 			if re.search(r"[,*]", d):
 				d = re.sub(r"\(.*?\)", "", d)

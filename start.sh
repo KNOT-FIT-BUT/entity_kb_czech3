@@ -15,7 +15,7 @@ DUMP_VERSION=latest
 DEBUG_LIMIT=10000
 
 # saved values
-LAUNCHED=$0
+LAUNCHED=`readlink -f "$0"`
 
 NPROC=`nproc`
 GB_THRESHOLD=10
@@ -49,17 +49,20 @@ usage()
     echo -e "  --dev        Development mode (upload to separate space to prevent forming a new production/stable version of KB)"
     echo -e "  --test       Test mode (upload to separate space to prevent forming a new production/stable version of KB)"
     echo -e "  --log        log to start.sh.stdout, start.sh.stderr and start.sh.stdmix"
-#    echo ""
+    echo ""
 #    echo -e "MULTIPLE DUMP PATHS CUSTOMIZATION:"
-#    echo -e "  -g <path>    set a path of wikipedia ǵeo tags dump file input"
-#    echo -e "  -p <path>    set a path of wikipedia pages dump file input"
+#    echo -e "  -g <path>    set a path of wikipedia geo tags dump file input"
+    echo -e "  -p <path>    set a path of Wikipedia pages dump file input"
 #    echo -e "  -r <path>    set a path of wikipedia redirects dump file input"
+    echo -e "  --skip-redirects  Skip processing of redirects"
     echo ""
 }
 
 CUSTOM_DUMP_PATH=false
 CUSTOM_REDIR_PATH=false
 DEBUG_LIMIT_USED=false
+SKIP_REDIRECTS=false
+PAGES_PATH=
 REDIR_PATH=
 SENTENCE_PATH=
 DEPLOY=false
@@ -86,6 +89,10 @@ while [ "$1" != "" ]; do
             ;;
         -l)
             LANG=$2
+            shift
+            ;;
+        -p)
+            PAGES_PATH=$2
             shift
             ;;
 #        -r)
@@ -116,6 +123,9 @@ while [ "$1" != "" ]; do
                DEBUG_LIMIT=$VALUE
                shift
             fi
+            ;;
+        --skip-redirects)
+            SKIP_REDIRECTS=true
             ;;
         --dev)
             KB_STABILITY="--dev"
@@ -223,13 +233,31 @@ done < kb.config
 DUMP_DIR=`dirname "${DUMP_PATH}"`
 
 # If Wikipedia dump path is symlink, then read real path
-if test -L "${DUMP_PATH}"
-then
-    DUMP_PATH=`readlink "${DUMP_PATH}"`
-    if test `dirname "${DUMP_PATH}"` = "."
+get_real_path() {
+    TMP_PATH=${1}
+    REQUIRED_DIR=${2}
+
+    if test -z "${REQUIRED_DIR}"
     then
-        DUMP_PATH="${DUMP_DIR}/${DUMP_PATH}"
+        REQUIRED_DIR=`dirname "${LAUNCHED}"`
     fi
+
+    if test -L "${TMP_PATH}"
+    then
+        TMP_PATH=`readlink -f "${TMP_PATH}"`
+    fi
+    if test `dirname "${TMP_PATH}"` = "."
+    then
+        TMP_PATH="${REQUIRED_DIR}/${TMP_PATH}"
+    fi
+
+    echo "${TMP_PATH}"
+}
+
+DUMP_PATH=`get_real_path "${DUMP_PATH}" "${DUMP_DIR}"`
+if test "${PAGES_PATH}" != ""
+then
+    PAGES_PATH=`get_real_path "${PAGES_PATH}"`
 fi
 
 # Test file existence and zero-length of file
@@ -262,6 +290,16 @@ fi
 if test "${DEBUG_LIMIT_USED}" = true
 then
     EXTRACTION_ARGS+=("--debug ${DEBUG_LIMIT}")
+fi
+
+if test "${PAGES_PATH}" != ""
+then
+    EXTRACTION_ARGS+=("-p ${PAGES_PATH}")
+fi
+
+if test "${SKIP_REDIRECTS}" = true
+then
+     EXTRACTION_ARGS+=("-r \"\"")
 fi
 
 # Run CS Wikipedia extractor to create new KB

@@ -52,6 +52,8 @@ utils = {
 	"cs": CsCoreUtils
 }
 
+PAGES_DUMP_FPATH = '{}wiki-{}-pages-articles.xml'
+
 ##
 # @class WikiExtract
 # @brief main class of the project, one istance is created to execute the main functions
@@ -60,6 +62,7 @@ class WikiExtract(object):
 	# @brief initializes the console_args variable and debugger class
 	def __init__(self):
 		self.console_args = None
+		self.dump = None
 		self.tracker = debug()
 
 	##
@@ -151,7 +154,7 @@ class WikiExtract(object):
 
 		self.tracker.debug_limit = self.console_args.debug
 
-		self.pages_dump_fpath = self.get_dump_fpath(self.console_args.pages, "{}wiki-{}-pages-articles.xml")
+		self.pages_dump_fpath = self.get_dump_fpath(self.console_args.pages, PAGES_DUMP_FPATH)
 		self.geotags_dump_fpath = self.get_dump_fpath(self.console_args.geotags, "{}wiki-{}-geo_tags.sql")
 		self.redirects_dump_fpath = self.get_dump_fpath(self.console_args.redirects, "redirects_from_{}wiki-{}-pages-articles.tsv")
 		self.fs_dump_path = self.get_dump_fpath(self.console_args.first_sentences, "1st_sentences_from_{}wiki-{}-pages-articles.tsv")
@@ -169,10 +172,26 @@ class WikiExtract(object):
 	# @return string file path
 	def get_dump_fpath(self, dump_file, dump_file_mask):
 		if dump_file is None:
+			dump = self.dump if self.dump is not None else self.console_args.dump
 			dump_file = dump_file_mask.format(
-				self.console_args.lang, self.console_args.dump
+				self.console_args.lang, dump
 			)
-		elif dump_file[0] == "/":
+			if self.dump is None and dump_file_mask == PAGES_DUMP_FPATH:
+				# Get real file path from possible file link - main file is pages dump
+				# (due to missing latest link on some files + prevention of bad links of other files)
+				split_by = '-'
+				real_dump_file_parts = os.readlink(
+					self._get_absolute_path(dump_file)
+				).split(split_by)
+				dump_file_parts = dump_file.rsplit('/')[-1].split(split_by)
+				for x, y in zip(dump_file_parts, real_dump_file_parts):
+					if x == self.console_args.dump:
+						self.dump = y
+						break
+		return self._get_absolute_path(dump_file)
+
+	def _get_absolute_path(self, dump_file: str) -> str:
+		if dump_file == "" or dump_file[0] == "/":
 			return dump_file
 		elif dump_file[0] == "." and (dump_file[1] == "/" or dump_file[1:3] == "./"):
 			return os.path.join(os.getcwd(), dump_file)
@@ -251,11 +270,11 @@ class WikiExtract(object):
 		try:
 			with open(redirects_fpath, "r") as f:
 				start_time = datetime.now()
-				debug.update("loading redirects")
 				i = 0
+				debug.update(f"loading redirects: {i}")
 				for line in f:
 					i += 1
-					debug.update(i)
+					debug.update(f'loading redirects: {i}')
 					redirect_from, redirect_to = line.strip().split("\t")
 					if redirect_to not in redirects:
 						redirects[redirect_to] = [redirect_from]
@@ -265,7 +284,7 @@ class WikiExtract(object):
 				tdelta = end_time - start_time
 				debug.print(f"loaded aliases ({i} in {debug.pretty_time_delta(tdelta.total_seconds())})")
 		except OSError:
-			debug.print("redirect file was not found - skipping...")
+			debug.print(f"redirect file ({redirects_fpath}) was not found - skipping...")
 
 		return redirects
 
@@ -292,11 +311,11 @@ class WikiExtract(object):
 	# @brief loads first sentences
 	# @param senteces_fpath path to the file with extracted first sentences
 	# @return dictionary with first sentences
-	def load_first_sentences(self, senteces_fpath):
+	def load_first_sentences(self, sentences_fpath):
 		first_sentences = dict()
 
 		try:
-			with open(senteces_fpath, "r") as f:
+			with open(sentences_fpath, "r") as f:
 				start_time = datetime.now()
 				debug.update("loading first sentences")
 				i = 0
@@ -311,7 +330,7 @@ class WikiExtract(object):
 				tdelta = end_time - start_time
 				debug.print(f"loaded first sentences ({i} in {debug.pretty_time_delta(tdelta.total_seconds())})")
 		except OSError:
-			debug.print("first sentence file was not found - skipping...")
+			debug.print(f"first sentence file ({sentences_fpath}) was not found - skipping...")
 
 		return first_sentences
 
@@ -507,7 +526,7 @@ class WikiExtract(object):
 	# uses the mwparserfromhell library
 	def extract_entity_data(self, content, keywords):
 
-		content = self.remove_not_improtant(content)
+		content = self.remove_not_important(content)
 
 		result = {
 			"found": False,
@@ -537,9 +556,9 @@ class WikiExtract(object):
 				name = name.strip()
 				if name and name[0] == '-':
 					name = name[1:].strip()
-				result["name"] = name
+				result["name"] = self.remove_breaks(name)
 			elif "coord" in name or "coords" in name:
-				result["coords"] = str(t)
+				result["coords"] = self.remove_breaks(str(t))
 
 		# extract infobox
 		if result["found"]:
@@ -548,7 +567,7 @@ class WikiExtract(object):
 				field = [item.strip() for item in field.split("=")]
 				key = field.pop(0).lower()
 				value = "=".join(field)
-				result["data"][key] = value
+				result["data"][key] = self.replace_breaks_by_commas(value)
 
 		# extract first paragraph
 		sections = wikicode.get_sections()
@@ -568,7 +587,7 @@ class WikiExtract(object):
 				if match:
 					s = s[match.span()[0]:]
 					s += f" {' '.join(split)}"
-					result["paragraph"] = s.strip()
+					result["paragraph"] = self.remove_breaks(s.strip())
 					break
 		else:
 			debug.log_message("Error: no first section found")
@@ -580,7 +599,11 @@ class WikiExtract(object):
 			pattern = keywords["category_pattern"]
 			match = re.search(pattern, line, re.I)
 			if match:
-				result["categories"].append(match.group(1).strip())
+				result["categories"].append(
+					self.remove_breaks(
+						match.group(1).strip()
+					)
+				)
 				continue
 
 			# images
@@ -588,7 +611,7 @@ class WikiExtract(object):
 			if match:
 				value = match.group(1).strip()
 				if re.search(r"\.(?:jpe?g|png|gif|bmp|ico|tif|tga|svg)$", value, re.I):
-					result["images"].append(value)
+					result["images"].append(self.remove_breaks(value))
 
 		return result
 
@@ -671,8 +694,8 @@ class WikiExtract(object):
 	##
 	# @brief deletes references, comments, etc. from a page content
 	# @param page_content - string containing page_content
-	# @return page content withou reference tags, comments, etc...
-	def remove_not_improtant(self, page_content):
+	# @return page content without reference tags, comments, etc...
+	def remove_not_important(self, page_content):
 		clean_content = page_content
 
 		# remove comments
@@ -685,11 +708,30 @@ class WikiExtract(object):
 		# remove {{efn ... }}, {{refn ...}}, ...
 		clean_content = self.remove_ref_templates(clean_content)
 
-		# remove break lines
-		clean_content = re.sub(r"<br\s*?/>", "  ", clean_content, flags=re.DOTALL)
-		clean_content = re.sub(r"<br>", "  ", clean_content, flags=re.DOTALL)
 		clean_content = re.sub(r"<nowiki/>", " ", clean_content, flags=re.DOTALL)
-		clean_content = re.sub(r"<.*?/?>", "", clean_content, flags=re.DOTALL)
+		#clean_content = re.sub(r"<.*?/?>", "", clean_content, flags=re.DOTALL)
+
+		return clean_content
+
+	##
+	# @brief delete breaks of lines
+	# @param page_content - string containing content of page
+	# @return page content without breaks of lines
+	def remove_breaks(self, page_content):
+		# remove break lines
+		clean_content = re.sub(r"<br\s*?/>", "  ", page_content, flags=re.DOTALL)
+		clean_content = re.sub(r"<br>", "  ", clean_content, flags=re.DOTALL)
+
+		return clean_content
+
+	##
+	# @brief replace breaks of lines by commas
+	# @param page_content - string containing content of page
+	# @return page content, where breaks of lines are replaced by commas
+	def replace_breaks_by_commas(self, page_content):
+		# remove break lines
+		clean_content = re.sub(r"<br\s*?/>", ", ", page_content, flags=re.DOTALL)
+		clean_content = re.sub(r"<br>", ", ", clean_content, flags=re.DOTALL)
 
 		return clean_content
 
