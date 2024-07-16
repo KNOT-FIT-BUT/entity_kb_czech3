@@ -747,7 +747,7 @@ class EntCore(metaclass=ABCMeta):
                 elif len(old) < len(new) and self._are_equal_in_same_decimals(less_decimals=old, more_decimals=new):
                     print(f'[INCONSISTENCE CHECK] Warning: New value="{new}" (more accurate) maybe should be in KB for item "{column}" of "{self.original_title}" (of type "{self.prefix}")? Old value="{old}" (which is less accure) remains in KB.{origin}', file=sys.stderr, flush=True)
                     return
-            except InvalidOperation as e:
+            except (InvalidOperation, ValueError) as e:
                 print(f'Some problems with Decimals in entity "{self.original_title}" (new={new}; old={old}): {str(e)}', file=sys.stderr, flush=True)
 
         if except_contain:

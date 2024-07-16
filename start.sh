@@ -16,10 +16,15 @@ STATS_PATH=/mnt/minerva1/nlp-in/wikipedia-statistics/stats
 # saved values
 LAUNCHED=$0
 
-NPROC=`nproc`
+NPROC=`nproc || echo 1`
 GB_THRESHOLD=10
-FREE_MEMORY=$((`awk '/MemAvailable/ { printf "%.0f \n", $2/1024/1024 }' /proc/meminfo`))
+FREE_MEMORY=$((`awk '/Mem(Available|Free)/ { data = $2 > data ? $2 : data } END { printf "%.0f \n", data/1024/1024 }' /proc/meminfo`))
 NPROC=$((FREE_MEMORY / NPROC >= GB_THRESHOLD ? NPROC : FREE_MEMORY / GB_THRESHOLD))
+
+if test "$NPROC" -lt 1
+then
+  NPROC=1
+fi
 
 #=====================================================================
 # nastavovani parametru prikazove radky
