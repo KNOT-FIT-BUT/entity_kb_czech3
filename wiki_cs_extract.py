@@ -445,26 +445,21 @@ class WikiExtract(object):
 
                                     ent_titles.append(et_full_title)
                                     ent_pages.append(grandchild.text)
-                                    """
-                                    pools[cur_pool] = pool.apply_async(self.process_entity, (et_full_title, grandchild.text))
-                                    cur_pool = (cur_pool + 1) % max_pool
-                                    if pools[cur_pool] == None:
-                                        continue
-
-                                    serialized_entity = pools[cur_pool].get()
-                                    if serialized_entity:
-                                        fl.write(serialized_entity + "\n")
-                                    """
                 root.clear()
 
         if len(ent_titles) > 0:
-            pool = Pool(processes=self.console_args.m)
-            serialized_entities = pool.starmap(
-                self.process_entity,
-                zip(ent_titles, ent_pages),
-            )
-            pool.close()
-            pool.join()
+            if self.console_args.m != 1:
+                pool = Pool(processes=self.console_args.m)
+                serialized_entities = pool.starmap(
+                    self.process_entity,
+                    zip(ent_titles, ent_pages),
+                )
+                pool.close()
+                pool.join()
+            else:
+                serialized_entities = []
+                for i, ent_title in enumerate(ent_titles):
+                    serialized_entities.append(self.process_entity(ent_title, ent_pages[i]))
             with open("kb_cs", "a", encoding="utf-8") as fl:
                 fl.write("\n".join(filter(None, serialized_entities)))
 

@@ -180,8 +180,9 @@ EXTRACTION_ARGS+=(${MULTIPROC_PARAMS})
 
 # Run CS Wikipedia extractor to create new KB
 CMD="python3 wiki_cs_extract.py --lang ${LANG} --dump ${DUMP_VERSION} --indir \"${DUMP_PATH}\" ${EXTRACTION_ARGS[@]} 2>entities_processing.log"
-echo "RUNNING COMMAND: ${CMD}"
+echo "[`date`] RUNNING COMMAND: ${CMD}"
 eval $CMD
+echo "Exited with status code $? (${CMD})"
 
 F_KB_INCONSISTENCES=kb_inconsistences.tsv
 echo -e "ENTITY NAME\tTYPE\tCOLUMN\tOLD VALUE\tNEW VALUE\tCAME FROM" > "${F_KB_INCONSISTENCES}"
@@ -194,11 +195,17 @@ OUTDIR="outputs"
 mkdir -p "${OUTDIR}"
 
 # Convert Wikipedia KB format to Generic KB format
-python3 kbwiki2gkb.py --inkb "kb_cs" --outdir "${OUTDIR}"
+CMD="python3 kbwiki2gkb.py --inkb \"kb_cs\" --outdir \"${OUTDIR}\""
+echo "[`date`] RUNNING COMMAND: ${CMD}"
+eval $CMD
+echo "Exited with status code $? (${CMD})"
 
 # Add stats to KB and compute metrics
 mkdir -p outputs
-python3 wikipedia_stats/stats_to_kb.py --input "outputs/KB.tsv" --output "outputs/KB+stats.tsv" -pw "$STATS_PATH/pageviews/latest_cs_pageviews.tsv" -bps "$STATS_PATH/bps/latest_cs_bps.tsv"
+CMD="python3 wikipedia_stats/stats_to_kb.py --input \"outputs/KB.tsv\" --output \"outputs/KB+stats.tsv\" -pw \"$STATS_PATH/pageviews/latest_cs_pageviews.tsv\" -bps \"$STATS_PATH/bps/latest_cs_bps.tsv\""
+echo "[`date`] RUNNING COMMAND: ${CMD}"
+eval $CMD
+echo "Exited with status code $? (${CMD})"
 
 if $DEPLOY
 then

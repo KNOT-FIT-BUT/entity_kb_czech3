@@ -38,6 +38,7 @@ WIKI_API_PARAMS_BASE = {
     "action": "query",
     "format": "json",
 }
+WIKI_API_ATTEMPTS = 5
 
 
 class EntCore(metaclass=ABCMeta):
@@ -105,20 +106,40 @@ class EntCore(metaclass=ABCMeta):
         self.longitude = ""
 
     def get_wiki_api_location(self, title):
+        from getpass import getuser
+
+        self.latitude = ""
+        self.longitude = ""
+
         resp = None
         wiki_api_params = WIKI_API_PARAMS_BASE.copy()
         wiki_api_params["prop"] = "coordinates"
         wiki_api_params["titles"] = title
+        wiki_api_headers = {}
+        mail = ""
+        user = getuser()
+        if user != "root":
+            mail = user + "@" + ("stud." if user[0] == "x" and len(user) == 8 else "") + "fit.vut.cz"
+        if mail != "":
+            mail = f"; {mail}"
+        wiki_api_headers["user-agent"] = f"KNOT FIT BUT/0.0 (http://knot.fit.vut.cz{mail})"
+        connection_attempts = 0
         try:
             while True:
                 try:
-                    resp = requests.get(WIKI_API_URL, params=wiki_api_params)
-                except requests.exceptions.ConnectionError:
-                    ...
+                    connection_attempts += 1
+                    resp = requests.get(WIKI_API_URL, headers=wiki_api_headers, params=wiki_api_params)
+                    if connection_attempts > WIKI_API_ATTEMPTS:
+                        print(f"[{datetime.now()}] API connection failed (reached maximum connection attempts) for page \"{title}\"", file=sys.stderr, flush=True)
+                        return
+                    else:
+                        print(f"[{datetime.now()}] API connection attempt no. {connection_attempts} for page \"{title}\": {resp.status_code} - {resp.text.strip()}", file=sys.stderr, flush=True)
+                except requests.exceptions.ConnectionError as e:
+                    print(f"[{datetime.now()}] API error for \"{title}\": {e} ({resp.url}; headers: {wiki_api_headers})", file=sys.stderr, flush=True)
                 if resp and resp.status_code == 200:
                     break
-            print(f"API logging {datetime.now()}: {resp.status_code} - {resp.text}", file=sys.stderr, flush=True)
-            print(f"API logging JSON: {resp.json}", file=sys.stderr, flush=True)
+                else:
+                    print(f"[{datetime.now()}] API error for \"{title}\": {resp.status_code} - {resp.text.strip()} ({resp.url}; headers: {wiki_api_headers})", file=sys.stderr, flush=True)
             pages = resp.json()["query"]["pages"]
             first_page = next(iter(pages))
             if first_page != "-1" and "coordinates" in pages[first_page]:
@@ -128,9 +149,7 @@ class EntCore(metaclass=ABCMeta):
             resp_detail = ""
             if resp:
                 resp_detail = f"([{resp.status_code}]: {resp.json()})"
-            print(f"API Error: Coordinates for \"{title}\" could not be found due to error: {e}. {resp_detail}", file=sys.stderr, flush=True)
-            self.latitude = ""
-            self.longitude = ""
+            print(f"[{datetime.now()}] API Error: Coordinates for \"{title}\" could not be found due to error: {e}. {resp_detail}", file=sys.stderr, flush=True)
 
     def get_latitude(self, latitude):
         """
