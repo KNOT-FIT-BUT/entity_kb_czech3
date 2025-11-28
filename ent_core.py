@@ -38,7 +38,9 @@ WIKI_API_PARAMS_BASE = {
     "action": "query",
     "format": "json",
 }
-WIKI_API_ATTEMPTS = 5
+WIKI_API_ATTEMPTS = 10
+WIKI_API_DELAY_MIN = 1
+WIKI_API_DELAY_MAX = 2
 
 
 class EntCore(metaclass=ABCMeta):
@@ -107,6 +109,8 @@ class EntCore(metaclass=ABCMeta):
 
     def get_wiki_api_location(self, title):
         from getpass import getuser
+        from random import uniform
+        from time import sleep
 
         self.latitude = ""
         self.longitude = ""
@@ -128,18 +132,25 @@ class EntCore(metaclass=ABCMeta):
             while True:
                 try:
                     connection_attempts += 1
-                    resp = requests.get(WIKI_API_URL, headers=wiki_api_headers, params=wiki_api_params)
                     if connection_attempts > WIKI_API_ATTEMPTS:
                         print(f"[{datetime.now()}] API connection failed (reached maximum connection attempts) for page \"{title}\"", file=sys.stderr, flush=True)
                         return
-                    else:
-                        print(f"[{datetime.now()}] API connection attempt no. {connection_attempts} for page \"{title}\": {resp.status_code} - {resp.text.strip()}", file=sys.stderr, flush=True)
+                    resp = requests.get(WIKI_API_URL, headers=wiki_api_headers, params=wiki_api_params)
                 except requests.exceptions.ConnectionError as e:
-                    print(f"[{datetime.now()}] API error for \"{title}\": {e} ({resp.url}; headers: {wiki_api_headers})", file=sys.stderr, flush=True)
+                    delay = uniform(connection_attempts * WIKI_API_DELAY_MIN, connection_attempts * WIKI_API_DELAY_MAX)
+                    print(f"[{datetime.now()}] API error for attempt no. {connection_attempts} of page \"{title}\": {e} ({resp.url}; headers: {wiki_api_headers}) - waiting {delay} seconds for next attempt.", file=sys.stderr, flush=True)
+                    sleep(delay)
                 if resp and resp.status_code == 200:
+                    print(f"[{datetime.now()}] API success for attempt no. {connection_attempts} of page \"{title}\": {resp.json()}.", file=sys.stderr, flush=True)
                     break
+                elif resp.status_code == 429:
+                    delay = uniform(connection_attempts * WIKI_API_DELAY_MIN, connection_attempts * WIKI_API_DELAY_MAX)
+                    print(f"[{datetime.now()}] API error TOO MANY REQUESTS for attempt no. {connection_attempts} of page \"{title}\" - waiting {delay} seconds for next attempt.", file=sys.stderr, flush=True)
+                    sleep(delay)
                 else:
-                    print(f"[{datetime.now()}] API error for \"{title}\": {resp.status_code} - {resp.text.strip()} ({resp.url}; headers: {wiki_api_headers})", file=sys.stderr, flush=True)
+                    delay = uniform(connection_attempts * WIKI_API_DELAY_MIN, connection_attempts * WIKI_API_DELAY_MAX)
+                    print(f"[{datetime.now()}] API error for attempt no. {connection_attempts} of page \"{title}\": {resp.status_code} - {resp.text.strip()} ({resp.url}; headers: {wiki_api_headers}) - waiting {delay} seconds for next attempt.", file=sys.stderr, flush=True)
+                    sleep(delay)
             pages = resp.json()["query"]["pages"]
             first_page = next(iter(pages))
             if first_page != "-1" and "coordinates" in pages[first_page]:
