@@ -29,6 +29,10 @@ TAG_BRACES_CLOSING = "}}"
 ALIASES_SEPARATOR = re.escape(", ")
 
 WIKI_API_URL = "https://sk.wikipedia.org/w/api.php"
+WIKI_API_ATTEMPTS = 10
+WIKI_API_DELAY_MIN = 1
+WIKI_API_DELAY_MAX = 2
+
 WIKI_API_PARAMS_BASE = {
     "action": "query",
     "format": "json",
@@ -102,31 +106,72 @@ class EntCore(metaclass=ABCMeta):
         self.wikidata_id = ""
 
     def get_wiki_api_data(self):
+        from datetime import datetime
+        from getpass import getuser
+        from random import uniform
+        from time import sleep
+
+        resp = None
         wiki_api_params = WIKI_API_PARAMS_BASE.copy()
         wiki_api_params["prop"] = "coordinates|pageprops"
-        wiki_api_params["titles"] = self.original_title
-        repeat = True
-        repeated = 0
-        while repeat and repeated < 200:
-            repeat = False
-            repeated += 1
+        wiki_api_params["titles"] = title = self.original_title
+
+        wiki_api_headers = {}
+        mail = ""
+        user = getuser()
+        if user != "root":
+            mail = user + "@" + ("stud." if user[0] == "x" and len(user) == 8 else "") + "fit.vut.cz"
+        if mail != "":
+            mail = f"; {mail}"
+        wiki_api_headers["user-agent"] = f"KNOT FIT BUT/0.0 (http://knot.fit.vut.cz{mail})"
+
+        connection_attempts = 0
+        try:
+            while True:
+                try:
+                    connection_attempts += 1
+                    if connection_attempts > WIKI_API_ATTEMPTS:
+                        print(f"[{datetime.now()}] API connection failed (reached maximum connection attempts) for page \"{title}\"", file=sys.stderr, flush=True)
+                        return
+                    resp = requests.get(WIKI_API_URL, headers=wiki_api_headers, params=wiki_api_params)
+                except requests.exceptions.ConnectionError as e:
+                    delay = uniform(connection_attempts * WIKI_API_DELAY_MIN, connection_attempts * WIKI_API_DELAY_MAX)
+                    print(f"[{datetime.now()}] API error for attempt no. {connection_attempts} of page \"{title}\": {e} ({WIKI_API_URL}; params: {wiki_api_params}; headers: {wiki_api_headers}) - waiting {delay} seconds for next attempt.", file=sys.stderr, flush=True)
+                    sleep(delay)
+                if resp:
+                    delay = 0
+                    error_name = ""
+                    error_detail = ""
+                    if resp.status_code == 200:
+                        print(f"[{datetime.now()}] API success for attempt no. {connection_attempts} of page \"{title}\".", file=sys.stderr, flush=True)
+                        break
+                    elif resp.status_code == 429:
+                        error_name = " TOO MANY REQUESTS"
+                    else:
+                        error_detail = f": {resp.status_code} - {resp.text.strip()} ({WIKI_API_URL}; params: {wiki_api_params}; headers: {wiki_api_headers})"
+                    delay = uniform(connection_attempts * WIKI_API_DELAY_MIN, connection_attempts * WIKI_API_DELAY_MAX)
+                    print(f"[{datetime.now()}] API error{error_name} for attempt no. {connection_attempts} of page \"{title}\"{error_detail} - waiting {delay} seconds for next attempt.", file=sys.stderr, flush=True)
+                    sleep(delay)
+                else:
+                    delay = uniform(connection_attempts * WIKI_API_DELAY_MIN, connection_attempts * WIKI_API_DELAY_MAX)
+                    print(f"[{datetime.now()}] API error for attempt no. {connection_attempts} of page \"{title}\": EMPTY RESPONSE ({WIKI_API_URL}; params: {wiki_api_params}; headers: {wiki_api_headers}) - waiting {delay} seconds for next attempt.", file=sys.stderr, flush=True)
+                    sleep(delay)
+            pages = resp.json()["query"]["pages"]
+            first_page = next(iter(pages))
             try:
-                r = requests.get(WIKI_API_URL, params=wiki_api_params)
-                pages = r.json()["query"]["pages"]
-                first_page = next(iter(pages))
-                try:
-                    self.wikidata_id = pages[first_page]["pageprops"]['wikibase_item']
-                except:
-                    self.wikidata_id = ""
-                try:
-                    if first_page != "-1":
-                        self.latitude = pages[first_page]["coordinates"][0]["lat"]
-                        self.longitude = pages[first_page]["coordinates"][0]["lon"]
-                except:
-                    self.latitude = ""
-                    self.longitude = ""
+                self.wikidata_id = pages[first_page]["pageprops"]['wikibase_item']
             except:
-                repeat = True
+                self.wikidata_id = ""
+            if first_page != "-1" and "coordinates" in pages[first_page]:
+                self.latitude = pages[first_page]["coordinates"][0]["lat"]
+                self.longitude = pages[first_page]["coordinates"][0]["lon"]
+        except Exception as e:
+            resp_detail = ""
+            if resp:
+                resp_detail = f"([{resp.status_code}]: {resp.json()})"
+            else:
+                resp_detail = f"(resp=\"{resp}\")"
+            print(f"[{datetime.now()}] API Error: Coordinates for \"{title}\" could not be found due to error: {e}. {resp_detail}", file=sys.stderr, flush=True)
 
     def get_latitude(self, latitude):
         """
