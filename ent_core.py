@@ -138,18 +138,25 @@ class EntCore(metaclass=ABCMeta):
                     resp = requests.get(WIKI_API_URL, headers=wiki_api_headers, params=wiki_api_params)
                 except requests.exceptions.ConnectionError as e:
                     delay = uniform(connection_attempts * WIKI_API_DELAY_MIN, connection_attempts * WIKI_API_DELAY_MAX)
-                    print(f"[{datetime.now()}] API error for attempt no. {connection_attempts} of page \"{title}\": {e} ({resp.url}; headers: {wiki_api_headers}) - waiting {delay} seconds for next attempt.", file=sys.stderr, flush=True)
+                    print(f"[{datetime.now()}] API error for attempt no. {connection_attempts} of page \"{title}\": {e} ({WIKI_API_URL}; params: {wiki_api_params};  headers: {wiki_api_headers}) - waiting {delay} seconds for next attempt.", file=sys.stderr, flush=True)
                     sleep(delay)
-                if resp and resp.status_code == 200:
-                    print(f"[{datetime.now()}] API success for attempt no. {connection_attempts} of page \"{title}\": {resp.json()}.", file=sys.stderr, flush=True)
-                    break
-                elif resp.status_code == 429:
+                if resp:
+                    delay = 0
+                    error_name = ""
+                    error_detail = ""
+                    if resp.status_code == 200:
+                        print(f"[{datetime.now()}] API success for attempt no. {connection_attempts} of page \"{title}\".", file=sys.stderr, flush=True)
+                        break
+                    elif resp.status_code == 429:
+                        error_name = " TOO MANY REQUESTS"
+                    else:
+                        error_detail = f": {resp.status_code} - {resp.text.strip()} ({WIKI_API_URL}; params: {wiki_api_params}; headers: {wiki_api_headers})"
                     delay = uniform(connection_attempts * WIKI_API_DELAY_MIN, connection_attempts * WIKI_API_DELAY_MAX)
-                    print(f"[{datetime.now()}] API error TOO MANY REQUESTS for attempt no. {connection_attempts} of page \"{title}\" - waiting {delay} seconds for next attempt.", file=sys.stderr, flush=True)
+                    print(f"[{datetime.now()}] API error{errorname} for attempt no. {connection_attempts} of page \"{title}\"{error_detail} - waiting {delay} seconds for next attempt.", file=sys.stderr, flush=True)
                     sleep(delay)
                 else:
                     delay = uniform(connection_attempts * WIKI_API_DELAY_MIN, connection_attempts * WIKI_API_DELAY_MAX)
-                    print(f"[{datetime.now()}] API error for attempt no. {connection_attempts} of page \"{title}\": {resp.status_code} - {resp.text.strip()} ({resp.url}; headers: {wiki_api_headers}) - waiting {delay} seconds for next attempt.", file=sys.stderr, flush=True)
+                    print(f"[{datetime.now()}] API error for attempt no. {connection_attempts} of page \"{title}\": EMPTY RESPONSE ({WIKI_API_URL}; params: {wiki_api_params}; headers: {wiki_api_headers}) - waiting {delay} seconds for next attempt.", file=sys.stderr, flush=True)
                     sleep(delay)
             pages = resp.json()["query"]["pages"]
             first_page = next(iter(pages))
@@ -160,6 +167,8 @@ class EntCore(metaclass=ABCMeta):
             resp_detail = ""
             if resp:
                 resp_detail = f"([{resp.status_code}]: {resp.json()})"
+            else:
+                resp_detail = f"(resp=\"{resp}\")"
             print(f"[{datetime.now()}] API Error: Coordinates for \"{title}\" could not be found due to error: {e}. {resp_detail}", file=sys.stderr, flush=True)
 
     def get_latitude(self, latitude):
